@@ -1,0 +1,306 @@
+//! Blog-related API endpoints
+
+use crate::{BlogIdentifier, Crabrave, CrabResult};
+use serde::{Deserialize, Serialize};
+
+/// API for blog-related endpoints
+///
+/// Provides access to blog information, posts, followers, and other blog-specific operations.
+///
+/// # Example
+///
+/// ```no_run
+/// use crabrave::Crabrave;
+///
+/// # async fn example() -> Result<(), crabrave::CrabError> {
+/// let crab = Crabrave::builder()
+///     .consumer_key("key")
+///     .build()?;
+///
+/// // Get blog information
+/// let info = crab.blogs("staff").info().await?;
+/// println!("Blog: {} - {}", info.blog.name, info.blog.title);
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Clone)]
+pub struct Blogs {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+}
+
+impl Blogs {
+    /// Creates a new Blogs API for the specified blog
+    pub(crate) fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self { client, identifier }
+    }
+
+    /// Gets information about the blog
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
+    /// let info = crab.blogs("staff").info().await?;
+    /// println!("Blog title: {}", info.blog.title);
+    /// println!("Total posts: {}", info.blog.posts);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn info(&self) -> CrabResult<BlogInfo> {
+        let path = format!("blog/{}/info", self.identifier.as_str());
+        self.client.get(&path).await
+    }
+
+    /// Gets the avatar URL for the blog
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - Optional size for the avatar (16, 24, 30, 40, 48, 64, 96, 128, 512)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
+    /// let avatar = crab.blogs("staff").avatar(Some(128)).await?;
+    /// println!("Avatar URL: {}", avatar.avatar_url);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn avatar(&self, size: Option<u16>) -> CrabResult<AvatarResponse> {
+        let path = if let Some(size) = size {
+            format!("blog/{}/avatar/{}", self.identifier.as_str(), size)
+        } else {
+            format!("blog/{}/avatar", self.identifier.as_str())
+        };
+        self.client.get(&path).await
+    }
+
+    /// Gets posts from the blog
+    ///
+    /// Returns a builder for configuring the posts request.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
+    /// let posts = crab.blogs("staff")
+    ///     .posts()
+    ///     .limit(20)
+    ///     .offset(0)
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for post in posts.posts {
+    ///     println!("Post: {}", post.id);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn posts(&self) -> PostsBuilder {
+        PostsBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+}
+
+/// Response from the blog info endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlogInfo {
+    /// Blog information
+    pub blog: crate::Blog,
+}
+
+/// Response from the avatar endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AvatarResponse {
+    /// URL of the avatar image
+    pub avatar_url: String,
+}
+
+/// Builder for querying blog posts
+///
+/// This builder allows you to configure various parameters for fetching posts
+/// from a blog before sending the request.
+pub struct PostsBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    limit: Option<u32>,
+    offset: Option<u64>,
+    post_type: Option<String>,
+    tag: Option<String>,
+    before: Option<i64>,
+}
+
+impl PostsBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self {
+            client,
+            identifier,
+            limit: None,
+            offset: None,
+            post_type: None,
+            tag: None,
+            before: None,
+        }
+    }
+
+    /// Sets the number of posts to return (max 20, default 20)
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+
+    /// Sets the post offset for pagination
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
+    /// Filters posts by type (text, photo, quote, link, chat, audio, video)
+    pub fn post_type(mut self, post_type: impl Into<String>) -> Self {
+        self.post_type = Some(post_type.into());
+        self
+    }
+
+    /// Filters posts by tag
+    pub fn tag(mut self, tag: impl Into<String>) -> Self {
+        self.tag = Some(tag.into());
+        self
+    }
+
+    /// Returns posts before this timestamp (Unix time)
+    pub fn before(mut self, timestamp: i64) -> Self {
+        self.before = Some(timestamp);
+        self
+    }
+
+    /// Sends the request and returns the posts
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<PostsResponse> {
+        let mut path = format!("blog/{}/posts", self.identifier.as_str());
+        let mut params = Vec::new();
+
+        if let Some(limit) = self.limit {
+            params.push(format!("limit={}", limit));
+        }
+        if let Some(offset) = self.offset {
+            params.push(format!("offset={}", offset));
+        }
+        if let Some(post_type) = &self.post_type {
+            params.push(format!("type={}", post_type));
+        }
+        if let Some(tag) = &self.tag {
+            params.push(format!("tag={}", tag));
+        }
+        if let Some(before) = self.before {
+            params.push(format!("before={}", before));
+        }
+
+        if !params.is_empty() {
+            path.push('?');
+            path.push_str(&params.join("&"));
+        }
+
+        self.client.get(&path).await
+    }
+}
+
+/// Response from the posts endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostsResponse {
+    /// List of posts
+    pub posts: Vec<Post>,
+    /// Total number of posts in the blog
+    #[serde(default)]
+    pub total_posts: u64,
+    /// Information about the blog (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blog: Option<crate::Blog>,
+}
+
+/// Represents a Tumblr post
+///
+/// Note: This is a simplified representation. The full post structure
+/// varies significantly based on post type and format (legacy vs NPF).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Post {
+    /// Post ID (as string since it's a 64-bit integer)
+    pub id: String,
+    /// ID of the post this is reblogged from (if applicable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_from_id: Option<String>,
+    /// URL of the post this is reblogged from (if applicable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_from_url: Option<String>,
+    /// Name of the blog that created this post
+    pub blog_name: String,
+    /// URL of the post
+    pub post_url: String,
+    /// Type of post (text, photo, quote, link, chat, audio, video, answer)
+    #[serde(rename = "type")]
+    pub post_type: String,
+    /// Timestamp when the post was created (Unix time)
+    pub timestamp: i64,
+    /// Post tags
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Short text summary
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// Note count (reblogs + likes)
+    #[serde(default)]
+    pub note_count: u64,
+    /// Current state (published, queued, draft, private)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_posts_builder_path_no_params() {
+        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let identifier = BlogIdentifier::from("staff");
+        let builder = PostsBuilder::new(client, identifier);
+
+        // We can't easily test the async send(), but we can verify the builder constructs correctly
+        assert!(builder.limit.is_none());
+        assert!(builder.offset.is_none());
+    }
+
+    #[test]
+    fn test_posts_builder_with_params() {
+        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let identifier = BlogIdentifier::from("staff");
+        let builder = PostsBuilder::new(client, identifier)
+            .limit(10)
+            .offset(20)
+            .post_type("photo")
+            .tag("art");
+
+        assert_eq!(builder.limit, Some(10));
+        assert_eq!(builder.offset, Some(20));
+        assert_eq!(builder.post_type, Some("photo".to_string()));
+        assert_eq!(builder.tag, Some("art".to_string()));
+    }
+}
