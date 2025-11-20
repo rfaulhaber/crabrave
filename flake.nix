@@ -15,7 +15,7 @@
     flake-parts,
     ...
   }: let
-    projectName = "CHANGEME";
+    projectName = "crabrave";
   in
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [];
@@ -40,17 +40,21 @@
           overlays = [
             self.overlays.rustOverlay
           ];
+          config.allowUnfreePredicate = pkg:
+            builtins.elem (pkgs.lib.getName pkg) [
+              "claude-code"
+            ];
         };
 
         formatter = pkgs.alejandra;
-
-        packages.${projectName} = pkgs.rustPlatform.buildRustPackage {
-          pname = projectName;
-          version = "0.1.0";
-          src = ./.;
-          cargoLock.lockFile = ./Cargo.lock;
-
-          meta.mainProgram = projectName;
+        packages = {
+          ${projectName} = pkgs.rustPlatform.buildRustPackage {
+            pname = projectName;
+            version = "0.1.0";
+            src = ./.;
+            cargoLock.lockFile = ./Cargo.lock;
+          };
+          default = self'.packages.${projectName};
         };
 
         devShells.default = pkgs.mkShell {
@@ -59,6 +63,7 @@
             clippy
             rust-analyzer
             cargo-nextest
+            claude-code
           ];
         };
       };

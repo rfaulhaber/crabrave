@@ -1,0 +1,7 @@
+{
+  "TUMBLR_CONSUMER_KEY": "change me!",
+  "TUMBLR_CONSUMER_SECRET": "change me!",
+  "TUMBLR_ACCESS_TOKEN": "change me!",
+  "TUMBLR_REFRESH_TOKEN": "change me!",
+  "TUMBLR_REDIRECT_URI": "http://localhost:3000/redirect"
+}
