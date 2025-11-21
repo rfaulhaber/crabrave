@@ -5,7 +5,9 @@
 //! Inspired by [Octocrab](https://github.com/XAMPPRocky/octocrab), Crabrave provides
 //! a type-safe, async interface for interacting with Tumblr's REST API.
 //!
-//! ## Example
+//! ## Quick Start
+//!
+//! ### Using Existing Credentials
 //!
 //! ```
 //! use crabrave::Crabrave;
@@ -21,19 +23,62 @@
 //! // let blog_info = crab.blogs("staff").info().await?;
 //! # Ok::<(), crabrave::CrabError>(())
 //! ```
+//!
+//! ### OAuth2 Flow (Getting Tokens)
+//!
+//! ```no_run
+//! use crabrave::oauth::OAuth2Config;
+//! use crabrave::Crabrave;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // 1. Create OAuth2 config
+//! let config = OAuth2Config::new(
+//!     "your_consumer_key",
+//!     "your_consumer_secret",
+//!     "http://localhost:8080/callback"
+//! );
+//!
+//! // 2. Generate authorization URL
+//! let (auth_url, csrf_token) = config.authorize_url();
+//! println!("Visit: {}", auth_url);
+//! // Direct user to auth_url, they'll be redirected back with a code
+//!
+//! // 3. Exchange authorization code for token
+//! let code = "code_from_callback";
+//! let token = config.exchange_code(code).await?;
+//!
+//! // 4. Create client with the token
+//! let crab = Crabrave::builder()
+//!     .consumer_key("your_consumer_key")
+//!     .consumer_secret("your_consumer_secret")
+//!     .access_token(&token.access_token)
+//!     .build()?;
+//!
+//! // 5. Use the client
+//! let blog_info = crab.blogs("staff").info().await?;
+//! # Ok(())
+//! # }
+//! ```
 
 mod error;
 pub mod handlers;
 pub mod models;
+pub mod npf;
+pub mod oauth;
 mod response;
 
 pub use error::{CrabError, CrabResult};
-pub use handlers::{Blogs, Users};
+pub use handlers::{Blogs, Communities, Posts, Tagged, Users};
 pub use models::{Blog, BlogIdentifier, Page, User};
 pub use response::{ApiResponse, Meta};
 
+use base64::Engine;
+use hmac::{Hmac, Mac};
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
+use sha1::Sha1;
+use std::collections::BTreeMap;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Base URL for the Tumblr API v2
 pub const BASE_API_URL: &str = "https://api.tumblr.com/v2";
@@ -52,12 +97,13 @@ const DEFAULT_USER_AGENT: &str = concat!(
 );
 
 /// Authentication credentials for the Tumblr API
-#[derive(Clone, Debug)]
-#[allow(dead_code)] // Fields will be used when implementing API requests
+#[derive(Clone)]
 enum Auth {
     /// OAuth2 authentication with access token
     OAuth2 {
+        #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
         consumer_key: String,
+        #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
         consumer_secret: String,
         access_token: String,
     },
@@ -77,7 +123,6 @@ enum Auth {
 pub struct Crabrave {
     client: reqwest::Client,
     base_url: String,
-    #[allow(dead_code)] // Will be used when implementing API requests
     auth: Arc<Auth>,
 }
 
@@ -164,6 +209,112 @@ impl Crabrave {
         Users::new(self.clone())
     }
 
+    /// Creates an API accessor for searching posts by tag
+    ///
+    /// This provides access to public posts across the platform that have been
+    /// tagged with a specific tag.
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - The tag to search for
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
+    /// // Search for posts tagged with "photography"
+    /// let posts = crab.tagged("photography").limit(20).send().await?;
+    ///
+    /// for post in posts.posts {
+    ///     println!("Post from {}: {}", post.blog_name, post.id);
+    /// }
+    ///
+    /// // Search with timestamp filter
+    /// let older_posts = crab.tagged("art").before(1234567890).send().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn tagged(&self, tag: impl Into<String>) -> handlers::Tagged {
+        handlers::Tagged::new(self.clone(), tag.into())
+    }
+
+    /// Creates an API accessor for post operations
+    ///
+    /// This provides access to creating, editing, fetching, and deleting posts.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Get a specific post
+    /// let post = crab.posts().get("my-blog", "123456").await?;
+    ///
+    /// // Create a text post
+    /// let new_post = crab.posts()
+    ///     .create_text("my-blog")
+    ///     .title("Hello World")
+    ///     .body("This is my first post!")
+    ///     .tags(vec!["rust", "programming"])
+    ///     .send()
+    ///     .await?;
+    ///
+    /// // Delete a post
+    /// crab.posts().delete("my-blog", "123456").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn posts(&self) -> Posts {
+        Posts::new(self.clone())
+    }
+
+    /// Creates an API accessor for community operations
+    ///
+    /// This provides access to community timelines, membership management,
+    /// and member lists.
+    ///
+    /// # Arguments
+    ///
+    /// * `handle` - Community handle/identifier
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Get community timeline
+    /// let timeline = crab.communities("rust-community")
+    ///     .timeline()
+    ///     .limit(20)
+    ///     .send()
+    ///     .await?;
+    ///
+    /// // Join a community
+    /// crab.communities("rust-community").join().await?;
+    ///
+    /// // Get community members
+    /// let members = crab.communities("rust-community")
+    ///     .members(Some(20), None)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn communities(&self, handle: impl Into<String>) -> Communities {
+        Communities::new(self.clone(), handle.into())
+    }
+
     /// Constructs a full URL for an API endpoint
     ///
     /// # Arguments
@@ -172,6 +323,122 @@ impl Crabrave {
     pub(crate) fn url(&self, path: &str) -> String {
         let path = path.trim_start_matches('/');
         format!("{}/{}", self.base_url, path)
+    }
+
+    /// Generates an OAuth1 signature for a request
+    fn generate_oauth1_signature(
+        &self,
+        method: &str,
+        url: &str,
+        consumer_key: &str,
+        consumer_secret: &str,
+        access_token: &str,
+        access_token_secret: &str,
+    ) -> String {
+        // Generate timestamp and nonce
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs().to_string())
+            .unwrap_or_else(|_| "0".to_string());
+
+        let nonce: String = timestamp.chars().rev().collect();
+
+        // Collect OAuth parameters (using String keys and values to avoid lifetime issues)
+        let mut params: BTreeMap<String, String> = BTreeMap::new();
+        params.insert("oauth_consumer_key".to_string(), consumer_key.to_string());
+        params.insert("oauth_nonce".to_string(), nonce.clone());
+        params.insert("oauth_signature_method".to_string(), "HMAC-SHA1".to_string());
+        params.insert("oauth_timestamp".to_string(), timestamp.clone());
+        params.insert("oauth_token".to_string(), access_token.to_string());
+        params.insert("oauth_version".to_string(), "1.0".to_string());
+
+        // Parse URL to extract query parameters
+        if let Ok(parsed_url) = url::Url::parse(url) {
+            for (key, value) in parsed_url.query_pairs() {
+                params.insert(key.to_string(), value.to_string());
+            }
+        }
+
+        // Build parameter string
+        let param_string: String = params
+            .iter()
+            .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+            .collect::<Vec<_>>()
+            .join("&");
+
+        // Build signature base string
+        let base_url = url.split('?').next().unwrap_or(url);
+        let signature_base = format!(
+            "{}&{}&{}",
+            urlencoding::encode(method),
+            urlencoding::encode(base_url),
+            urlencoding::encode(&param_string)
+        );
+
+        // Build signing key
+        let signing_key = format!(
+            "{}&{}",
+            urlencoding::encode(consumer_secret),
+            urlencoding::encode(access_token_secret)
+        );
+
+        // Generate HMAC-SHA1 signature
+        type HmacSha1 = Hmac<Sha1>;
+        let mut mac = HmacSha1::new_from_slice(signing_key.as_bytes())
+            .unwrap_or_else(|_| panic!("HMAC can take key of any size"));
+        mac.update(signature_base.as_bytes());
+        let result = mac.finalize();
+        let signature = base64::engine::general_purpose::STANDARD.encode(result.into_bytes());
+
+        // Build Authorization header
+        format!(
+            r#"OAuth oauth_consumer_key="{}", oauth_nonce="{}", oauth_signature="{}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{}", oauth_token="{}", oauth_version="1.0""#,
+            urlencoding::encode(consumer_key),
+            urlencoding::encode(&nonce),
+            urlencoding::encode(&signature),
+            timestamp,
+            urlencoding::encode(access_token)
+        )
+    }
+
+    /// Applies authentication to a request builder based on the auth type
+    fn apply_auth(
+        &self,
+        mut request: reqwest::RequestBuilder,
+        method: &str,
+        url: &str,
+    ) -> reqwest::RequestBuilder {
+        match self.auth.as_ref() {
+            Auth::OAuth2 { access_token, .. } => {
+                // Add Bearer token to Authorization header
+                request = request.header(
+                    reqwest::header::AUTHORIZATION,
+                    format!("Bearer {}", access_token),
+                );
+            }
+            Auth::OAuth1 {
+                consumer_key,
+                consumer_secret,
+                access_token,
+                access_token_secret,
+            } => {
+                // Generate OAuth1 signature and add Authorization header
+                let auth_header = self.generate_oauth1_signature(
+                    method,
+                    url,
+                    consumer_key,
+                    consumer_secret,
+                    access_token,
+                    access_token_secret,
+                );
+                request = request.header(reqwest::header::AUTHORIZATION, auth_header);
+            }
+            Auth::ApiKey { consumer_key } => {
+                // Add API key as query parameter
+                request = request.query(&[("api_key", consumer_key)]);
+            }
+        }
+        request
     }
 
     /// Makes a GET request to the API
@@ -183,7 +450,9 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
     {
         let url = self.url(path);
-        let response = self.client.get(&url).send().await?;
+        let request = self.client.get(&url);
+        let request = self.apply_auth(request, "GET", &url);
+        let response = request.send().await?;
 
         // Check for rate limiting
         if response.status().as_u16() == 429 {
@@ -210,7 +479,9 @@ impl Crabrave {
         B: serde::Serialize,
     {
         let url = self.url(path);
-        let response = self.client.post(&url).json(body).send().await?;
+        let request = self.client.post(&url).json(body);
+        let request = self.apply_auth(request, "POST", &url);
+        let response = request.send().await?;
 
         // Check for rate limiting
         if response.status().as_u16() == 429 {
@@ -236,7 +507,9 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
     {
         let url = self.url(path);
-        let response = self.client.delete(&url).send().await?;
+        let request = self.client.delete(&url);
+        let request = self.apply_auth(request, "DELETE", &url);
+        let response = request.send().await?;
 
         // Check for rate limiting
         if response.status().as_u16() == 429 {

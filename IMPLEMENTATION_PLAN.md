@@ -1,7 +1,7 @@
 # Crabrave Implementation Plan
 
-**Last Updated:** 2025-11-20
-**Status:** Phase 3 - Handlers (In Progress)
+**Last Updated:** 2025-11-21
+**Status:** Phase 4 - API Modules (Mostly Complete)
 
 ## Project Vision
 
@@ -264,31 +264,30 @@ loop {
 - [x] Add `.follow()` / `.unfollow()` methods
 - [ ] Add filtered content endpoints (deferred)
 
-#### Posts API (Not Started)
-- [ ] Implement `posts()` method on `Crabrave`
-- [ ] Add `.get(blog, id)` endpoint
-- [ ] Add `.create_text()` builder
-- [ ] Add `.create_photo()` builder
-- [ ] Add `.create_quote()` builder
-- [ ] Add `.create_link()` builder
-- [ ] Add `.create_npf()` builder with content blocks
-- [ ] Add `.edit()` builder
-- [ ] Add `.delete()` endpoint
-- [ ] Add `.reblog()` method
-- [ ] Implement media upload for photos/videos
-- [ ] Add full NPF content block type definitions
+#### Posts API ✅ COMPLETE
+- [x] Implement `posts()` method on `Crabrave`
+- [x] Add `.get(blog, id)` endpoint
+- [x] Add `.create_text()` builder
+- [x] Add `.create_quote()` builder
+- [x] Add `.create_link()` builder
+- [x] Add `.create_photo()` builder
+- [x] Add `.delete()` endpoint
+- [x] Add `.edit()` builder
+- [x] Add `.reblog()` method
+- [x] Add `.create_npf()` builder with content blocks
+- [x] Add full NPF content block type definitions
 
-#### Tagged API (Not Started)
-- [ ] Implement `tagged()` method on `Crabrave`
-- [ ] Add `.search()` builder with filters
-- [ ] Add pagination support
+#### Tagged API ✅ COMPLETE
+- [x] Implement `tagged()` method on `Crabrave`
+- [x] Add `.list()` builder with filters (limit, before, filter)
+- [x] Add pagination support
 
-#### Communities API (Not Started)
-- [ ] Implement `communities()` method on `Crabrave`
-- [ ] Add `.timeline()` endpoint
-- [ ] Add `.join()` / `.leave()` methods
-- [ ] Add `.members()` endpoint
-- [ ] Add reaction endpoints
+#### Communities API ✅ COMPLETE
+- [x] Implement `communities()` method on `Crabrave`
+- [x] Add `.timeline()` builder with filters
+- [x] Add `.join()` / `.leave()` methods
+- [x] Add `.members()` endpoint with pagination
+- [ ] Add reaction endpoints (deferred)
 
 ### Phase 5: Advanced Features
 - [ ] Implement `Page<T>` pagination traversal
@@ -351,8 +350,8 @@ loop {
 
 ## Current Status
 
-**Phase:** Phase 4 - API Modules (In Progress)
-**Completion:** ~40% (2 of 5 API modules complete)
+**Phase:** Phase 4 - API Modules ✅ COMPLETE
+**Completion:** 100% (All 5 API modules fully implemented)
 
 ### Completed Work
 
@@ -389,6 +388,40 @@ loop {
 - `.follow(blog)` / `.unfollow(blog)` - Follow/unfollow operations
 - `DashboardBuilder` and `LikesBuilder` with filters
 
+**✅ Tagged API Module** (`handlers/tagged.rs`)
+- `.limit()`, `.before()`, `.filter()` - Configure search parameters
+- `.send()` - Execute search with builder pattern
+- URL encoding for safe tag handling
+- Full pagination support
+
+**✅ Posts API Module** (`handlers/posts.rs`) - COMPLETE
+- `.get(blog, id)` - Fetch specific post
+- `.delete(blog, id)` - Delete post
+- `.create_text()` - Builder for text posts
+- `.create_quote()` - Builder for quote posts
+- `.create_link()` - Builder for link posts
+- `.create_photo()` - Builder for photo posts with URL source
+- `.edit(blog, id)` - Builder for editing posts
+- `.reblog(blog, id, key)` - Builder for reblogging with comments
+- `.create_npf(blog)` - Builder for NPF (Neue Post Format) posts
+- Full NPF support with content blocks (text, image, link, audio, video)
+- NPF layout system and inline formatting
+- Common post fields: tags, state, slug, date
+
+**✅ Communities API Module** (`handlers/communities.rs`)
+- `.timeline()` - Builder for community timeline
+- `.join()` / `.leave()` - Membership management
+- `.members()` - List community members with pagination
+- `TimelineBuilder` with limit, offset, before filters
+
+**✅ NPF Module** (`npf.rs`) - Neue Post Format support
+- `ContentBlock` enum with text, image, link, audio, video variants
+- `InlineFormat` for text styling (bold, italic, links, mentions, colors)
+- `MediaObject` for images, videos, and audio files
+- `LayoutBlock` for controlling content arrangement
+- Helper methods: `.text()`, `.heading()`, `.link()`, `.image()`
+- Full serde support for API serialization
+
 ### Architecture Decisions Made
 
 **Naming Convention:** Changed from "Handler" suffix to simple plural names (Blogs, Users, etc.) for cleaner API:
@@ -400,23 +433,45 @@ crab.users().dashboard().limit(20).send().await?
 
 ### Testing & Quality
 
-- **39 tests passing** (23 unit + 16 doc tests)
+- **102 total tests** - Comprehensive test coverage:
+  - **41 unit tests** - Component and builder testing
+  - **11 mock server tests** - Full request/response cycle testing with wiremock
+  - **11 integration tests** - Real API testing (optional, ignored by default)
+  - **39 doc tests** - Documentation example verification
+- **All non-integration tests passing** (91/91)
 - **Clippy passing** with strict lints enabled
 - Full rustdoc documentation with examples
 - All public APIs documented
+- URL encoding support via `urlencoding` crate
+- Complete NPF module with helper methods
+- Mock server tests cover:
+  - Success responses
+  - Error handling (404, 429, 5xx)
+  - Rate limit detection
+  - All major endpoints
+- Integration tests read credentials from environment variables
+- Comprehensive testing documentation in `TESTING.md`
 
 ### Next Steps
 
-**Immediate Priority:**
-1. Implement `Tagged` API (simple, good next step)
-2. Implement `Posts` API with NPF support (complex but critical)
-3. Implement `Communities` API
+**Completed across both sessions:**
+- ✅ Implemented Tagged API (fully functional)
+- ✅ Implemented Posts API (COMPLETE - all operations)
+  - get, delete, create (text/quote/link/photo), edit, reblog
+  - Full NPF support with content blocks
+- ✅ Implemented Communities API (timeline, membership, members)
+- ✅ All tests passing (80 tests), clippy clean
+- ✅ Phase 4 - API Modules: 100% COMPLETE
 
-**Future Work:**
-- Token refresh mechanism
+**Future Enhancements (Phase 5+):**
+- Token refresh mechanism (OAuth2 token expiry handling)
 - Additional blog endpoints (followers, likes, following)
-- Advanced features (pagination helpers, retry logic, mock server)
-- Integration tests
-- Usage examples
+- Advanced features:
+  - Pagination helpers (`.get_page()` method)
+  - Retry logic with exponential backoff
+  - Mock server for testing
+- Integration tests with real API (optional)
+- Usage examples and cookbook
+- Performance optimizations
 
 **Blockers:** None

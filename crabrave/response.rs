@@ -38,7 +38,7 @@ impl<T> ApiResponse<T> {
 
     /// Checks if the response was successful
     pub fn is_success(&self) -> bool {
-        (200..300).contains(&self.meta.status)
+        is_success(self.meta.status)
     }
 }
 
@@ -55,7 +55,7 @@ pub fn parse_response<T: DeserializeOwned>(json: &str) -> CrabResult<T> {
         && let Some(status) = meta.get("status").and_then(|s| s.as_u64())
     {
         let status = status as u16;
-        if !(200..300).contains(&status) {
+        if !is_success(status) {
             let message = meta
                 .get("msg")
                 .and_then(|m| m.as_str())
@@ -79,7 +79,7 @@ pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> 
         && let Some(status) = meta.get("status").and_then(|s| s.as_u64())
     {
         let status = status as u16;
-        if !(200..300).contains(&status) {
+        if !is_success(status) {
             let message = meta
                 .get("msg")
                 .and_then(|m| m.as_str())
@@ -92,6 +92,10 @@ pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> 
     // Status is OK, now deserialize the full response
     let envelope: ApiResponse<T> = serde_json::from_slice(bytes)?;
     Ok(envelope.into_response())
+}
+
+fn is_success(code: u16) -> bool {
+    (200..300).contains(&code)
 }
 
 #[cfg(test)]

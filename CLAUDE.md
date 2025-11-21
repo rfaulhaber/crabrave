@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Design Philosophy:** This client should be modeled after [Octocrab](https://github.com/XAMPPRocky/octocrab) - designed to be very ergonomic to use within Rust. The API should feel natural and idiomatic, with a focus on developer experience similar to how Octocrab provides an elegant interface for GitHub's API.
 
+**Workspace Structure:** This is a Cargo workspace with two crates:
+- `crabrave/` - The main library crate (no runtime dependencies like tokio)
+- `oauth-helper/` - A standalone OAuth2 token helper binary for integration tests
+
 ## Development Environment
 
 This project uses Nix flakes for reproducible development environments. To enter the development shell:
