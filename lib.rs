@@ -80,6 +80,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::handlers::blog::{AvatarResponse, AvatarResponseUrl};
+
 /// Base URL for the Tumblr API v2
 pub const BASE_API_URL: &str = "https://api.tumblr.com/v2";
 
@@ -347,7 +349,10 @@ impl Crabrave {
         let mut params: BTreeMap<String, String> = BTreeMap::new();
         params.insert("oauth_consumer_key".to_string(), consumer_key.to_string());
         params.insert("oauth_nonce".to_string(), nonce.clone());
-        params.insert("oauth_signature_method".to_string(), "HMAC-SHA1".to_string());
+        params.insert(
+            "oauth_signature_method".to_string(),
+            "HMAC-SHA1".to_string(),
+        );
         params.insert("oauth_timestamp".to_string(), timestamp.clone());
         params.insert("oauth_token".to_string(), access_token.to_string());
         params.insert("oauth_version".to_string(), "1.0".to_string());
@@ -466,7 +471,47 @@ impl Crabrave {
         }
 
         let bytes = response.bytes().await?;
+
         response::parse_response_bytes(&bytes)
+    }
+
+    /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically.
+    /// The endpoint will return binary data if the request sent to it is not OAuth1, so we have to handle the response as a special case.
+    pub(crate) async fn get_avatar(&self, path: &str) -> CrabResult<AvatarResponse> {
+        let url = self.url(path);
+        let request = self.client.get(&url);
+        let request = self.apply_auth(request, "GET", &url);
+        let response = request.send().await?;
+
+        // Check for rate limiting
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+
+            return Err(CrabError::RateLimit { retry_after });
+        }
+
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+
+        let bytes = response.bytes().await?;
+
+        // tumblr always returns PNGs
+        if &content_type == "image/png" {
+            Ok(AvatarResponse::ImageData(bytes.to_vec()))
+        } else {
+            let response: AvatarResponseUrl = response::parse_response_bytes(&bytes)?;
+            Ok(AvatarResponse::ImageUrl {
+                avatar_url: response.avatar_url,
+            })
+        }
     }
 
     /// Makes a POST request to the API

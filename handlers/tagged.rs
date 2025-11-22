@@ -1,6 +1,6 @@
 //! Tagged posts API endpoints
 
-use crate::{Crabrave, CrabResult};
+use crate::{CrabResult, Crabrave, handlers::blog::Post};
 use serde::{Deserialize, Serialize};
 
 /// API for searching posts by tag across the platform
@@ -185,7 +185,11 @@ impl TaggedBuilder {
         }
 
         let path = format!("tagged?{}", params.join("&"));
-        self.client.get(&path).await
+
+        // for this endpoint the Tumblr API does not return response.posts like it does for other endpoints
+        let posts: Vec<Post> = self.client.get(&path).await?;
+
+        Ok(TaggedResponse { posts })
     }
 }
 
@@ -193,7 +197,7 @@ impl TaggedBuilder {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaggedResponse {
     /// List of posts matching the tag
-    pub posts: Vec<crate::handlers::blog::Post>,
+    pub posts: Vec<Post>,
 }
 
 #[cfg(test)]

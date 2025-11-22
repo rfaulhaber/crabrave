@@ -49,7 +49,11 @@
 //! export TUMBLR_OAUTH2_REDIRECT_URI="http://localhost:8080/callback"
 //! ```
 
-use crabrave::{oauth::{OAuth2Config, parse_callback}, Crabrave, CrabError};
+use crabrave::{
+    CrabError, Crabrave,
+    handlers::blog::AvatarResponse,
+    oauth::{OAuth2Config, parse_callback},
+};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -126,7 +130,10 @@ async fn test_client() -> Result<Crabrave, String> {
                         .map_err(|e| format!("Failed to build client: {}", e));
                 }
                 Err(e) => {
-                    println!("⚠️  Token refresh failed: {}, using provided access token", e);
+                    println!(
+                        "⚠️  Token refresh failed: {}, using provided access token",
+                        e
+                    );
                 }
             }
         }
@@ -282,10 +289,13 @@ async fn integration_blog_avatar() {
     let result = client.blogs("staff").avatar(Some(64)).await;
 
     match result {
-        Ok(avatar) => {
-            println!("Avatar URL: {}", avatar.avatar_url);
-            assert!(!avatar.avatar_url.is_empty());
-            assert!(avatar.avatar_url.starts_with("http"));
+        Ok(AvatarResponse::ImageData(bytes)) => {
+            assert!(!bytes.is_empty());
+        }
+        Ok(AvatarResponse::ImageUrl { avatar_url }) => {
+            println!("Avatar URL: {}", avatar_url);
+            assert!(!avatar_url.is_empty());
+            assert!(avatar_url.starts_with("http"));
         }
         Err(e) => panic!("Failed to get avatar: {}", e),
     }
@@ -436,7 +446,10 @@ async fn integration_nonexistent_blog() {
 
     match result {
         Err(CrabError::Api { status, message }) => {
-            println!("Got expected error - Status: {}, Message: {}", status, message);
+            println!(
+                "Got expected error - Status: {}, Message: {}",
+                status, message
+            );
             assert_eq!(status, 404);
         }
         Ok(_) => panic!("Expected 404 error for nonexistent blog"),
@@ -485,8 +498,8 @@ async fn integration_user_following() {
 #[tokio::test]
 #[ignore]
 async fn integration_oauth2_authorize_url() {
-    let (consumer_key, consumer_secret) = get_consumer_credentials()
-        .expect("Consumer credentials required");
+    let (consumer_key, consumer_secret) =
+        get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
         .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
 
@@ -499,7 +512,10 @@ async fn integration_oauth2_authorize_url() {
     // Verify the URL contains required parameters
     assert!(auth_url.contains("https://www.tumblr.com/oauth2/authorize"));
     assert!(auth_url.contains("client_id="));
-    assert!(auth_url.contains(&format!("redirect_uri={}", urlencoding::encode(&redirect_uri))));
+    assert!(auth_url.contains(&format!(
+        "redirect_uri={}",
+        urlencoding::encode(&redirect_uri)
+    )));
     assert!(auth_url.contains("state="));
     assert!(!csrf_token.secret().is_empty());
 
@@ -529,8 +545,8 @@ async fn integration_oauth2_parse_callback() {
 #[tokio::test]
 #[ignore]
 async fn integration_oauth2_exchange_code() {
-    let (consumer_key, consumer_secret) = get_consumer_credentials()
-        .expect("Consumer credentials required");
+    let (consumer_key, consumer_secret) =
+        get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
         .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
 
@@ -553,7 +569,10 @@ async fn integration_oauth2_exchange_code() {
     match result {
         Ok(token) => {
             println!("\n✅ Successfully exchanged code for token!");
-            println!("Access token received: {}...", &token.access_token[..20.min(token.access_token.len())]);
+            println!(
+                "Access token received: {}...",
+                &token.access_token[..20.min(token.access_token.len())]
+            );
             println!("Has refresh token: {}", token.can_refresh());
             println!("Has expiration: {}", token.has_expiration());
 
@@ -575,8 +594,8 @@ async fn integration_oauth2_exchange_code() {
 #[tokio::test]
 #[ignore]
 async fn integration_oauth2_refresh_token() {
-    let (consumer_key, consumer_secret) = get_consumer_credentials()
-        .expect("Consumer credentials required");
+    let (consumer_key, consumer_secret) =
+        get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
         .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
 
@@ -599,7 +618,10 @@ async fn integration_oauth2_refresh_token() {
     match result {
         Ok(token) => {
             println!("\n✅ Successfully refreshed access token!");
-            println!("New access token received: {}...", &token.access_token[..20.min(token.access_token.len())]);
+            println!(
+                "New access token received: {}...",
+                &token.access_token[..20.min(token.access_token.len())]
+            );
             println!("Has new refresh token: {}", token.can_refresh());
             println!("Has expiration: {}", token.has_expiration());
 
@@ -617,8 +639,8 @@ async fn integration_oauth2_refresh_token() {
 #[ignore]
 async fn integration_oauth2_full_flow_client() {
     // This test demonstrates creating a client with an OAuth2 token
-    let (consumer_key, consumer_secret) = get_consumer_credentials()
-        .expect("Consumer credentials required");
+    let (consumer_key, consumer_secret) =
+        get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
         .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
 

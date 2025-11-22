@@ -3,7 +3,7 @@
 //! These tests use a mock HTTP server to test the full request/response cycle
 //! without requiring actual Tumblr API credentials.
 
-use crabrave::{Crabrave, CrabError};
+use crabrave::{CrabError, Crabrave};
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -207,10 +207,10 @@ async fn test_tagged_posts() {
                 "status": 200,
                 "msg": "OK"
             },
-            "response": {
-                "posts": [
+            "response": [
                     {
-                        "id": "789012",
+                        "id": 789012,
+                        "id_string": "789012",
                         "blog_name": "rustblog",
                         "post_url": "https://rustblog.tumblr.com/post/789012",
                         "type": "text",
@@ -219,7 +219,6 @@ async fn test_tagged_posts() {
                         "note_count": 50
                     }
                 ]
-            }
         })))
         .mount(&mock_server)
         .await;
@@ -227,7 +226,7 @@ async fn test_tagged_posts() {
     let client = test_client(&mock_server).await;
     let result = client.tagged("rust").limit(10).send().await;
 
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Failed with: {:?}", result);
     let tagged = result.unwrap();
     assert_eq!(tagged.posts.len(), 1);
     assert!(tagged.posts[0].tags.contains(&"rust".to_string()));

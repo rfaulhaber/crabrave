@@ -1,6 +1,6 @@
 //! Blog-related API endpoints
 
-use crate::{BlogIdentifier, Crabrave, CrabResult};
+use crate::{BlogIdentifier, CrabResult, Crabrave};
 use serde::{Deserialize, Serialize};
 
 /// API for blog-related endpoints
@@ -84,7 +84,7 @@ impl Blogs {
         } else {
             format!("blog/{}/avatar", self.identifier.as_str())
         };
-        self.client.get(&path).await
+        self.client.get_avatar(&path).await
     }
 
     /// Gets posts from the blog
@@ -124,8 +124,13 @@ pub struct BlogInfo {
 
 /// Response from the avatar endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AvatarResponse {
-    /// URL of the avatar image
+pub enum AvatarResponse {
+    ImageData(Vec<u8>),
+    ImageUrl { avatar_url: String },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct AvatarResponseUrl {
     pub avatar_url: String,
 }
 
@@ -243,6 +248,7 @@ pub struct PostsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Post {
     /// Post ID (as string since it's a 64-bit integer)
+    #[serde(rename(deserialize = "id_string"))]
     pub id: String,
     /// ID of the post this is reblogged from (if applicable)
     #[serde(skip_serializing_if = "Option::is_none")]
