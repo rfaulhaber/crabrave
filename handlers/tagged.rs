@@ -122,44 +122,62 @@ impl Tagged {
     }
 }
 
+/// Query parameters for tagged posts
+#[derive(Debug, Clone, Serialize)]
+struct TaggedQuery {
+    /// The tag to search for (required)
+    tag: String,
+
+    /// Maximum number of posts to return (API max: 20, default: 20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Return posts before this timestamp (Unix time)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<i64>,
+
+    /// Post format filter ("text", "raw")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter: Option<String>,
+}
+
 /// Builder for querying tagged posts
 ///
 /// This builder allows you to configure various parameters for searching posts
 /// by tag before sending the request.
 pub struct TaggedBuilder {
     client: Crabrave,
-    tag: String,
-    limit: Option<u32>,
-    before: Option<i64>,
-    filter: Option<String>,
+    query: TaggedQuery,
 }
 
 impl TaggedBuilder {
     fn new(client: Crabrave, tag: String) -> Self {
         Self {
             client,
-            tag,
-            limit: None,
-            before: None,
-            filter: None,
+            query: TaggedQuery {
+                tag,
+                limit: None,
+                before: None,
+                filter: None,
+            },
         }
     }
 
     /// Sets the number of posts to return (max 20, default 20)
     pub fn limit(mut self, limit: u32) -> Self {
-        self.limit = Some(limit);
+        self.query.limit = Some(limit);
         self
     }
 
     /// Returns posts before this timestamp (Unix time)
     pub fn before(mut self, timestamp: i64) -> Self {
-        self.before = Some(timestamp);
+        self.query.before = Some(timestamp);
         self
     }
 
     /// Sets the post format filter ("text", "raw")
     pub fn filter(mut self, filter: impl Into<String>) -> Self {
-        self.filter = Some(filter.into());
+        self.query.filter = Some(filter.into());
         self
     }
 
@@ -172,22 +190,8 @@ impl TaggedBuilder {
     /// - API returns an error
     /// - Response cannot be parsed
     pub async fn send(self) -> CrabResult<TaggedResponse> {
-        let mut params = vec![format!("tag={}", urlencoding::encode(&self.tag))];
-
-        if let Some(limit) = self.limit {
-            params.push(format!("limit={}", limit));
-        }
-        if let Some(before) = self.before {
-            params.push(format!("before={}", before));
-        }
-        if let Some(filter) = &self.filter {
-            params.push(format!("filter={}", filter));
-        }
-
-        let path = format!("tagged?{}", params.join("&"));
-
         // for this endpoint the Tumblr API does not return response.posts like it does for other endpoints
-        let posts: Vec<Post> = self.client.get(&path).await?;
+        let posts: Vec<Post> = self.client.get_with_query("tagged", &self.query).await?;
 
         Ok(TaggedResponse { posts })
     }
@@ -212,10 +216,10 @@ mod tests {
             .before(1234567890)
             .filter("text");
 
-        assert_eq!(builder.tag, "photography");
-        assert_eq!(builder.limit, Some(10));
-        assert_eq!(builder.before, Some(1234567890));
-        assert_eq!(builder.filter, Some("text".to_string()));
+        assert_eq!(builder.query.tag, "photography");
+        assert_eq!(builder.query.limit, Some(10));
+        assert_eq!(builder.query.before, Some(1234567890));
+        assert_eq!(builder.query.filter, Some("text".to_string()));
     }
 
     #[test]
@@ -223,10 +227,10 @@ mod tests {
         let client = Crabrave::builder().consumer_key("test").build().unwrap();
         let builder = TaggedBuilder::new(client, "art".to_string());
 
-        assert_eq!(builder.tag, "art");
-        assert!(builder.limit.is_none());
-        assert!(builder.before.is_none());
-        assert!(builder.filter.is_none());
+        assert_eq!(builder.query.tag, "art");
+        assert!(builder.query.limit.is_none());
+        assert!(builder.query.before.is_none());
+        assert!(builder.query.filter.is_none());
     }
 
     #[test]

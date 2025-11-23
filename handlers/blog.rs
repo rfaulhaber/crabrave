@@ -71,10 +71,14 @@ impl Blogs {
     ///
     /// ```no_run
     /// # use crabrave::Crabrave;
+    /// # use crabrave::handlers::blog::AvatarResponse;
     /// # async fn example() -> Result<(), crabrave::CrabError> {
     /// # let crab = Crabrave::builder().consumer_key("key").build()?;
     /// let avatar = crab.blogs("staff").avatar(Some(128)).await?;
-    /// println!("Avatar URL: {}", avatar.avatar_url);
+    /// match avatar {
+    ///     AvatarResponse::ImageUrl { avatar_url } => println!("Avatar URL: {}", avatar_url),
+    ///     AvatarResponse::ImageData(data) => println!("Got {} bytes of image data", data.len()),
+    /// }
     /// # Ok(())
     /// # }
     /// ```
@@ -134,6 +138,30 @@ pub(crate) struct AvatarResponseUrl {
     pub avatar_url: String,
 }
 
+/// Query parameters for fetching blog posts
+#[derive(Debug, Clone, Serialize, Default)]
+struct PostsQuery {
+    /// Maximum number of posts to return (API max: 20, default: 20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Post offset for pagination
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+
+    /// Filter by post type (text, photo, quote, link, chat, audio, video)
+    #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
+    post_type: Option<String>,
+
+    /// Filter by tag
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tag: Option<String>,
+
+    /// Return posts before this timestamp (Unix time)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<i64>,
+}
+
 /// Builder for querying blog posts
 ///
 /// This builder allows you to configure various parameters for fetching posts
@@ -141,11 +169,7 @@ pub(crate) struct AvatarResponseUrl {
 pub struct PostsBuilder {
     client: Crabrave,
     identifier: BlogIdentifier,
-    limit: Option<u32>,
-    offset: Option<u64>,
-    post_type: Option<String>,
-    tag: Option<String>,
-    before: Option<i64>,
+    query: PostsQuery,
 }
 
 impl PostsBuilder {
@@ -153,41 +177,37 @@ impl PostsBuilder {
         Self {
             client,
             identifier,
-            limit: None,
-            offset: None,
-            post_type: None,
-            tag: None,
-            before: None,
+            query: PostsQuery::default(),
         }
     }
 
     /// Sets the number of posts to return (max 20, default 20)
     pub fn limit(mut self, limit: u32) -> Self {
-        self.limit = Some(limit);
+        self.query.limit = Some(limit);
         self
     }
 
     /// Sets the post offset for pagination
     pub fn offset(mut self, offset: u64) -> Self {
-        self.offset = Some(offset);
+        self.query.offset = Some(offset);
         self
     }
 
     /// Filters posts by type (text, photo, quote, link, chat, audio, video)
     pub fn post_type(mut self, post_type: impl Into<String>) -> Self {
-        self.post_type = Some(post_type.into());
+        self.query.post_type = Some(post_type.into());
         self
     }
 
     /// Filters posts by tag
     pub fn tag(mut self, tag: impl Into<String>) -> Self {
-        self.tag = Some(tag.into());
+        self.query.tag = Some(tag.into());
         self
     }
 
     /// Returns posts before this timestamp (Unix time)
     pub fn before(mut self, timestamp: i64) -> Self {
-        self.before = Some(timestamp);
+        self.query.before = Some(timestamp);
         self
     }
 
@@ -200,31 +220,8 @@ impl PostsBuilder {
     /// - Network request fails
     /// - API returns an error
     pub async fn send(self) -> CrabResult<PostsResponse> {
-        let mut path = format!("blog/{}/posts", self.identifier.as_str());
-        let mut params = Vec::new();
-
-        if let Some(limit) = self.limit {
-            params.push(format!("limit={}", limit));
-        }
-        if let Some(offset) = self.offset {
-            params.push(format!("offset={}", offset));
-        }
-        if let Some(post_type) = &self.post_type {
-            params.push(format!("type={}", post_type));
-        }
-        if let Some(tag) = &self.tag {
-            params.push(format!("tag={}", tag));
-        }
-        if let Some(before) = self.before {
-            params.push(format!("before={}", before));
-        }
-
-        if !params.is_empty() {
-            path.push('?');
-            path.push_str(&params.join("&"));
-        }
-
-        self.client.get(&path).await
+        let path = format!("blog/{}/posts", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
     }
 }
 
@@ -247,7 +244,9 @@ pub struct PostsResponse {
 /// varies significantly based on post type and format (legacy vs NPF).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Post {
-    /// Post ID (as string since it's a 64-bit integer)
+    /// Post ID
+    // posts have an id and id_string field.
+    // I'm opting to grab the ID string and treat that as the ID instead of grabbing the integer value.
     #[serde(rename(deserialize = "id_string"))]
     pub id: String,
     /// ID of the post this is reblogged from (if applicable)
@@ -290,8 +289,8 @@ mod tests {
         let builder = PostsBuilder::new(client, identifier);
 
         // We can't easily test the async send(), but we can verify the builder constructs correctly
-        assert!(builder.limit.is_none());
-        assert!(builder.offset.is_none());
+        assert!(builder.query.limit.is_none());
+        assert!(builder.query.offset.is_none());
     }
 
     #[test]
@@ -304,9 +303,9 @@ mod tests {
             .post_type("photo")
             .tag("art");
 
-        assert_eq!(builder.limit, Some(10));
-        assert_eq!(builder.offset, Some(20));
-        assert_eq!(builder.post_type, Some("photo".to_string()));
-        assert_eq!(builder.tag, Some("art".to_string()));
+        assert_eq!(builder.query.limit, Some(10));
+        assert_eq!(builder.query.offset, Some(20));
+        assert_eq!(builder.query.post_type, Some("photo".to_string()));
+        assert_eq!(builder.query.tag, Some("art".to_string()));
     }
 }

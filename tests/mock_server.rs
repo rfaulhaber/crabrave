@@ -3,6 +3,7 @@
 //! These tests use a mock HTTP server to test the full request/response cycle
 //! without requiring actual Tumblr API credentials.
 
+use crabrave::handlers::blog::AvatarResponse;
 use crabrave::{CrabError, Crabrave};
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -131,7 +132,7 @@ async fn test_blog_posts_with_filters() {
             "response": {
                 "posts": [
                     {
-                        "id": "123456",
+                        "id_string": "123456",
                         "blog_name": "staff",
                         "post_url": "https://staff.tumblr.com/post/123456",
                         "type": "photo",
@@ -305,7 +306,7 @@ async fn test_communities_timeline() {
             "response": {
                 "posts": [
                     {
-                        "id": "111222",
+                        "id_string": "111222",
                         "blog_name": "rustdev",
                         "post_url": "https://rustdev.tumblr.com/post/111222",
                         "type": "text",
@@ -381,4 +382,31 @@ async fn test_network_error() {
         CrabError::Http(_) => {} // Expected
         e => panic!("Expected HTTP error, got: {:?}", e),
     }
+}
+
+#[tokio::test]
+async fn test_avatar_endpoint() {
+    let avatar_path = std::path::PathBuf::from("./tests/fixtures/demo_avatar.png");
+    let avatar = std::fs::read(avatar_path).expect("Could not load avatar");
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/demo/avatar/64"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_bytes(avatar)
+                .insert_header("Content-Type", "image/png"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs("demo")
+        .avatar(Some(64))
+        .await
+        .expect("Callout failed");
+
+    assert!(matches!(result, AvatarResponse::ImageData(_)));
 }

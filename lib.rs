@@ -475,6 +475,48 @@ impl Crabrave {
         response::parse_response_bytes(&bytes)
     }
 
+    /// Makes a GET request with query parameters to the API
+    ///
+    /// This is an internal helper method used by handlers.
+    /// The query parameter is serialized using serde, allowing for type-safe
+    /// query parameters with automatic URL encoding.
+    #[allow(dead_code)]
+    pub(crate) async fn get_with_query<T, Q>(&self, path: &str, query: &Q) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        Q: serde::Serialize,
+    {
+        // Serialize query params to build the full URL for OAuth1 signature
+        let query_string = serde_urlencoded::to_string(query)
+            .map_err(|e| CrabError::InvalidResponse(format!("Failed to serialize query params: {}", e)))?;
+
+        let base_url = self.url(path);
+        let full_url = if query_string.is_empty() {
+            base_url.clone()
+        } else {
+            format!("{}?{}", base_url, query_string)
+        };
+
+        let request = self.client.get(&base_url).query(query);
+        let request = self.apply_auth(request, "GET", &full_url);
+        let response = request.send().await?;
+
+        // Check for rate limiting
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+
+            return Err(CrabError::RateLimit { retry_after });
+        }
+
+        let bytes = response.bytes().await?;
+
+        response::parse_response_bytes(&bytes)
+    }
+
     /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically.
     /// The endpoint will return binary data if the request sent to it is not OAuth1, so we have to handle the response as a special case.
     pub(crate) async fn get_avatar(&self, path: &str) -> CrabResult<AvatarResponse> {

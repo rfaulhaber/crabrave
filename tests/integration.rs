@@ -1,62 +1,23 @@
 //! Integration tests against the real Tumblr API
 //!
 //! These tests are ignored by default and only run when explicitly requested.
+//! These tests rely on the following environment variables being present:
+//! - `TUMBLR_CONSUMER_KEY`: your oauth consumer key
+//! - `TUMBLR_CONSUMER_SECRET`: your oauth consumer secret
+//! - `TUMBLR_ACCESS_TOKEN`: your oauth access token
+//! - `TUMBLR_REFRESH_TOKEN`: optionally, your oauth refresh token
+//! - `TUMBLR_REDIRECT_URI`: your oauth redirect URI
 //!
-//! # Running Integration Tests
-//!
-//! ## Method 1: Using Environment Variables (Recommended for CI/CD)
-//!
-//! ```bash
-//! # Set environment variables
-//! export TUMBLR_CONSUMER_KEY="your_consumer_key"
-//! export TUMBLR_CONSUMER_SECRET="your_consumer_secret"
-//! export TUMBLR_ACCESS_TOKEN="your_access_token"
-//! # Optional for OAuth2 token refresh:
-//! export TUMBLR_REFRESH_TOKEN="your_refresh_token"
-//!
-//! # Run integration tests
-//! cargo test --test integration -- --ignored
-//! ```
-//!
-//! ## Method 2: Using the OAuth2 Helper (Recommended for Local Development)
-//!
-//! ```bash
-//! # Run the helper to obtain and save OAuth2 tokens
-//! cargo run -p oauth-helper
-//!
-//! # Run integration tests (will use saved tokens automatically)
-//! cargo test --test integration -- --ignored
-//! ```
-//!
-//! # Authentication Priority
-//!
-//! 1. Environment variables (TUMBLR_CONSUMER_KEY, TUMBLR_CONSUMER_SECRET, TUMBLR_ACCESS_TOKEN)
-//! 2. Tokens from ~/.tumblr_tokens.json (created by oauth-helper binary)
-//! 3. If neither available, fail with helpful instructions
-//!
-//! # OAuth2 Flow Tests
-//!
-//! Additional environment variables for OAuth2 flow testing:
-//!
-//! ```bash
-//! # Optional: For testing code exchange (requires a fresh authorization code)
-//! export TUMBLR_OAUTH2_AUTH_CODE="your_authorization_code"
-//!
-//! # Optional: For testing token refresh (requires a valid refresh token)
-//! export TUMBLR_OAUTH2_REFRESH_TOKEN="your_refresh_token"
-//!
-//! # Required for OAuth2 flow: redirect URI registered with your app
-//! export TUMBLR_OAUTH2_REDIRECT_URI="http://localhost:8080/callback"
-//! ```
+//! You may also specify these values in a JSON file, and specify the file with the environment variable `TUMBLR_OAUTH_SETTINGS_FILE`.
 
 use crabrave::{
     CrabError, Crabrave,
     handlers::blog::AvatarResponse,
     oauth::{OAuth2Config, parse_callback},
 };
-use std::env;
-use std::fs;
-use std::path::PathBuf;
+use std::{env, fs, path::PathBuf};
+
+const OAUTH_SETTINGS_VAR_NAME: &str = "TUMBLR_OAUTH_SETTINGS_FILE";
 
 #[derive(serde::Deserialize)]
 struct TokenStorage {
@@ -77,22 +38,15 @@ fn get_env_optional(key: &str) -> Option<String> {
     env::var(key).ok()
 }
 
-/// Get path to token storage file
-fn get_token_path() -> PathBuf {
-    let mut path = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    path.push(".tumblr_tokens.json");
-    path
-}
-
 /// Load tokens from file if available
 fn load_tokens_from_file() -> Option<TokenStorage> {
-    let path = get_token_path();
-    if path.exists() {
-        fs::read_to_string(&path)
+    let path = env::var(OAUTH_SETTINGS_VAR_NAME).map(|path| PathBuf::from(path));
+
+    match path {
+        Ok(path) if path.exists() => fs::read_to_string(&path)
             .ok()
-            .and_then(|content| serde_json::from_str(&content).ok())
-    } else {
-        None
+            .and_then(|content| serde_json::from_str(&content).ok()),
+        _ => None,
     }
 }
 
@@ -148,7 +102,10 @@ async fn test_client() -> Result<Crabrave, String> {
 
     // Priority 2: Try loading from token file
     if let Some(storage) = load_tokens_from_file() {
-        println!("📁 Using tokens from {}", get_token_path().display());
+        println!(
+            "📁 Using tokens from {}",
+            get_env_optional(OAUTH_SETTINGS_VAR_NAME).unwrap()
+        );
 
         // If we have a refresh token, use it to get a fresh access token
         if let Some(ref refresh_token) = storage.refresh_token {
@@ -219,7 +176,7 @@ async fn test_client() -> Result<Crabrave, String> {
         \n\
         📖 For more details, see TESTING.md\n\
         ",
-        get_token_path().display()
+        get_env_optional(OAUTH_SETTINGS_VAR_NAME).unwrap()
     ))
 }
 

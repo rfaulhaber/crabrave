@@ -181,13 +181,27 @@ impl Communities {
     }
 }
 
+/// Query parameters for community timeline
+#[derive(Debug, Clone, Serialize, Default)]
+struct TimelineQuery {
+    /// Maximum number of posts to return (API max: 20, default: 20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Post offset for pagination
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+
+    /// Return posts before this timestamp (Unix time)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<i64>,
+}
+
 /// Builder for querying a community timeline
 pub struct TimelineBuilder {
     client: Crabrave,
     handle: String,
-    limit: Option<u32>,
-    offset: Option<u64>,
-    before: Option<i64>,
+    query: TimelineQuery,
 }
 
 impl TimelineBuilder {
@@ -195,27 +209,25 @@ impl TimelineBuilder {
         Self {
             client,
             handle,
-            limit: None,
-            offset: None,
-            before: None,
+            query: TimelineQuery::default(),
         }
     }
 
     /// Sets the number of posts to return (max 20, default 20)
     pub fn limit(mut self, limit: u32) -> Self {
-        self.limit = Some(limit);
+        self.query.limit = Some(limit);
         self
     }
 
     /// Sets the post offset for pagination
     pub fn offset(mut self, offset: u64) -> Self {
-        self.offset = Some(offset);
+        self.query.offset = Some(offset);
         self
     }
 
     /// Returns posts before this timestamp (Unix time)
     pub fn before(mut self, timestamp: i64) -> Self {
-        self.before = Some(timestamp);
+        self.query.before = Some(timestamp);
         self
     }
 
@@ -229,25 +241,8 @@ impl TimelineBuilder {
     /// - Network request fails
     /// - API returns an error
     pub async fn send(self) -> CrabResult<TimelineResponse> {
-        let mut path = format!("community/{}/timeline", self.handle);
-        let mut params = Vec::new();
-
-        if let Some(limit) = self.limit {
-            params.push(format!("limit={}", limit));
-        }
-        if let Some(offset) = self.offset {
-            params.push(format!("offset={}", offset));
-        }
-        if let Some(before) = self.before {
-            params.push(format!("before={}", before));
-        }
-
-        if !params.is_empty() {
-            path.push('?');
-            path.push_str(&params.join("&"));
-        }
-
-        self.client.get(&path).await
+        let path = format!("community/{}/timeline", self.handle);
+        self.client.get_with_query(&path, &self.query).await
     }
 }
 
@@ -288,9 +283,9 @@ mod tests {
             .before(1234567890);
 
         assert_eq!(builder.handle, "rust-community");
-        assert_eq!(builder.limit, Some(10));
-        assert_eq!(builder.offset, Some(20));
-        assert_eq!(builder.before, Some(1234567890));
+        assert_eq!(builder.query.limit, Some(10));
+        assert_eq!(builder.query.offset, Some(20));
+        assert_eq!(builder.query.before, Some(1234567890));
     }
 
     #[test]
@@ -299,9 +294,9 @@ mod tests {
         let builder = TimelineBuilder::new(client, "rust".to_string());
 
         assert_eq!(builder.handle, "rust");
-        assert!(builder.limit.is_none());
-        assert!(builder.offset.is_none());
-        assert!(builder.before.is_none());
+        assert!(builder.query.limit.is_none());
+        assert!(builder.query.offset.is_none());
+        assert!(builder.query.before.is_none());
     }
 
     #[test]
