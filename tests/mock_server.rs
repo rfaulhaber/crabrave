@@ -234,39 +234,6 @@ async fn test_tagged_posts() {
 }
 
 #[tokio::test]
-async fn test_create_text_post() {
-    let mock_server = MockServer::start().await;
-
-    Mock::given(method("POST"))
-        .and(path("/blog/myblog/post"))
-        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 201,
-                "msg": "Created"
-            },
-            "response": {
-                "id": "999888777"
-            }
-        })))
-        .mount(&mock_server)
-        .await;
-
-    let client = test_client(&mock_server).await;
-    let result = client
-        .posts()
-        .create_text("myblog")
-        .title("Test Post")
-        .body("This is a test")
-        .tags(vec!["test"])
-        .send()
-        .await;
-
-    assert!(result.is_ok());
-    let response = result.unwrap();
-    assert_eq!(response.id, "999888777");
-}
-
-#[tokio::test]
 async fn test_delete_post() {
     let mock_server = MockServer::start().await;
 
@@ -354,7 +321,7 @@ async fn test_npf_post_creation() {
     let client = test_client(&mock_server).await;
     let result = client
         .posts()
-        .create_npf("myblog")
+        .create("myblog")
         .add_block(crabrave::npf::ContentBlock::heading("My Title", 1))
         .add_block(crabrave::npf::ContentBlock::text("Body text"))
         .tags(vec!["npf"])
