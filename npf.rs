@@ -2,6 +2,8 @@
 //!
 //! NPF is Tumblr's modern content representation system that uses structured content blocks
 //! instead of legacy post types. It provides a flexible way to create rich, mixed-media posts.
+//!
+//! See [this](https://www.tumblr.com/docs/npf) for Tumblr's NPF specification.
 
 use serde::{Deserialize, Serialize};
 

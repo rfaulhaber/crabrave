@@ -487,8 +487,9 @@ impl Crabrave {
         Q: serde::Serialize,
     {
         // Serialize query params to build the full URL for OAuth1 signature
-        let query_string = serde_urlencoded::to_string(query)
-            .map_err(|e| CrabError::InvalidResponse(format!("Failed to serialize query params: {}", e)))?;
+        let query_string = serde_urlencoded::to_string(query).map_err(|e| {
+            CrabError::InvalidResponse(format!("Failed to serialize query params: {}", e))
+        })?;
 
         let base_url = self.url(path);
         let full_url = if query_string.is_empty() {
@@ -583,6 +584,14 @@ impl Crabrave {
 
         let bytes = response.bytes().await?;
         response::parse_response_bytes(&bytes)
+    }
+
+    pub(crate) async fn post_multipart<T, B>(&self, path: &str, body: &B) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        B: serde::Serialize,
+    {
+        todo!();
     }
 
     /// Makes a DELETE request to the API

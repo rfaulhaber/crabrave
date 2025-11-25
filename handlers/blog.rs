@@ -1,6 +1,6 @@
 //! Blog-related API endpoints
 
-use crate::{BlogIdentifier, CrabResult, Crabrave};
+use crate::{Blog, BlogIdentifier, CrabResult, Crabrave};
 use serde::{Deserialize, Serialize};
 
 /// API for blog-related endpoints
@@ -123,7 +123,7 @@ impl Blogs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlogInfo {
     /// Blog information
-    pub blog: crate::Blog,
+    pub blog: Blog,
 }
 
 /// Response from the avatar endpoint
@@ -235,7 +235,7 @@ pub struct PostsResponse {
     pub total_posts: u64,
     /// Information about the blog (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub blog: Option<crate::Blog>,
+    pub blog: Option<Blog>,
 }
 
 /// Represents a Tumblr post

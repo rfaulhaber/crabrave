@@ -15,9 +15,14 @@ use crabrave::{
     handlers::blog::AvatarResponse,
     oauth::{OAuth2Config, parse_callback},
 };
-use std::{env, fs, path::PathBuf};
+use std::env;
 
-const OAUTH_SETTINGS_VAR_NAME: &str = "TUMBLR_OAUTH_SETTINGS_FILE";
+const OAUTH_CONSUMER_KEY_VAR_NAME: &str = "TUMBLR_CONSUMER_KEY";
+const OAUTH_CONSUMER_SECRET_VAR_NAME: &str = "TUMBLR_CONSUMER_SECRET";
+const OAUTH_ACCESS_TOKEN_VAR_NAME: &str = "TUMBLR_ACCESS_TOKEN";
+const OAUTH_REDIRECT_URI_VAR_NAME: &str = "TUMBLR_REDIRECT_URI";
+const OAUTH_SETTINGS_FILE_VAR_NAME: &str = "TUMBLR_OAUTH_SETTINGS_FILE";
+const TEST_BLOG_VAR_NAME: &str = "TUMBLR_TEST_BLOG";
 
 #[derive(serde::Deserialize)]
 struct TokenStorage {
@@ -28,54 +33,38 @@ struct TokenStorage {
     redirect_uri: String,
 }
 
-/// Helper to get required environment variable
 fn get_env(key: &str) -> Result<String, String> {
     env::var(key).map_err(|_| format!("Missing environment variable: {}", key))
 }
 
-/// Helper to get optional environment variable
 fn get_env_optional(key: &str) -> Option<String> {
     env::var(key).ok()
 }
 
-/// Load tokens from file if available
-fn load_tokens_from_file() -> Option<TokenStorage> {
-    let path = env::var(OAUTH_SETTINGS_VAR_NAME).map(|path| PathBuf::from(path));
+fn get_tumblr_test_blog() -> Result<String, String> {
+    get_env(TEST_BLOG_VAR_NAME)
+}
 
-    match path {
-        Ok(path) if path.exists() => fs::read_to_string(&path)
-            .ok()
-            .and_then(|content| serde_json::from_str(&content).ok()),
-        _ => None,
-    }
+fn get_consumer_credentials() -> Result<(String, String), String> {
+    let key = get_env(OAUTH_CONSUMER_KEY_VAR_NAME)?;
+    let secret = get_env(OAUTH_CONSUMER_SECRET_VAR_NAME)?;
+
+    Ok((key, secret))
 }
 
 /// Creates a test client with proper OAuth2 authentication
-///
-/// Priority order:
-/// 1. Environment variables (TUMBLR_CONSUMER_KEY, TUMBLR_CONSUMER_SECRET, TUMBLR_ACCESS_TOKEN)
-/// 2. Tokens from ~/.tumblr_tokens.json file (created by oauth-helper binary)
-/// 3. If neither available, fail with instructions
 async fn test_client() -> Result<Crabrave, String> {
-    // Priority 1: Try environment variables first
-    if let (Ok(consumer_key), Ok(consumer_secret), Ok(access_token)) = (
-        get_env("TUMBLR_CONSUMER_KEY"),
-        get_env("TUMBLR_CONSUMER_SECRET"),
-        get_env("TUMBLR_ACCESS_TOKEN"),
+    if let (Ok(consumer_key), Ok(consumer_secret), Ok(access_token), Ok(redirect_uri)) = (
+        get_env(OAUTH_CONSUMER_KEY_VAR_NAME),
+        get_env(OAUTH_CONSUMER_SECRET_VAR_NAME),
+        get_env(OAUTH_ACCESS_TOKEN_VAR_NAME),
+        get_env(OAUTH_REDIRECT_URI_VAR_NAME),
     ) {
-        println!("🔑 Using credentials from environment variables");
-
-        // Check if we have a refresh token to get a fresh access token
         if let Some(refresh_token) = get_env_optional("TUMBLR_REFRESH_TOKEN") {
-            println!("🔄 Refresh token found, attempting to refresh access token...");
-            let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
-                .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
-
             let config = OAuth2Config::new(&consumer_key, &consumer_secret, &redirect_uri);
 
             match config.refresh_access_token(&refresh_token).await {
                 Ok(new_token) => {
-                    println!("✅ Got fresh access token from refresh token");
                     return Crabrave::builder()
                         .consumer_key(&consumer_key)
                         .consumer_secret(&consumer_secret)
@@ -84,10 +73,7 @@ async fn test_client() -> Result<Crabrave, String> {
                         .map_err(|e| format!("Failed to build client: {}", e));
                 }
                 Err(e) => {
-                    println!(
-                        "⚠️  Token refresh failed: {}, using provided access token",
-                        e
-                    );
+                    eprintln!("Token refresh failed: {}, using provided access token", e);
                 }
             }
         }
@@ -100,132 +86,21 @@ async fn test_client() -> Result<Crabrave, String> {
             .map_err(|e| format!("Failed to build client: {}", e));
     }
 
-    // Priority 2: Try loading from token file
-    if let Some(storage) = load_tokens_from_file() {
-        println!(
-            "📁 Using tokens from {}",
-            get_env_optional(OAUTH_SETTINGS_VAR_NAME).unwrap()
-        );
-
-        // If we have a refresh token, use it to get a fresh access token
-        if let Some(ref refresh_token) = storage.refresh_token {
-            println!("🔄 Refreshing access token...");
-            let config = OAuth2Config::new(
-                &storage.consumer_key,
-                &storage.consumer_secret,
-                &storage.redirect_uri,
-            );
-
-            match config.refresh_access_token(refresh_token).await {
-                Ok(new_token) => {
-                    println!("✅ Got fresh access token");
-                    return Crabrave::builder()
-                        .consumer_key(&storage.consumer_key)
-                        .consumer_secret(&storage.consumer_secret)
-                        .access_token(&new_token.access_token)
-                        .build()
-                        .map_err(|e| format!("Failed to build client: {}", e));
-                }
-                Err(e) => {
-                    println!("⚠️  Token refresh failed: {}, using stored access token", e);
-                }
-            }
-        }
-
-        // Fall back to stored access token
-        return Crabrave::builder()
-            .consumer_key(&storage.consumer_key)
-            .consumer_secret(&storage.consumer_secret)
-            .access_token(&storage.access_token)
-            .build()
-            .map_err(|e| format!("Failed to build client: {}", e));
-    }
-
     // Priority 3: No credentials found - provide helpful error message
-    Err(format!(
-        "\n\
-        ❌ No OAuth2 credentials found!\n\
-        \n\
-        Integration tests require OAuth2 authentication.\n\
-        \n\
-        🚀 Option 1: Use Environment Variables (recommended for CI/CD)\n\
-        \n\
-           export TUMBLR_CONSUMER_KEY=\"your_consumer_key\"\n\
-           export TUMBLR_CONSUMER_SECRET=\"your_consumer_secret\"\n\
-           export TUMBLR_ACCESS_TOKEN=\"your_access_token\"\n\
-           # Optional: For automatic token refresh\n\
-           export TUMBLR_REFRESH_TOKEN=\"your_refresh_token\"\n\
-        \n\
-        🚀 Option 2: Use OAuth2 Helper (recommended for local development)\n\
-        \n\
-           1. Run the OAuth2 helper:\n\
-              \x1b[1mcargo run -p oauth-helper\x1b[0m\n\
-        \n\
-           2. Enter your consumer key and secret\n\
-              (Get these from: https://www.tumblr.com/oauth/apps)\n\
-        \n\
-           3. Authorize the app in your browser\n\
-        \n\
-           4. Tokens will be saved to: {}\n\
-        \n\
-           5. Run tests again:\n\
-              \x1b[1mcargo test --test integration -- --ignored\x1b[0m\n\
-        \n\
-        ℹ️  The helper saves tokens (including refresh token) so you won't\n\
-        need to re-authorize. Tests will automatically refresh expired tokens.\n\
-        \n\
-        📖 For more details, see TESTING.md\n\
-        ",
-        get_env_optional(OAUTH_SETTINGS_VAR_NAME).unwrap()
-    ))
-}
-
-/// Gets consumer credentials for OAuth2 flow tests
-///
-/// Priority order:
-/// 1. Environment variables (TUMBLR_CONSUMER_KEY, TUMBLR_CONSUMER_SECRET)
-/// 2. Token file (~/.tumblr_tokens.json)
-fn get_consumer_credentials() -> Result<(String, String), String> {
-    // Priority 1: Try environment variables first
-    if let (Ok(consumer_key), Ok(consumer_secret)) = (
-        get_env("TUMBLR_CONSUMER_KEY"),
-        get_env("TUMBLR_CONSUMER_SECRET"),
-    ) {
-        return Ok((consumer_key, consumer_secret));
-    }
-
-    // Priority 2: Try loading from token file
-    if let Some(storage) = load_tokens_from_file() {
-        return Ok((storage.consumer_key, storage.consumer_secret));
-    }
-
-    // No credentials found
-    Err(format!(
-        "\n❌ No consumer credentials found!\n\
-        \n\
-        To run OAuth2 flow tests, you need consumer credentials.\n\
-        \n\
-        Option 1: Set environment variables\n\
-           export TUMBLR_CONSUMER_KEY=\"your_key\"\n\
-           export TUMBLR_CONSUMER_SECRET=\"your_secret\"\n\
-        \n\
-        Option 2: Run the OAuth2 helper\n\
-           cargo run -p oauth-helper\n"
-    ))
-}
-
-/// Gets the test blog name from environment
-fn test_blog() -> Result<String, String> {
-    get_env("TUMBLR_TEST_BLOG")
+    Err(
+        r#"One or more OAuth credentials missing. Please review the integration test documentation."#.into(),
+    )
 }
 
 #[tokio::test]
 #[ignore]
-async fn integration_blog_info() {
+async fn blog_info() {
     let client = test_client().await.expect("Failed to create client");
 
+    let test_blog_name = get_tumblr_test_blog().expect("TUMBLR_TEST_BLOG not set");
+
     // Test with Tumblr's official staff blog
-    let result = client.blogs("staff").info().await;
+    let result = client.blogs(test_blog_name).info().await;
 
     match result {
         Ok(info) => {
@@ -240,10 +115,12 @@ async fn integration_blog_info() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_blog_avatar() {
+async fn blog_avatar() {
     let client = test_client().await.expect("Failed to create client");
 
-    let result = client.blogs("staff").avatar(Some(64)).await;
+    let test_blog_name = get_tumblr_test_blog().expect("TUMBLR_TEST_BLOG not set");
+
+    let result = client.blogs(test_blog_name).avatar(Some(64)).await;
 
     match result {
         Ok(AvatarResponse::ImageData(bytes)) => {
@@ -258,9 +135,13 @@ async fn integration_blog_avatar() {
     }
 }
 
+// TODO GET blocks
+// TODO POST block
+// TODO blocks/bulk
+
 #[tokio::test]
 #[ignore]
-async fn integration_blog_posts() {
+async fn blog_posts() {
     let client = test_client().await.expect("Failed to create client");
 
     let result = client.blogs("staff").posts().limit(5).send().await;
@@ -279,7 +160,7 @@ async fn integration_blog_posts() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_user_info() {
+async fn user_info() {
     let client = test_client().await.expect("Failed to create client");
 
     let result = client.users().info().await;
@@ -298,7 +179,7 @@ async fn integration_user_info() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_user_dashboard() {
+async fn user_dashboard() {
     let client = test_client().await.expect("Failed to create client");
 
     let result = client.users().dashboard().limit(5).send().await;
@@ -317,7 +198,7 @@ async fn integration_user_dashboard() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_tagged_posts() {
+async fn tagged_posts() {
     let client = test_client().await.expect("Failed to create client");
 
     // Search for a popular tag
@@ -338,9 +219,9 @@ async fn integration_tagged_posts() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_get_specific_post() {
+async fn get_specific_post() {
     let client = test_client().await.expect("Failed to create client");
-    let blog = test_blog().expect("TUMBLR_TEST_BLOG not set");
+    let blog = get_tumblr_test_blog().expect("TUMBLR_TEST_BLOG not set");
 
     // First get a post ID from the blog
     let posts_result = client.blogs(blog.as_str()).posts().limit(1).send().await;
@@ -370,7 +251,7 @@ async fn integration_get_specific_post() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_rate_limit_handling() {
+async fn rate_limit_handling() {
     let client = test_client().await.expect("Failed to create client");
 
     // Make multiple rapid requests to potentially trigger rate limiting
@@ -393,7 +274,7 @@ async fn integration_rate_limit_handling() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_nonexistent_blog() {
+async fn nonexistent_blog() {
     let client = test_client().await.expect("Failed to create client");
 
     let result = client
@@ -416,7 +297,7 @@ async fn integration_nonexistent_blog() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_user_likes() {
+async fn user_likes() {
     let client = test_client().await.expect("Failed to create client");
 
     let result = client.users().likes().limit(5).send().await;
@@ -433,7 +314,7 @@ async fn integration_user_likes() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_user_following() {
+async fn user_following() {
     let client = test_client().await.expect("Failed to create client");
 
     let result = client.users().following(Some(5), None).await;
@@ -454,7 +335,7 @@ async fn integration_user_following() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_oauth2_authorize_url() {
+async fn oauth2_authorize_url() {
     let (consumer_key, consumer_secret) =
         get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
@@ -483,7 +364,7 @@ async fn integration_oauth2_authorize_url() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_oauth2_parse_callback() {
+async fn oauth2_parse_callback() {
     // Test parsing a mock callback URL
     let callback_url = "http://localhost:8080/callback?code=test_code_123&state=test_state_456";
     let params = parse_callback(callback_url).expect("Failed to parse callback");
@@ -501,7 +382,7 @@ async fn integration_oauth2_parse_callback() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_oauth2_exchange_code() {
+async fn oauth2_exchange_code() {
     let (consumer_key, consumer_secret) =
         get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
@@ -550,7 +431,7 @@ async fn integration_oauth2_exchange_code() {
 
 #[tokio::test]
 #[ignore]
-async fn integration_oauth2_refresh_token() {
+async fn oauth2_refresh_token() {
     let (consumer_key, consumer_secret) =
         get_consumer_credentials().expect("Consumer credentials required");
     let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
@@ -589,49 +470,5 @@ async fn integration_oauth2_refresh_token() {
             assert!(!token.access_token.is_empty());
         }
         Err(e) => panic!("Failed to refresh token: {}", e),
-    }
-}
-
-#[tokio::test]
-#[ignore]
-async fn integration_oauth2_full_flow_client() {
-    // This test demonstrates creating a client with an OAuth2 token
-    let (consumer_key, consumer_secret) =
-        get_consumer_credentials().expect("Consumer credentials required");
-    let redirect_uri = get_env_optional("TUMBLR_OAUTH2_REDIRECT_URI")
-        .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
-
-    // Generate authorization URL
-    let config = OAuth2Config::new(&consumer_key, &consumer_secret, &redirect_uri);
-    let (auth_url, csrf_token) = config.authorize_url();
-
-    println!("Step 1: Authorization URL generated");
-    println!("  URL: {}...", &auth_url[..60]);
-    println!("  CSRF: {}", csrf_token.secret());
-
-    // If we have tokens from the helper, test creating a client with them
-    if load_tokens_from_file().is_some() {
-        println!("\nStep 2: Creating authenticated client from saved tokens");
-
-        match test_client().await {
-            Ok(client) => {
-                // Test that the client works by fetching user info
-                let result = client.users().info().await;
-
-                match result {
-                    Ok(info) => {
-                        println!("\n✅ OAuth2 client working correctly!");
-                        println!("Authenticated as: {}", info.user.name);
-                    }
-                    Err(e) => panic!("Failed to use OAuth2 client: {}", e),
-                }
-            }
-            Err(e) => panic!("Failed to create client: {}", e),
-        }
-    } else {
-        println!("\n⏭️  Skipping client creation - no tokens saved");
-        println!("To test the full flow:");
-        println!("  1. Run: cargo run --bin oauth");
-        println!("  2. Run this test again");
     }
 }
