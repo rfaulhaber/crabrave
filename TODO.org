@@ -5,7 +5,11 @@ NPF doc: https://www.tumblr.com/docs/npf
 
 * TODO OAuth1 Authorization
 * TODO OAuth2 Authorization
-** TODO Refresh
+* TODO Move post methods to under blog endpoints
+#+begin_src rust
+crab.blogs("staff").posts().get() // fetches posts
+crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
+#+end_src
 * Blog [1/25]
 ** TODO /info - Retrieve Blog Info
 ** TODO /avatar — Retrieve a Blog Avatar
