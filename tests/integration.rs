@@ -13,24 +13,36 @@
 use crabrave::{
     CrabError, Crabrave,
     handlers::blog::AvatarResponse,
+    npf::{ContentBlock, MediaObject},
     oauth::{OAuth2Config, parse_callback},
 };
-use std::env;
+use serde::Deserialize;
+use std::{env, sync::OnceLock};
 
 const OAUTH_CONSUMER_KEY_VAR_NAME: &str = "TUMBLR_CONSUMER_KEY";
 const OAUTH_CONSUMER_SECRET_VAR_NAME: &str = "TUMBLR_CONSUMER_SECRET";
 const OAUTH_ACCESS_TOKEN_VAR_NAME: &str = "TUMBLR_ACCESS_TOKEN";
+const OAUTH_REFRESH_TOKEN_VAR_NAME: &str = "TUMBLR_REFRESH_TOKEN";
 const OAUTH_REDIRECT_URI_VAR_NAME: &str = "TUMBLR_REDIRECT_URI";
 const OAUTH_SETTINGS_FILE_VAR_NAME: &str = "TUMBLR_OAUTH_SETTINGS_FILE";
 const TEST_BLOG_VAR_NAME: &str = "TUMBLR_TEST_BLOG";
 
-#[derive(serde::Deserialize)]
+static TOKEN_SETTINGS: OnceLock<TokenStorage> = OnceLock::new();
+
+#[derive(Deserialize)]
 struct TokenStorage {
+    #[serde(rename = "TUMBLR_CONSUMER_KEY")]
     consumer_key: String,
+    #[serde(rename = "TUMBLR_CONSUMER_SECRET")]
     consumer_secret: String,
+    #[serde(rename = "TUMBLR_ACCESS_TOKEN")]
     access_token: String,
+    #[serde(rename = "TUMBLR_REFRESH_TOKEN")]
     refresh_token: Option<String>,
+    #[serde(rename = "TUMBLR_REDIRECT_URI")]
     redirect_uri: String,
+    #[serde(rename = "TUMBLR_TEST_BLOG")]
+    test_blog: Option<String>,
 }
 
 fn get_env(key: &str) -> Result<String, String> {
@@ -42,10 +54,24 @@ fn get_env_optional(key: &str) -> Option<String> {
 }
 
 fn get_tumblr_test_blog() -> Result<String, String> {
+    if let Some(settings) = TOKEN_SETTINGS.get() {
+        if let Some(blog_name) = &settings.test_blog {
+            return Ok(blog_name.clone());
+        }
+    }
     get_env(TEST_BLOG_VAR_NAME)
 }
 
 fn get_consumer_credentials() -> Result<(String, String), String> {
+    if let Some(path) = get_env_optional(OAUTH_SETTINGS_FILE_VAR_NAME) {
+        let file = std::fs::read(path).map_err(|e| format!("Could not open file: {}", e))?;
+
+        let contents: TokenStorage = serde_json::from_slice(&file)
+            .map_err(|e| format!("Could not deserialize settings file: {}", e))?;
+
+        return Ok((contents.consumer_key, contents.consumer_secret));
+    }
+
     let key = get_env(OAUTH_CONSUMER_KEY_VAR_NAME)?;
     let secret = get_env(OAUTH_CONSUMER_SECRET_VAR_NAME)?;
 
@@ -54,42 +80,67 @@ fn get_consumer_credentials() -> Result<(String, String), String> {
 
 /// Creates a test client with proper OAuth2 authentication
 async fn test_client() -> Result<Crabrave, String> {
-    if let (Ok(consumer_key), Ok(consumer_secret), Ok(access_token), Ok(redirect_uri)) = (
-        get_env(OAUTH_CONSUMER_KEY_VAR_NAME),
-        get_env(OAUTH_CONSUMER_SECRET_VAR_NAME),
-        get_env(OAUTH_ACCESS_TOKEN_VAR_NAME),
-        get_env(OAUTH_REDIRECT_URI_VAR_NAME),
-    ) {
-        if let Some(refresh_token) = get_env_optional("TUMBLR_REFRESH_TOKEN") {
-            let config = OAuth2Config::new(&consumer_key, &consumer_secret, &redirect_uri);
+    // Initialize settings if not already cached
+    if TOKEN_SETTINGS.get().is_none() {
+        let loaded_settings = if let Some(path) = get_env_optional(OAUTH_SETTINGS_FILE_VAR_NAME) {
+            // Load from file
+            let file = std::fs::read(&path)
+                .map_err(|e| format!("Could not open settings file {}: {}", path, e))?;
 
-            match config.refresh_access_token(&refresh_token).await {
-                Ok(new_token) => {
-                    return Crabrave::builder()
-                        .consumer_key(&consumer_key)
-                        .consumer_secret(&consumer_secret)
-                        .access_token(&new_token.access_token)
-                        .build()
-                        .map_err(|e| format!("Failed to build client: {}", e));
-                }
-                Err(e) => {
-                    eprintln!("Token refresh failed: {}, using provided access token", e);
-                }
+            serde_json::from_slice::<TokenStorage>(&file)
+                .map_err(|e| format!("Could not deserialize settings file: {}", e))?
+        } else {
+            // Load from environment variables
+            TokenStorage {
+                consumer_key: get_env(OAUTH_CONSUMER_KEY_VAR_NAME)?,
+                consumer_secret: get_env(OAUTH_CONSUMER_SECRET_VAR_NAME)?,
+                access_token: get_env(OAUTH_ACCESS_TOKEN_VAR_NAME)?,
+                refresh_token: get_env_optional(OAUTH_REFRESH_TOKEN_VAR_NAME),
+                redirect_uri: get_env(OAUTH_REDIRECT_URI_VAR_NAME)?,
+                test_blog: get_env_optional(TEST_BLOG_VAR_NAME),
             }
-        }
+        };
 
-        return Crabrave::builder()
-            .consumer_key(&consumer_key)
-            .consumer_secret(&consumer_secret)
-            .access_token(&access_token)
-            .build()
-            .map_err(|e| format!("Failed to build client: {}", e));
+        // Cache the settings
+        TOKEN_SETTINGS.set(loaded_settings)
+            .map_err(|_| "Token settings already initialized (race condition)")?;
     }
 
-    // Priority 3: No credentials found - provide helpful error message
-    Err(
-        r#"One or more OAuth credentials missing. Please review the integration test documentation."#.into(),
-    )
+    // Get the cached settings (guaranteed to be Some at this point)
+    let Some(settings) = TOKEN_SETTINGS.get() else {
+        return Err("Failed to initialize settings".into());
+    };
+
+    // Try to refresh token if available
+    if let Some(refresh_token) = &settings.refresh_token {
+        let config = OAuth2Config::new(
+            &settings.consumer_key,
+            &settings.consumer_secret,
+            &settings.redirect_uri,
+        );
+
+        match config.refresh_access_token(refresh_token).await {
+            Ok(new_token) => {
+                return Crabrave::builder()
+                    .consumer_key(&settings.consumer_key)
+                    .consumer_secret(&settings.consumer_secret)
+                    .access_token(&new_token.access_token)
+                    .build()
+                    .map_err(|e| format!("Failed to build client: {}", e));
+            }
+            Err(e) => {
+                eprintln!("Token refresh failed: {}, using cached access token", e);
+            }
+        }
+    }
+
+    // Use the cached access token
+    Crabrave::builder()
+        .consumer_key(&settings.consumer_key)
+        .consumer_secret(&settings.consumer_secret)
+        .access_token(&settings.access_token)
+        .build()
+        .map_err(|e| format!("Failed to build client: {}", e))
 }
 
 #[tokio::test]
@@ -99,15 +150,14 @@ async fn blog_info() {
 
     let test_blog_name = get_tumblr_test_blog().expect("TUMBLR_TEST_BLOG not set");
 
-    // Test with Tumblr's official staff blog
-    let result = client.blogs(test_blog_name).info().await;
+    let result = client.blogs(test_blog_name.clone()).info().await;
 
     match result {
         Ok(info) => {
             println!("Blog name: {}", info.blog.name);
             println!("Blog title: {}", info.blog.title);
             println!("Total posts: {}", info.blog.posts);
-            assert_eq!(info.blog.name, "staff");
+            assert_eq!(info.blog.name, test_blog_name);
         }
         Err(e) => panic!("Failed to get blog info: {}", e),
     }
@@ -176,6 +226,11 @@ async fn user_info() {
         Err(e) => panic!("Failed to get user info: {}", e),
     }
 }
+
+// #[tokio::test]
+// async fn user_test() {
+//     let client = test_client().await.expect("Failed to create client");
+// }
 
 #[tokio::test]
 #[ignore]
@@ -329,6 +384,79 @@ async fn user_following() {
     }
 }
 
+// #[tokio::test]
+// #[ignore]
+// async fn get_blocks() {
+//     let client = test_client().await.expect("Failed to create client");
+//     let result = client
+//         .blogs(get_tumblr_test_blog().expect("No test blog set"))
+//         .blocks()
+//         .get()
+//         .await;
+// }
+
+#[tokio::test]
+#[ignore]
+async fn make_text_post() {
+    let client = test_client().await.expect("Failed to create client");
+    let result = client
+        .posts()
+        .create(get_tumblr_test_blog().expect("No test blog set"))
+        .add_block(ContentBlock::Text {
+            text: "hello world".into(),
+            subtype: Some("heading1".into()),
+            formatting: None,
+        })
+        .send()
+        .await;
+
+    match result {
+        Ok(r) => {
+            println!("new post id: {}", r.id)
+        }
+        Err(e) => panic!("failed to make a post: {}", e),
+    }
+}
+
+// #[tokio::test]
+// #[ignore]
+// async fn make_image_post() {
+//     let client = test_client().await.expect("Failed to create client");
+//     let test_blog_name = get_tumblr_test_blog().expect("No test blog set");
+//     let avatar = match client.blogs(test_blog_name).avatar(64).await {
+//         Ok(image) => image,
+//         Err(e) => panic!("Failed to get blog avatar: ", e),
+//     };
+
+//     let result = client
+//         .posts()
+//         .create(get_tumblr_test_blog().expect("No test blog set"))
+//         .add_block(ContentBlock::Text {
+//             text: "this is my icon:".into(),
+//             subtype: Some("heading1".into()),
+//             formatting: None,
+//         })
+//         .add_block(ContentBlock::Image {
+//             media: MediaObject {
+//                 url: todo!(),
+//                 media_type: todo!(),
+//                 width: todo!(),
+//                 height: todo!(),
+//             },
+//             alt_text: (),
+//             caption: (),
+//         })
+//         .send()
+//         .await;
+
+//     match result {
+//         Ok(r) => {
+//             println!("new post id: {}", r.id)
+//         }
+//         Err(e) => panic!("failed to make a post: {}", e),
+//     }
+// }
+
 // ============================================================================
 // OAuth2 Flow Tests
 // ============================================================================
@@ -438,7 +566,7 @@ async fn oauth2_refresh_token() {
         .unwrap_or_else(|| "http://localhost:8080/callback".to_string());
 
     // This test requires a valid refresh token
-    let refresh_token = match get_env("TUMBLR_OAUTH2_REFRESH_TOKEN") {
+    let refresh_token = match get_env(OAUTH_REFRESH_TOKEN_VAR_NAME) {
         Ok(token) => token,
         Err(_) => {
             println!("⏭️  Skipping token refresh test - TUMBLR_OAUTH2_REFRESH_TOKEN not set");

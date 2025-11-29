@@ -10,37 +10,43 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [1/25]
-** TODO /info - Retrieve Blog Info
-** TODO /avatar — Retrieve a Blog Avatar
+* Blog [4/25]
+** DONE /info - Retrieve Blog Info
+** DONE /avatar — Retrieve a Blog Avatar
 ** TODO /blocks – Retrieve Blog's Blocks
 ** TODO /blocks – Block a Blog
 ** TODO /blocks/bulk – Block a list of Blogs
 ** TODO /blocks – Remove a Block
-** TODO /likes — Retrieve Blog's Likes
-** TODO /following — Retrieve Blog's following
+** DONE /likes — Retrieve Blog's Likes
+** STRT /following — Retrieve Blog's following
+- Should be a ~blog~ method
 ** TODO /followers — Retrieve a Blog's Followers
 ** TODO /followed_by — Check If Followed By Blog
-** TODO /posts – Retrieve Published Posts
+** DONE /posts – Retrieve Published Posts
 ** TODO /posts/queue — Retrieve Queued Posts
 ** TODO /posts/queue/reorder — Reorder Queued Posts
 ** TODO /posts/queue/shuffle — Shuffle Queued Posts
 ** TODO /posts/draft — Retrieve Draft Posts
 ** TODO /posts/submission — Retrieve Submission Posts
 ** TODO /notifications — Retrieve Blog's Activity Feed
-** TODO /posts - Create/Reblog a Post (Neue Post Format)
-** TODO /posts/{post-id} - Fetching a Post (Neue Post Format)
+** STRT /posts - Create/Reblog a Post (Neue Post Format)
+- API needs to change
+** STRT /posts/{post-id} - Fetching a Post (Neue Post Format)
+- Works, but should be
+  #+begin_src rust :eval never
+    client.blogs("foo").post("123").get()
+  #+end_src
 ** TODO /posts/{post-id} - Editing a Post (Neue Post Format)
 ** TODO /post/delete – Delete a Post
 ** TODO /posts/{post-id}/mute - Muting a Post's Notifications
 ** TODO /notes - Get notes for a specific Post
 ** TODO /pages - Retrieve Pages
 ** TODO /pages/{page-name} - Retrieve a Page
-* User [/]
-** TODO /user/info – Get a User's Information
+* User [3/11]
+** DONE /user/info – Get a User's Information
 ** TODO /user/limits – Get a User's Limits
-** TODO /user/dashboard – Retrieve a User's Dashboard
-** TODO /user/likes — Retrieve a User's Likes
+** DONE /user/dashboard – Retrieve a User's Dashboard
+** DONE /user/likes — Retrieve a User's Likes
 ** TODO /user/following – Retrieve the Blogs a User Is Following
 ** TODO /user/follow – Follow a blog
 ** TODO /user/unfollow – Unfollow a blog
