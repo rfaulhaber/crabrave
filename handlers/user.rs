@@ -1,6 +1,6 @@
 //! User-related API endpoints
 
-use crate::{BlogIdentifier, Crabrave, CrabResult, User};
+use crate::{BlogIdentifier, CrabResult, Crabrave, User};
 use serde::{Deserialize, Serialize};
 
 /// API for user-related endpoints
@@ -320,7 +320,9 @@ impl DashboardBuilder {
 
     /// Sends the request and returns the dashboard posts
     pub async fn send(self) -> CrabResult<DashboardResponse> {
-        self.client.get_with_query("user/dashboard", &self.query).await
+        self.client
+            .get_with_query("user/dashboard", &self.query)
+            .await
     }
 }
 

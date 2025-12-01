@@ -1,6 +1,6 @@
 //! Blog-related API endpoints
 
-use crate::{Blog, BlogIdentifier, CrabResult, Crabrave};
+use crate::{Blog, BlogIdentifier, CrabResult, Crabrave, models::TumblrmartAccessories};
 use serde::{Deserialize, Serialize};
 
 /// API for blog-related endpoints
@@ -89,6 +89,18 @@ impl Blogs {
             format!("blog/{}/avatar", self.identifier.as_str())
         };
         self.client.get_avatar(&path).await
+    }
+
+    pub async fn blocks(&self) -> BlocksBuilder {
+        BlocksBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
+    pub async fn block(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<()> {
+        todo!()
+    }
+
+    pub async fn bulk_block(&self, blogs: Vec<impl Into<BlogIdentifier>>) -> CrabResult<()> {
+        todo!()
     }
 
     /// Gets posts from the blog
@@ -276,6 +288,47 @@ pub struct Post {
     /// Current state (published, queued, draft, private)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+}
+
+pub struct BlocksBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    bulk: bool,
+    limit: Option<u32>,
+    offset: Option<u64>,
+}
+
+impl BlocksBuilder {
+    pub fn new(client: Crabrave, identifier: impl Into<BlogIdentifier>) -> Self {
+        Self {
+            client,
+            identifier: identifier.into(),
+            bulk: false,
+            limit: None,
+            offset: None,
+        }
+    }
+    pub async fn get(self) -> CrabResult<BlocksResponse> {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockedBlog {
+    pub name: String,
+    pub title: String,
+    pub description: String,
+    pub url: String,
+    pub uuid: String,
+    pub updated: i64,
+    pub blocked_timestamp: i64,
+    pub tumblrmart_accessories: Vec<TumblrmartAccessories>,
+    pub can_show_badges: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlocksResponse {
+    pub blocked_tumblelogs: Vec<BlockedBlog>,
 }
 
 #[cfg(test)]

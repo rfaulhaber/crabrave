@@ -168,6 +168,19 @@ impl<T> Default for Page<T> {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TumblrmartAccessories {
+    pub badges: Vec<Badge>,
+    pub blue_checkmark_account: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Badge {
+    pub product_group: String,
+    pub urls: Vec<String>,
+    pub destination_url: Vec<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
