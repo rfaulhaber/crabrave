@@ -5,8 +5,10 @@
 
 use crabrave::handlers::blog::AvatarResponse;
 use crabrave::{CrabError, Crabrave};
-use wiremock::matchers::{method, path, query_param};
+use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
+const TEST_BLOG_NAME: &'static str = "crabrave";
 
 /// Helper to create a test client pointed at a mock server
 async fn test_client(mock_server: &MockServer) -> Crabrave {
@@ -353,8 +355,7 @@ async fn test_network_error() {
 
 #[tokio::test]
 async fn test_avatar_endpoint() {
-    let avatar_path = std::path::PathBuf::from("./tests/fixtures/demo_avatar.png");
-    let avatar = std::fs::read(avatar_path).expect("Could not load avatar");
+    let avatar = include_bytes!("./fixtures/demo_avatar.png");
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
@@ -376,4 +377,159 @@ async fn test_avatar_endpoint() {
         .expect("Callout failed");
 
     assert!(matches!(result, AvatarResponse::ImageData(_)));
+}
+
+#[tokio::test]
+async fn test_get_blocks() {
+    let blocks_response = include_str!("./fixtures/get_blocks.json");
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(blocks_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .blocks()
+        .get()
+        .await
+        .expect("Callout failed");
+
+    assert_eq!(result.blocked_tumblelogs.len(), 9);
+}
+
+#[tokio::test]
+async fn test_block_blog() {
+    let mock_server = MockServer::start().await;
+
+    let blog_to_block = "johnny-depp-is-loved";
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
+        .and(body_json(
+            serde_json::json!({ "blocked_tumblelog": blog_to_block }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "already_blocked": false
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .block_blog(blog_to_block)
+        .await
+        .expect("callout failed");
+
+    assert_eq!(result.already_blocked, false);
+}
+
+#[tokio::test]
+async fn test_block_with_post_id() {
+    let mock_server = MockServer::start().await;
+
+    let post_to_block = "12345";
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
+        .and(body_json(serde_json::json!({ "post_id": post_to_block })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "already_blocked": false
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .block_with_post_id(post_to_block.to_string())
+        .await
+        .expect("callout failed");
+
+    assert_eq!(result.already_blocked, false);
+}
+
+#[tokio::test]
+async fn test_bulk_block() {
+    let mock_server = MockServer::start().await;
+
+    let blogs_to_block = "foo,bar,baz";
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks/bulk")))
+        .and(body_json(
+            serde_json::json!({ "blocked_tumblelogs": blogs_to_block, "force": true }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .bulk_block(vec!["foo", "bar", "baz"], true)
+        .await
+        .expect("callout failed");
+
+    assert_eq!(result, ());
+}
+
+#[tokio::test]
+async fn test_unblock() {
+    let mock_server = MockServer::start().await;
+
+    let blog_to_unblock = "foo";
+    Mock::given(method("DELETE"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
+        .and(query_param("blocked_tumblelog", blog_to_unblock))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .unblock(blog_to_unblock)
+        .await
+        .expect("callout failed");
+
+    assert_eq!(result, ());
 }

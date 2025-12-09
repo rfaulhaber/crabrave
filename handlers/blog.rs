@@ -1,6 +1,8 @@
 //! Blog-related API endpoints
 
-use crate::{Blog, BlogIdentifier, CrabResult, Crabrave, models::TumblrmartAccessories};
+use crate::{
+    Blog, BlogIdentifier, CrabResult, Crabrave, EmptyResponse, models::TumblrmartAccessories,
+};
 use serde::{Deserialize, Serialize};
 
 /// API for blog-related endpoints
@@ -91,16 +93,69 @@ impl Blogs {
         self.client.get_avatar(&path).await
     }
 
-    pub async fn blocks(&self) -> BlocksBuilder {
+    pub fn blocks(&self) -> BlocksBuilder {
         BlocksBuilder::new(self.client.clone(), self.identifier.clone())
     }
 
-    pub async fn block(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<()> {
-        todo!()
+    pub async fn block_blog(
+        &self,
+        blog: impl Into<BlogIdentifier>,
+    ) -> CrabResult<BlockBlogRespsone> {
+        let path = format!("blog/{}/blocks", self.identifier.as_str());
+        let blog_id: BlogIdentifier = blog.into();
+        self.client
+            .post(
+                &path,
+                &BlockBlogRequest::Blog {
+                    blocked_tumblelog: blog_id.to_string(),
+                },
+            )
+            .await
     }
 
-    pub async fn bulk_block(&self, blogs: Vec<impl Into<BlogIdentifier>>) -> CrabResult<()> {
-        todo!()
+    pub async fn block_with_post_id(
+        &self,
+        post_id: impl Into<String>,
+    ) -> CrabResult<BlockBlogRespsone> {
+        let path = format!("blog/{}/blocks", self.identifier.as_str());
+        let post_id = post_id.into();
+        self.client
+            .post(&path, &BlockBlogRequest::Post { post_id })
+            .await
+    }
+
+    pub async fn bulk_block(&self, blogs: Vec<impl Into<String>>, force: bool) -> CrabResult<()> {
+        let path = format!("blog/{}/blocks/bulk", self.identifier.as_str());
+        let blogs_str = blogs
+            .into_iter()
+            .map(|b| b.into())
+            .collect::<Vec<String>>()
+            .join(",");
+
+        self.client
+            .post(
+                &path,
+                &BulkBlockRequest {
+                    blocked_tumblelogs: blogs_str,
+                    force,
+                },
+            )
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    // TODO unblock via anonymous ID
+    pub async fn unblock(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<()> {
+        let path = format!("blog/{}/blocks", self.identifier.as_str());
+        let blog_id: BlogIdentifier = blog.into();
+
+        self.client
+            .delete_with_query(
+                &path,
+                &serde_json::json!({ "blocked_tumblelog": blog_id.as_str() }),
+            )
+            .await
+            .map(|_resp: EmptyResponse| ())
     }
 
     /// Gets posts from the blog
@@ -290,12 +345,17 @@ pub struct Post {
     pub state: Option<String>,
 }
 
+#[derive(Serialize, Default)]
+struct BlocksQuery {
+    limit: Option<u32>,
+    offset: Option<u64>,
+}
+
 pub struct BlocksBuilder {
     client: Crabrave,
     identifier: BlogIdentifier,
     bulk: bool,
-    limit: Option<u32>,
-    offset: Option<u64>,
+    query: BlocksQuery,
 }
 
 impl BlocksBuilder {
@@ -304,12 +364,23 @@ impl BlocksBuilder {
             client,
             identifier: identifier.into(),
             bulk: false,
-            limit: None,
-            offset: None,
+            query: BlocksQuery::default(),
         }
     }
+
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.query.limit = Some(limit);
+        self
+    }
+
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
     pub async fn get(self) -> CrabResult<BlocksResponse> {
-        todo!()
+        let path = format!("blog/{}/blocks", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
     }
 }
 
@@ -322,13 +393,32 @@ pub struct BlockedBlog {
     pub uuid: String,
     pub updated: i64,
     pub blocked_timestamp: i64,
-    pub tumblrmart_accessories: Vec<TumblrmartAccessories>,
+    #[serde(deserialize_with = "crate::empty_object_as_none")]
+    pub tumblrmart_accessories: Option<TumblrmartAccessories>,
     pub can_show_badges: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlocksResponse {
     pub blocked_tumblelogs: Vec<BlockedBlog>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+enum BlockBlogRequest {
+    Blog { blocked_tumblelog: String },
+    Post { post_id: String },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BlockBlogRespsone {
+    pub already_blocked: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BulkBlockRequest {
+    blocked_tumblelogs: String,
+    force: bool,
 }
 
 #[cfg(test)]

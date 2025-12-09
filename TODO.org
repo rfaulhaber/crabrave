@@ -10,13 +10,13 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [4/25]
+* Blog [8/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
-** TODO /blocks – Retrieve Blog's Blocks
-** TODO /blocks – Block a Blog
-** TODO /blocks/bulk – Block a list of Blogs
-** TODO /blocks – Remove a Block
+** DONE /blocks – Retrieve Blog's Blocks
+** DONE /blocks – Block a Blog
+** DONE /blocks/bulk – Block a list of Blogs
+** DONE /blocks – Remove a Block
 ** DONE /likes — Retrieve Blog's Likes
 ** STRT /following — Retrieve Blog's following
 - Should be a ~blog~ method

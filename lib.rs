@@ -70,11 +70,12 @@ mod response;
 pub use error::{CrabError, CrabResult};
 pub use handlers::{Blogs, Communities, Posts, Tagged, Users};
 pub use models::{Blog, BlogIdentifier, Page, User};
-pub use response::{ApiResponse, Meta};
+pub use response::{ApiResponse, EmptyResponse, Meta};
 
 use base64::Engine;
 use hmac::{Hmac, Mac};
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
+use serde::{Deserialize, Deserializer};
 use sha1::Sha1;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -518,6 +519,43 @@ impl Crabrave {
         response::parse_response_bytes(&bytes)
     }
 
+    pub(crate) async fn delete_with_query<T, Q>(&self, path: &str, query: &Q) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        Q: serde::Serialize,
+    {
+        // Serialize query params to build the full URL for OAuth1 signature
+        let query_string = serde_urlencoded::to_string(query).map_err(|e| {
+            CrabError::InvalidResponse(format!("Failed to serialize query params: {}", e))
+        })?;
+
+        let base_url = self.url(path);
+        let full_url = if query_string.is_empty() {
+            base_url.clone()
+        } else {
+            format!("{}?{}", base_url, query_string)
+        };
+
+        let request = self.client.delete(&base_url).query(query);
+        let request = self.apply_auth(request, "GET", &full_url);
+        let response = request.send().await?;
+
+        // Check for rate limiting
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+
+            return Err(CrabError::RateLimit { retry_after });
+        }
+
+        let bytes = response.bytes().await?;
+
+        response::parse_response_bytes(&bytes)
+    }
+
     /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically.
     /// The endpoint will return binary data if the request sent to it is not OAuth1, so we have to handle the response as a special case.
     pub(crate) async fn get_avatar(&self, path: &str) -> CrabResult<AvatarResponse> {
@@ -763,6 +801,24 @@ impl CrabraveBuilder {
             base_url,
             auth: Arc::new(auth),
         })
+    }
+}
+
+pub(crate) fn empty_object_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum EmptyOrValue<T> {
+        Value(T),
+        Empty {},
+    }
+
+    match EmptyOrValue::deserialize(deserializer)? {
+        EmptyOrValue::Value(v) => Ok(Some(v)),
+        EmptyOrValue::Empty {} => Ok(None),
     }
 }
 

@@ -25,6 +25,15 @@ pub struct Meta {
     pub msg: String,
 }
 
+/// A response type for endpoints that return an empty array
+///
+/// Some Tumblr API endpoints return an empty array `[]` in the response field
+/// when there's no useful data to return (e.g., bulk operations, deletions).
+/// This type allows those responses to be deserialized properly while
+/// conveying that no useful data is returned.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct EmptyResponse(Vec<serde_json::Value>);
+
 impl<T> ApiResponse<T> {
     /// Unwraps the response data, consuming the envelope
     pub fn into_response(self) -> T {

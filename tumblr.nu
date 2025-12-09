@@ -76,4 +76,22 @@ export module http {
             http get --full --allow-errors -H [Authorization $"Bearer ($env.TUMBLR_ACCESS_TOKEN)"] $url
         }
   }
+
+  export def post [path, body] {
+    let url = $base_url + $path
+    let body = $body | to json
+    open tokens.json
+        | with-env $in {
+            http post --full --allow-errors --content-type application/json -H [Authorization $"Bearer ($env.TUMBLR_ACCESS_TOKEN)"] $url $body
+        }
+  }
+
+  export def delete [path, data?] {
+    let url = $base_url + $path
+    let data = $data | to json
+    open tokens.json
+        | with-env $in {
+            http delete --full --allow-errors -H [Authorization $"Bearer ($env.TUMBLR_ACCESS_TOKEN)"] --data $data $url
+        }
+  }
 }
