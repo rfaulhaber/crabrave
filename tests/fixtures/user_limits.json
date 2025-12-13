@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "status": 200,
+    "msg": "OK"
+  },
+  "response": {
+    "user": {
+      "blogs": {
+        "description": "the number of secondary blogs you can create per day",
+        "limit": 10,
+        "remaining": 10,
+        "reset_at": 1765688400
+      },
+      "follows": {
+        "description": "the number of blogs you can follow per day",
+        "limit": 200,
+        "remaining": 200,
+        "reset_at": 1765688400
+      },
+      "likes": {
+        "description": "the number of posts you can like per day",
+        "limit": 2000,
+        "remaining": 1992,
+        "reset_at": 1765688400
+      },
+      "photos": {
+        "description": "the number of photos you can upload per day",
+        "limit": 500,
+        "remaining": 499,
+        "reset_at": 1765688400
+      },
+      "posts": {
+        "description": "the number of posts you can create per day, not including those in communities",
+        "limit": 500,
+        "remaining": 494,
+        "reset_at": 1765688400
+      },
+      "community_posts": {
+        "description": "the number of posts in communities you can create per day",
+        "limit": 500,
+        "remaining": 500,
+        "reset_at": 1765688400
+      },
+      "reply_likes": {
+        "description": "the number of reply likes you can create per day",
+        "limit": 2000,
+        "remaining": 2000,
+        "reset_at": 1765688400
+      },
+      "video_seconds": {
+        "description": "the number of seconds of video content you can upload per day",
+        "limit": 7200,
+        "remaining": 7200,
+        "reset_at": 1765688400
+      },
+      "videos": {
+        "description": "the number of video files you can upload per day",
+        "limit": 40,
+        "remaining": 40,
+        "reset_at": 1765688400
+      }
+    }
+  }
+}

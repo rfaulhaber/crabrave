@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "status": 200,
+    "msg": "OK"
+  },
+  "response": {
+    "total_users": 2450,
+    "users": [
+      {
+        "name": "aeroplanestouchthesky",
+        "url": "https://aeroplanestouchthesky.tumblr.com/",
+        "updated": 1765588107,
+        "following": false
+      },
+      {
+        "name": "sagealex",
+        "url": "https://sagealex.tumblr.com/",
+        "updated": 1735084009,
+        "following": false
+      },
+      {
+        "name": "manireulescano",
+        "url": "https://manireulescano.tumblr.com/",
+        "updated": 1765591614,
+        "following": false
+      },
+      {
+        "name": "circlethirtytwo",
+        "url": "https://circlethirtytwo.tumblr.com/",
+        "updated": 1765196520,
+        "following": false
+      },
+      {
+        "name": "starvationhexagon",
+        "url": "https://starvationhexagon.tumblr.com/",
+        "updated": 1765657758,
+        "following": false
+      },
+      {
+        "name": "k-simplex",
+        "url": "https://k-simplex.tumblr.com/",
+        "updated": 1765627836,
+        "following": true
+      },
+      {
+        "name": "dumbass-ba",
+        "url": "https://dumbass-ba.tumblr.com/",
+        "updated": 1765563437,
+        "following": false
+      },
+      {
+        "name": "is-it-time",
+        "url": "https://is-it-time.tumblr.com/",
+        "updated": 1765575906,
+        "following": false
+      },
+      {
+        "name": "brantaruficollis",
+        "url": "https://brantaruficollis.tumblr.com/",
+        "updated": 1765637274,
+        "following": false
+      },
+      {
+        "name": "fakenerdboy",
+        "url": "https://fakenerdboy.tumblr.com/",
+        "updated": 1765568349,
+        "following": false
+      },
+      {
+        "name": "hiddeninapineapple",
+        "url": "https://hiddeninapineapple.tumblr.com/",
+        "updated": 1764560011,
+        "following": false
+      },
+      {
+        "name": "lasersinthejungle",
+        "url": "https://lasersinthejungle.tumblr.com/",
+        "updated": 1765552018,
+        "following": false
+      },
+      {
+        "name": "chkq",
+        "url": "https://chkq.tumblr.com/",
+        "updated": 1765656989,
+        "following": false
+      },
+      {
+        "name": "einklebebuch",
+        "url": "https://einklebebuch.tumblr.com/",
+        "updated": 1765645408,
+        "following": false
+      },
+      {
+        "name": "fawnstarmoss",
+        "url": "https://fawnstarmoss.tumblr.com/",
+        "updated": 1765649851,
+        "following": false
+      },
+      {
+        "name": "girlbloke",
+        "url": "https://girlbloke.tumblr.com/",
+        "updated": 1765657627,
+        "following": false
+      },
+      {
+        "name": "axolotlforsale",
+        "url": "https://axolotlforsale.tumblr.com/",
+        "updated": 1763435195,
+        "following": false
+      },
+      {
+        "name": "chdmjt",
+        "url": "https://chdmjt.tumblr.com/",
+        "updated": 1765390169,
+        "following": false
+      },
+      {
+        "name": "myconetted",
+        "url": "https://myconetted.tumblr.com/",
+        "updated": 1765652450,
+        "following": false
+      },
+      {
+        "name": "quajzen",
+        "url": "https://quajzen.tumblr.com/",
+        "updated": 1764420316,
+        "following": false
+      }
+    ],
+    "_links": {
+      "next": {
+        "href": "/v2/blog/algorithmist/followers?offset=20&prev_offsets=0",
+        "method": "GET",
+        "query_params": {
+          "offset": "20",
+          "prev_offsets": "0"
+        }
+      }
+    }
+  }
+}
