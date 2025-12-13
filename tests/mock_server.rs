@@ -533,3 +533,31 @@ async fn test_unblock() {
 
     assert_eq!(result, ());
 }
+
+#[tokio::test]
+async fn test_blog_likes() {
+    let mock_server = MockServer::start().await;
+
+    let mock_response = include_str!("./fixtures/blog_likes.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/likes")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .likes()
+        .get()
+        .await
+        .expect("Callout to get blog likes failed");
+
+    assert_eq!(result.liked_count, 106883);
+}

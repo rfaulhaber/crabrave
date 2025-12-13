@@ -18,6 +18,7 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /blocks/bulk – Block a list of Blogs
 ** DONE /blocks – Remove a Block
 ** DONE /likes — Retrieve Blog's Likes
+- Should be a blog method
 ** STRT /following — Retrieve Blog's following
 - Should be a ~blog~ method
 ** TODO /followers — Retrieve a Blog's Followers

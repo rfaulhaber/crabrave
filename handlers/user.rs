@@ -1,6 +1,6 @@
 //! User-related API endpoints
 
-use crate::{BlogIdentifier, CrabResult, Crabrave, User};
+use crate::{BlogIdentifier, CrabResult, Crabrave, User, handlers::likes::LikesBuilder};
 use serde::{Deserialize, Serialize};
 
 /// API for user-related endpoints
@@ -128,7 +128,7 @@ impl Users {
     /// # }
     /// ```
     pub fn likes(&self) -> LikesBuilder {
-        LikesBuilder::new(self.client.clone())
+        LikesBuilder::user(self.client.clone())
     }
 
     /// Gets the blogs the user is following
@@ -333,80 +333,6 @@ pub struct DashboardResponse {
     pub posts: Vec<crate::handlers::blog::Post>,
 }
 
-/// Query parameters for user likes
-#[derive(Debug, Clone, Serialize, Default)]
-struct LikesQuery {
-    /// Maximum number of posts to return (API max: 20, default: 20)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    limit: Option<u32>,
-
-    /// Post offset for pagination
-    #[serde(skip_serializing_if = "Option::is_none")]
-    offset: Option<u64>,
-
-    /// Return posts liked before this timestamp (Unix time)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    before: Option<i64>,
-
-    /// Return posts liked after this timestamp (Unix time)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    after: Option<i64>,
-}
-
-/// Builder for querying the user's liked posts
-pub struct LikesBuilder {
-    client: Crabrave,
-    query: LikesQuery,
-}
-
-impl LikesBuilder {
-    fn new(client: Crabrave) -> Self {
-        Self {
-            client,
-            query: LikesQuery::default(),
-        }
-    }
-
-    /// Sets the number of posts to return (max 20, default 20)
-    pub fn limit(mut self, limit: u32) -> Self {
-        self.query.limit = Some(limit);
-        self
-    }
-
-    /// Sets the post offset for pagination
-    pub fn offset(mut self, offset: u64) -> Self {
-        self.query.offset = Some(offset);
-        self
-    }
-
-    /// Returns posts liked before this timestamp (Unix time)
-    pub fn before(mut self, timestamp: i64) -> Self {
-        self.query.before = Some(timestamp);
-        self
-    }
-
-    /// Returns posts liked after this timestamp (Unix time)
-    pub fn after(mut self, timestamp: i64) -> Self {
-        self.query.after = Some(timestamp);
-        self
-    }
-
-    /// Sends the request and returns the liked posts
-    pub async fn send(self) -> CrabResult<LikesResponse> {
-        self.client.get_with_query("user/likes", &self.query).await
-    }
-}
-
-/// Response from the likes endpoint
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LikesResponse {
-    /// List of liked posts
-    pub liked_posts: Vec<crate::handlers::blog::Post>,
-    /// Total number of liked posts
-    #[serde(default)]
-    pub liked_count: u64,
-}
-
 /// Response from the following endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FollowingResponse {
@@ -454,15 +380,15 @@ mod tests {
     #[test]
     fn test_likes_builder() {
         let client = Crabrave::builder().consumer_key("test").build().unwrap();
-        let builder = LikesBuilder::new(client)
+        let builder = LikesBuilder::user(client)
             .limit(15)
             .offset(30)
             .before(1234567890)
             .after(1234567800);
 
-        assert_eq!(builder.query.limit, Some(15));
-        assert_eq!(builder.query.offset, Some(30));
-        assert_eq!(builder.query.before, Some(1234567890));
-        assert_eq!(builder.query.after, Some(1234567800));
+        assert_eq!(builder.query().limit, Some(15));
+        assert_eq!(builder.query().offset, Some(30));
+        assert_eq!(builder.query().before, Some(1234567890));
+        assert_eq!(builder.query().after, Some(1234567800));
     }
 }

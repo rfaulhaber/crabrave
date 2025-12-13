@@ -102,7 +102,8 @@ async fn test_client() -> Result<Crabrave, String> {
         };
 
         // Cache the settings
-        TOKEN_SETTINGS.set(loaded_settings)
+        TOKEN_SETTINGS
+            .set(loaded_settings)
             .map_err(|_| "Token settings already initialized (race condition)")?;
     }
 
@@ -355,7 +356,7 @@ async fn nonexistent_blog() {
 async fn user_likes() {
     let client = test_client().await.expect("Failed to create client");
 
-    let result = client.users().likes().limit(5).send().await;
+    let result = client.users().likes().limit(5).get().await;
 
     match result {
         Ok(likes) => {
