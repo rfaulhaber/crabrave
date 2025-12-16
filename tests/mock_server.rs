@@ -645,3 +645,33 @@ async fn test_blog_followers() {
 
     assert_eq!(result.total_users, 2450);
 }
+
+#[tokio::test]
+async fn test_followed_by() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/followed_by")))
+        .and(query_param("query", "foobar"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+        "meta": {
+            "status": 200,
+            "msg": "OK"
+        },
+            "response": {
+                "followed_by": true
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .followed_by("foobar")
+        .await
+        .expect("Callout to get blog likes failed");
+
+    assert_eq!(result, true);
+}

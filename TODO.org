@@ -10,7 +10,7 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [10/25]
+* Blog [11/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
 ** DONE /blocks – Retrieve Blog's Blocks
@@ -22,7 +22,7 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /following — Retrieve Blog's following
 - Should be a ~blog~ method
 ** DONE /followers — Retrieve a Blog's Followers
-** TODO /followed_by — Check If Followed By Blog
+** DONE /followed_by — Check If Followed By Blog
 ** DONE /posts – Retrieve Published Posts
 ** TODO /posts/queue — Retrieve Queued Posts
 ** TODO /posts/queue/reorder — Reorder Queued Posts
