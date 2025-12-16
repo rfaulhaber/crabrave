@@ -1,7 +1,8 @@
 //! Blog-related API endpoints
 
 use crate::{
-    Blog, BlogIdentifier, CrabResult, Crabrave, EmptyResponse, handlers::likes::LikesBuilder,
+    Blog, BlogIdentifier, CrabResult, Crabrave, EmptyResponse,
+    handlers::{following::FollowingBuilder, likes::LikesBuilder},
     models::TumblrmartAccessories,
 };
 use serde::{Deserialize, Serialize};
@@ -159,8 +160,14 @@ impl Blogs {
             .map(|_resp: EmptyResponse| ())
     }
 
+    /// Get this blog's likes
     pub fn likes(&self) -> LikesBuilder {
         LikesBuilder::blog(self.client.clone(), self.identifier.clone())
+    }
+
+    /// Get the blogs following this blog
+    pub fn following(&self) -> FollowingBuilder {
+        FollowingBuilder::blog(self.client.clone(), self.identifier.clone())
     }
 
     /// Gets posts from the blog

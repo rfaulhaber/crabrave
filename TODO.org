@@ -10,7 +10,7 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [8/25]
+* Blog [9/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
 ** DONE /blocks – Retrieve Blog's Blocks
@@ -19,7 +19,7 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /blocks – Remove a Block
 ** DONE /likes — Retrieve Blog's Likes
 - Should be a blog method
-** STRT /following — Retrieve Blog's following
+** DONE /following — Retrieve Blog's following
 - Should be a ~blog~ method
 ** TODO /followers — Retrieve a Blog's Followers
 ** TODO /followed_by — Check If Followed By Blog
@@ -43,12 +43,12 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** TODO /notes - Get notes for a specific Post
 ** TODO /pages - Retrieve Pages
 ** TODO /pages/{page-name} - Retrieve a Page
-* User [3/11]
+* User [4/11]
 ** DONE /user/info – Get a User's Information
 ** TODO /user/limits – Get a User's Limits
 ** DONE /user/dashboard – Retrieve a User's Dashboard
 ** DONE /user/likes — Retrieve a User's Likes
-** TODO /user/following – Retrieve the Blogs a User Is Following
+** DONE /user/following – Retrieve the Blogs a User Is Following
 ** TODO /user/follow – Follow a blog
 ** TODO /user/unfollow – Unfollow a blog
 ** TODO /user/like – Like a Post

@@ -1,5 +1,6 @@
 //! API modules for different endpoint categories
 
+mod following;
 mod likes;
 
 pub mod blog;

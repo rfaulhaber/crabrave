@@ -1,6 +1,9 @@
 //! User-related API endpoints
 
-use crate::{BlogIdentifier, CrabResult, Crabrave, User, handlers::likes::LikesBuilder};
+use crate::{
+    BlogIdentifier, CrabResult, Crabrave, User,
+    handlers::{following::FollowingBuilder, likes::LikesBuilder},
+};
 use serde::{Deserialize, Serialize};
 
 /// API for user-related endpoints
@@ -131,49 +134,8 @@ impl Users {
         LikesBuilder::user(self.client.clone())
     }
 
-    /// Gets the blogs the user is following
-    ///
-    /// # Arguments
-    ///
-    /// * `limit` - Optional limit on number of results (default 20, max 20)
-    /// * `offset` - Optional offset for pagination
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// let following = crab.users().following(Some(20), None).await?;
-    /// println!("Following {} blogs", following.total_blogs);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn following(
-        &self,
-        limit: Option<u32>,
-        offset: Option<u64>,
-    ) -> CrabResult<FollowingResponse> {
-        let mut path = "user/following".to_string();
-        let mut params = Vec::new();
-
-        if let Some(limit) = limit {
-            params.push(format!("limit={}", limit));
-        }
-        if let Some(offset) = offset {
-            params.push(format!("offset={}", offset));
-        }
-
-        if !params.is_empty() {
-            path.push('?');
-            path.push_str(&params.join("&"));
-        }
-
-        self.client.get(&path).await
+    pub fn following(&self) -> FollowingBuilder {
+        FollowingBuilder::user(self.client.clone())
     }
 
     /// Follows a blog
@@ -331,15 +293,6 @@ impl DashboardBuilder {
 pub struct DashboardResponse {
     /// List of posts from the user's dashboard
     pub posts: Vec<crate::handlers::blog::Post>,
-}
-
-/// Response from the following endpoint
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FollowingResponse {
-    /// Total number of blogs being followed
-    pub total_blogs: u64,
-    /// List of blogs being followed
-    pub blogs: Vec<crate::Blog>,
 }
 
 /// Request body for follow/unfollow operations
