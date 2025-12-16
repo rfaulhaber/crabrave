@@ -4,13 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`crabrave` is a Rust HTTP client library for the Tumblr API. The project implements OAuth2 authentication and provides a client interface for interacting with Tumblr's API endpoints.
+`crabrave` is a Rust HTTP client library for the Tumblr API. The project implements both OAuth1 and OAuth2 authentication and provides a comprehensive client interface for interacting with Tumblr's API endpoints.
 
-**Design Philosophy:** This client should be modeled after [Octocrab](https://github.com/XAMPPRocky/octocrab) - designed to be very ergonomic to use within Rust. The API should feel natural and idiomatic, with a focus on developer experience similar to how Octocrab provides an elegant interface for GitHub's API.
+**Design Philosophy:** This client is modeled after [Octocrab](https://github.com/XAMPPRocky/octocrab) - designed to be very ergonomic to use within Rust. The API should feel natural and idiomatic, with a focus on developer experience similar to how Octocrab provides an elegant interface for GitHub's API.
 
-**Workspace Structure:** This is a Cargo workspace with two crates:
-- `crabrave/` - The main library crate (no runtime dependencies like tokio)
-- `oauth-helper/` - A standalone OAuth2 token helper binary for integration tests
+**Project Structure:** This is a single Rust library crate with:
+- Main library code at the repository root
+- Handler modules organized in `handlers/` directory
+- Integration tests in `tests/` directory
+- No runtime dependencies like tokio (runtime-agnostic async)
 
 ## Development Environment
 
@@ -21,7 +23,7 @@ nix develop
 ```
 
 The development shell includes:
-- Rust stable toolchain
+- Rust stable toolchain (edition 2024)
 - clippy (linter)
 - rust-analyzer (LSP)
 - cargo-nextest (test runner)
@@ -75,24 +77,43 @@ The project uses a modular structure with the main library in `lib.rs` and speci
 **`Crabrave` Client** (`lib.rs`)
 - Main entry point with builder pattern initialization
 - Supports OAuth1, OAuth2, and API-key-only authentication
-- Runtime-agnostic async implementation
+- Runtime-agnostic async implementation (no tokio dependency in library)
 - Automatic User-Agent header configuration
-- Built-in rate limit detection
+- Built-in rate limit detection (429 status handling)
+- OAuth1 signature generation with HMAC-SHA1
 
 **Error Handling** (`error.rs`)
 - `CrabError` enum with comprehensive error types
 - Rate limit errors include retry-after information
 - Proper error chains with thiserror
+- Specialized errors for authentication and API failures
 
 **Response Parsing** (`response.rs`)
 - `ApiResponse<T>` envelope parser
 - Smart status checking before deserialization
 - Handles Tumblr's `{meta, response}` structure
+- `EmptyResponse` for endpoints that don't return data
 
 **Models** (`models.rs`)
-- `Blog`, `User`, `Page<T>` - Core data structures
+- `Blog`, `User` - Core data structures
 - `BlogIdentifier` - Enum supporting name/hostname/UUID
+- `Page<T>` - Pagination wrapper with total count and next page links
+- `TumblrmartAccessories`, `Badge` - Premium features
 - All models use serde for JSON serialization
+
+**OAuth Module** (`oauth.rs`)
+- `OAuth2Config` for managing OAuth2 authentication flow
+- Authorization URL generation with CSRF token
+- Token exchange functionality
+- Uses oauth2 crate for standard OAuth2 flows
+
+**NPF Module** (`npf.rs`)
+- Neue Post Format (NPF) types for modern Tumblr posts
+- `ContentBlock` enum: Text, Image, Link, Audio, Video
+- `InlineFormat` for rich text formatting
+- `MediaObject` for media handling
+- `LayoutBlock` for content arrangement
+- Helper constructors for common block types
 
 ### API Modules (handlers/)
 
@@ -100,59 +121,164 @@ The project uses a modular structure with the main library in `lib.rs` and speci
 
 **Blogs API** (`handlers/blog.rs`)
 ```rust
+// Blog information
 crab.blogs("staff").info().await?
+
+// Blog posts with builder
 crab.blogs("staff").posts().limit(20).send().await?
+
+// Avatar (returns URL or binary data depending on auth)
 crab.blogs("staff").avatar(Some(128)).await?
+
+// Followers and following
+crab.blogs("staff").followers(Some(20), None).await?
+crab.blogs("staff").following().limit(10).send().await?
+
+// Likes
+crab.blogs("staff").likes().limit(20).send().await?
+
+// Blocks
+crab.blogs("staff").blocks().limit(20).send().await?
 ```
 
 **Users API** (`handlers/user.rs`)
 ```rust
+// User information
 crab.users().info().await?
+
+// Dashboard posts
 crab.users().dashboard().limit(20).send().await?
+
+// User likes (via internal likes handler)
 crab.users().likes().before(timestamp).send().await?
+
+// Following operations (via internal following handler)
+crab.users().following().limit(20).send().await?
 crab.users().follow("blog").await?
+crab.users().unfollow("blog").await?
 ```
+
+**Posts API** (`handlers/posts.rs`)
+```rust
+// Get a specific post
+crab.posts().get("my-blog", "123456").await?
+
+// Create posts using NPF
+crab.posts()
+    .create_text("my-blog")
+    .title("Hello World")
+    .body("This is my first post!")
+    .tags(vec!["rust", "programming"])
+    .send()
+    .await?
+
+// Delete a post
+crab.posts().delete("my-blog", "123456").await?
+```
+
+**Tagged API** (`handlers/tagged.rs`)
+```rust
+// Search posts by tag
+crab.tagged("photography").limit(20).send().await?
+crab.tagged("art").before(1234567890).send().await?
+crab.tagged("rust").filter("text").send().await?
+```
+
+**Communities API** (`handlers/communities.rs`)
+```rust
+// Community timeline
+crab.communities("rust-community")
+    .timeline()
+    .limit(20)
+    .send()
+    .await?
+
+// Join/leave communities
+crab.communities("rust-community").join().await?
+crab.communities("rust-community").leave().await?
+
+// Get members
+crab.communities("rust-community").members(Some(20), None).await?
+```
+
+**Internal Handlers:**
+- `following.rs` - Following/followers operations used by both Blogs and Users APIs
+- `likes.rs` - Likes operations used by both Blogs and Users APIs
 
 ### Builder Pattern
 
 All complex queries use type-safe builders:
-- `PostsBuilder` - Blog posts with filters
+- `PostsBuilder` - Blog posts with filters (type, tag, limit, offset, etc.)
 - `DashboardBuilder` - User dashboard with options
-- `LikesBuilder` - Liked posts with pagination
+- `LikesBuilder` - Liked posts with pagination (limit, before, after)
+- `FollowingBuilder` - Following list with pagination
+- `TaggedBuilder` - Tagged posts search
+- `TimelineBuilder` - Community timeline
+- `BlocksBuilder` - Blocked blogs
 
 ### API Endpoints
 
 - Base URL: `https://api.tumblr.com/v2`
-- OAuth2 endpoints: `/oauth2/authorize` and `/oauth2/token`
+- OAuth2 authorize: `https://www.tumblr.com/oauth2/authorize`
+- OAuth2 token: `https://api.tumblr.com/v2/oauth2/token`
 - All requests include required User-Agent header
 - Rate limits: 300/min per IP, 1000/hr per key
+- 429 status code triggers `CrabError::RateLimit` with retry-after
 
 ### Dependencies
 
-- `reqwest`: HTTP client (json, multipart, rustls-tls)
-- `serde`/`serde_json`: Serialization
+**Core:**
+- `reqwest`: HTTP client with features: json, multipart, rustls-tls, charset, system-proxy
+- `serde`/`serde_json`: JSON serialization
+- `serde_urlencoded`: Query parameter encoding
 - `thiserror`: Custom error types
 - `url`: URL parsing
+- `oauth2`: OAuth2 flow implementation
 
-## Implementation Plan
+**Cryptography (for OAuth1):**
+- `base64`: Base64 encoding for signatures
+- `hmac`: HMAC implementation
+- `sha1`: SHA-1 hashing for OAuth1 signatures
+- `urlencoding`: URL encoding for OAuth1 parameters
 
-**See `IMPLEMENTATION_PLAN.md` for the complete implementation roadmap**, including:
-- Detailed architecture design
-- API module organization (Blogs, Users, Posts, Tagged, Communities)
-- Type system and models
-- Phase-by-phase task list with completion status
-- Technical decisions and rationale
+**Other:**
+- `anyhow`: Error handling utilities
 
-**Current Status:** Phase 4 (API Modules) - ~40% complete
-- ✅ Blogs API complete
-- ✅ Users API complete
-- 🚧 Posts, Tagged, Communities APIs remaining
+**Dev Dependencies:**
+- `wiremock`: HTTP mocking for tests
+- `tokio`: Async runtime for tests (not used in library)
+- `dirs`: Directory utilities for tests
 
-The implementation plan provides comprehensive context for continuing development of this library.
+## Implementation Status
+
+**Current Status:** All major API modules are implemented and functional
+
+✅ **Complete:**
+- Core client with OAuth1/OAuth2/API-key authentication
+- Error handling and response parsing
+- Models and type system
+- NPF (Neue Post Format) support
+- Blogs API (info, posts, avatar, followers, following, likes, blocks)
+- Users API (info, dashboard, likes, following operations)
+- Posts API (get, create, delete)
+- Tagged API (search by tag)
+- Communities API (timeline, join/leave, members)
+
+🚧 **Potential Future Work:**
+- Additional NPF content block types
+- More comprehensive post creation builders
+- Pagination helper utilities
+- Media upload support (post_multipart method exists but not implemented)
+- Rate limit retry logic
+- Token refresh for OAuth2
 
 ## Important Notes
 
 - Uses Rust edition 2024
-- The flake.nix has a placeholder `projectName = "CHANGEME"` that should be updated to "crabrave"
 - TLS uses `rustls-tls` rather than native-tls for better portability
 - User-Agent header is **required** by Tumblr API (apps may be suspended without it)
+- The library has no runtime dependencies - users bring their own async runtime (tokio, async-std, etc.)
+- Strict clippy configuration enforces no unwrap/expect/panic/todo/print in production code
+- OAuth1 generates HMAC-SHA1 signatures for legacy app support
+- The `/blog/avatar` endpoint returns binary data for non-OAuth1 requests, JSON for OAuth1
+- Tagged endpoint returns posts directly, not wrapped in `response.posts` like other endpoints
