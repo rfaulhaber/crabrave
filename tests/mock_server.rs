@@ -617,3 +617,31 @@ async fn test_user_following() {
 
     assert_eq!(result.total_blogs, 1190);
 }
+
+#[tokio::test]
+async fn test_blog_followers() {
+    let mock_server = MockServer::start().await;
+
+    let mock_response = include_str!("./fixtures/blog_followers.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/followers")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .followers()
+        .get()
+        .await
+        .expect("Callout to get blog likes failed");
+
+    assert_eq!(result.total_users, 2450);
+}

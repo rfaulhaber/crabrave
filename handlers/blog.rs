@@ -170,6 +170,10 @@ impl Blogs {
         FollowingBuilder::blog(self.client.clone(), self.identifier.clone())
     }
 
+    pub fn followers(&self) -> FollowersBuilder {
+        FollowersBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
     /// Gets posts from the blog
     ///
     /// Returns a builder for configuring the posts request.
@@ -366,7 +370,6 @@ struct BlocksQuery {
 pub struct BlocksBuilder {
     client: Crabrave,
     identifier: BlogIdentifier,
-    bulk: bool,
     query: BlocksQuery,
 }
 
@@ -375,7 +378,6 @@ impl BlocksBuilder {
         Self {
             client,
             identifier: identifier.into(),
-            bulk: false,
             query: BlocksQuery::default(),
         }
     }
@@ -431,6 +433,57 @@ pub struct BlockBlogRespsone {
 struct BulkBlockRequest {
     blocked_tumblelogs: String,
     force: bool,
+}
+
+pub struct FollowersBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: FollowersQuery,
+}
+
+#[derive(Serialize, Default)]
+struct FollowersQuery {
+    limit: Option<u32>,
+    offset: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FollowersResponse {
+    pub total_users: u64,
+    pub users: Vec<FollowerUser>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FollowerUser {
+    pub name: String,
+    pub url: String,
+    pub following: bool,
+    pub updated: i64,
+}
+
+impl FollowersBuilder {
+    pub fn new(client: Crabrave, identifier: impl Into<BlogIdentifier>) -> Self {
+        Self {
+            client,
+            identifier: identifier.into(),
+            query: FollowersQuery::default(),
+        }
+    }
+
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.query.limit = Some(limit);
+        self
+    }
+
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
+    pub async fn get(self) -> CrabResult<FollowersResponse> {
+        let path = format!("blog/{}/followers", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
 }
 
 #[cfg(test)]
