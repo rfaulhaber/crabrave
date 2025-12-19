@@ -6,7 +6,6 @@ use crate::{
     models::TumblrmartAccessories,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 /// API for blog-related endpoints
 ///
@@ -176,13 +175,14 @@ impl Blogs {
     }
 
     pub async fn followed_by(&self, blog_name: impl std::fmt::Display) -> CrabResult<bool> {
-        let path = format!("blog/{}/followed_by?query={}", self.identifier, blog_name);
+        #[derive(Deserialize)]
+        struct FollowedByResponse {
+            followed_by: bool,
+        }
 
-        self.client
-            .get(&path)
-            .await
-            // TODO accomplish less jankily
-            .map(|resp: Value| resp.get("followed_by").unwrap().as_bool().unwrap())
+        let path = format!("blog/{}/followed_by?query={}", self.identifier, blog_name);
+        let resp: FollowedByResponse = self.client.get(&path).await?;
+        Ok(resp.followed_by)
     }
 
     /// Gets posts from the blog
