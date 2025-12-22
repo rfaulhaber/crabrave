@@ -74,6 +74,7 @@ pub use response::{ApiResponse, EmptyResponse, Meta};
 
 use base64::Engine;
 use hmac::{Hmac, Mac};
+use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
 use sha1::Sha1;
@@ -260,11 +261,12 @@ impl Crabrave {
     /// // Get a specific post
     /// let post = crab.posts().get("my-blog", "123456").await?;
     ///
-    /// // Create a text post
+    /// // Create a post using NPF
     /// let new_post = crab.posts()
-    ///     .create_text("my-blog")
-    ///     .title("Hello World")
-    ///     .body("This is my first post!")
+    ///     .create("my-blog")
+    ///     .content(vec![
+    ///         crabrave::npf::ContentBlock::text("Hello World!"),
+    ///     ])
     ///     .tags(vec!["rust", "programming"])
     ///     .send()
     ///     .await?;
@@ -344,7 +346,12 @@ impl Crabrave {
             .map(|d| d.as_secs().to_string())
             .unwrap_or_else(|_| "0".to_string());
 
-        let nonce: String = timestamp.chars().rev().collect();
+        // Generate cryptographically random nonce (32 alphanumeric characters)
+        let nonce: String = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect();
 
         // Collect OAuth parameters (using String keys and values to avoid lifetime issues)
         let mut params: BTreeMap<String, String> = BTreeMap::new();
@@ -537,7 +544,7 @@ impl Crabrave {
         };
 
         let request = self.client.delete(&base_url).query(query);
-        let request = self.apply_auth(request, "GET", &full_url);
+        let request = self.apply_auth(request, "DELETE", &full_url);
         let response = request.send().await?;
 
         // Check for rate limiting
@@ -624,7 +631,7 @@ impl Crabrave {
         response::parse_response_bytes(&bytes)
     }
 
-    pub(crate) async fn post_multipart<T, B>(&self, path: &str, body: &B) -> CrabResult<T>
+    pub(crate) async fn post_multipart<T, B>(&self, _path: &str, _body: &B) -> CrabResult<T>
     where
         T: serde::de::DeserializeOwned,
         B: serde::Serialize,

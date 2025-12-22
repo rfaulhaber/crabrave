@@ -10,7 +10,7 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [11/25]
+* Blog [15/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
 ** DONE /blocks – Retrieve Blog's Blocks
@@ -24,10 +24,10 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /followers — Retrieve a Blog's Followers
 ** DONE /followed_by — Check If Followed By Blog
 ** DONE /posts – Retrieve Published Posts
-** TODO /posts/queue — Retrieve Queued Posts
-** TODO /posts/queue/reorder — Reorder Queued Posts
-** TODO /posts/queue/shuffle — Shuffle Queued Posts
-** TODO /posts/draft — Retrieve Draft Posts
+** DONE /posts/queue — Retrieve Queued Posts
+** DONE /posts/queue/reorder — Reorder Queued Posts
+** DONE /posts/queue/shuffle — Shuffle Queued Posts
+** DONE /posts/draft — Retrieve Draft Posts
 ** TODO /posts/submission — Retrieve Submission Posts
 ** TODO /notifications — Retrieve Blog's Activity Feed
 ** STRT /posts - Create/Reblog a Post (Neue Post Format)

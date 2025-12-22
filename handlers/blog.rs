@@ -211,6 +211,130 @@ impl Blogs {
     pub fn posts(&self) -> PostsBuilder {
         PostsBuilder::new(self.client.clone(), self.identifier.clone())
     }
+
+    /// Gets queued posts for the blog
+    ///
+    /// Returns a builder for configuring the queue request.
+    /// Requires OAuth authentication.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let queued = crab.blogs("my-blog")
+    ///     .queue()
+    ///     .limit(10)
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for post in queued.posts {
+    ///     println!("Queued post: {}", post.id);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn queue(&self) -> QueueBuilder {
+        QueueBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
+    /// Reorders a post within the queue
+    ///
+    /// Moves a post to a new position in the queue.
+    ///
+    /// # Arguments
+    ///
+    /// * `post_id` - The ID of the post to move
+    /// * `insert_after` - The ID of the post to insert after, or "0" to move to the first position
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Move post 123456 to the first position
+    /// crab.blogs("my-blog").reorder_queue("123456", "0").await?;
+    ///
+    /// // Move post 123456 to after post 789012
+    /// crab.blogs("my-blog").reorder_queue("123456", "789012").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn reorder_queue(
+        &self,
+        post_id: impl Into<String>,
+        insert_after: impl Into<String>,
+    ) -> CrabResult<QueueActionResponse> {
+        let path = format!("blog/{}/posts/queue/reorder", self.identifier.as_str());
+        let body = ReorderQueueRequest {
+            post_id: post_id.into(),
+            insert_after: insert_after.into(),
+        };
+        self.client.post(&path, &body).await
+    }
+
+    /// Shuffles the queue randomly
+    ///
+    /// Randomly reorders all posts in the queue.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// crab.blogs("my-blog").shuffle_queue().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn shuffle_queue(&self) -> CrabResult<QueueActionResponse> {
+        let path = format!("blog/{}/posts/queue/shuffle", self.identifier.as_str());
+        self.client.post(&path, &serde_json::json!({})).await
+    }
+
+    /// Gets draft posts for the blog
+    ///
+    /// Returns a builder for configuring the drafts request.
+    /// Requires OAuth authentication.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let drafts = crab.blogs("my-blog")
+    ///     .drafts()
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for post in drafts.posts {
+    ///     println!("Draft post: {}", post.id);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn drafts(&self) -> DraftsBuilder {
+        DraftsBuilder::new(self.client.clone(), self.identifier.clone())
+    }
 }
 
 /// Response from the blog info endpoint
@@ -319,6 +443,175 @@ impl PostsBuilder {
     }
 }
 
+/// Query parameters for fetching queued posts
+#[derive(Debug, Clone, Serialize, Default)]
+struct QueueQuery {
+    /// Maximum number of posts to return (1-20, default: 20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Post number to start at (default: 0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+
+    /// Response format filter: "text" for plain text, "raw" for user-entered format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter: Option<String>,
+}
+
+/// Builder for querying a blog's post queue
+///
+/// This builder allows you to configure various parameters for fetching queued posts
+/// from a blog before sending the request.
+pub struct QueueBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: QueueQuery,
+}
+
+impl QueueBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self {
+            client,
+            identifier,
+            query: QueueQuery::default(),
+        }
+    }
+
+    /// Sets the number of posts to return (1-20, default 20)
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.query.limit = Some(limit);
+        self
+    }
+
+    /// Sets the post offset for pagination (default 0)
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
+    /// Sets the response format filter
+    ///
+    /// Options:
+    /// - "text": Returns plain text only, strips HTML
+    /// - "raw": Returns the content in the user-entered format
+    /// - None (default): Returns HTML formatted content
+    pub fn filter(mut self, filter: impl Into<String>) -> Self {
+        self.query.filter = Some(filter.into());
+        self
+    }
+
+    /// Sends the request and returns the queued posts
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid or missing
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<QueueResponse> {
+        let path = format!("blog/{}/posts/queue", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
+}
+
+/// Response from the queue endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueueResponse {
+    /// List of queued posts
+    pub posts: Vec<Post>,
+}
+
+/// Request body for reordering a post in the queue
+#[derive(Debug, Clone, Serialize)]
+struct ReorderQueueRequest {
+    /// The ID of the post to move
+    post_id: String,
+    /// The ID of the post to insert after (use "0" for first position)
+    insert_after: String,
+}
+
+/// Response from queue reorder/shuffle operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueueActionResponse {
+    /// Success status (may not always be present)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub success: Option<bool>,
+}
+
+/// Query parameters for fetching draft posts
+#[derive(Debug, Clone, Serialize, Default)]
+struct DraftsQuery {
+    /// Return posts that have appeared before this ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before_id: Option<String>,
+
+    /// Response format filter: "text" for plain text, "raw" for user-entered format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter: Option<String>,
+}
+
+/// Builder for querying a blog's draft posts
+///
+/// This builder allows you to configure various parameters for fetching draft posts
+/// from a blog before sending the request.
+pub struct DraftsBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: DraftsQuery,
+}
+
+impl DraftsBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self {
+            client,
+            identifier,
+            query: DraftsQuery::default(),
+        }
+    }
+
+    /// Return posts that have appeared before this ID
+    ///
+    /// Use this for pagination through draft posts.
+    pub fn before_id(mut self, id: impl Into<String>) -> Self {
+        self.query.before_id = Some(id.into());
+        self
+    }
+
+    /// Sets the response format filter
+    ///
+    /// Options:
+    /// - "text": Returns plain text only, strips HTML
+    /// - "raw": Returns the content in the user-entered format
+    /// - None (default): Returns HTML formatted content
+    pub fn filter(mut self, filter: impl Into<String>) -> Self {
+        self.query.filter = Some(filter.into());
+        self
+    }
+
+    /// Sends the request and returns the draft posts
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid or missing
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<DraftsResponse> {
+        let path = format!("blog/{}/posts/draft", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
+}
+
+/// Response from the drafts endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DraftsResponse {
+    /// List of draft posts
+    pub posts: Vec<Post>,
+}
+
 /// Response from the posts endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostsResponse {
@@ -403,7 +696,7 @@ impl BlocksBuilder {
         self
     }
 
-    pub async fn get(self) -> CrabResult<BlocksResponse> {
+    pub async fn send(self) -> CrabResult<BlocksResponse> {
         let path = format!("blog/{}/blocks", self.identifier.as_str());
         self.client.get_with_query(&path, &self.query).await
     }
@@ -491,7 +784,7 @@ impl FollowersBuilder {
         self
     }
 
-    pub async fn get(self) -> CrabResult<FollowersResponse> {
+    pub async fn send(self) -> CrabResult<FollowersResponse> {
         let path = format!("blog/{}/followers", self.identifier.as_str());
         self.client.get_with_query(&path, &self.query).await
     }

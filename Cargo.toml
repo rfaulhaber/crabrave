@@ -9,6 +9,7 @@ path = "lib.rs"
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
+rand = "0.8"
 hmac = "0.12"
 oauth2 = { version = "5", features = ["reqwest"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls", "charset", "system-proxy"] }

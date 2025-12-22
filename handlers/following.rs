@@ -1,5 +1,5 @@
 use crate::{Blog, BlogIdentifier, CrabResult, Crabrave};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub(crate) struct FollowingQuery {
@@ -47,7 +47,7 @@ impl FollowingBuilder {
         self
     }
 
-    pub async fn get(self) -> CrabResult<FollowingResponse> {
+    pub async fn send(self) -> CrabResult<FollowingResponse> {
         match self.blog {
             Some(id) => {
                 self.client

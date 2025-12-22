@@ -26,11 +26,12 @@ use serde::{Deserialize, Serialize};
 /// // Get a specific post
 /// let post = crab.posts().get("my-blog", "123456").await?;
 ///
-/// // Create a text post
+/// // Create a post using NPF
 /// let new_post = crab.posts()
-///     .create_text("my-blog")
-///     .title("Hello World")
-///     .body("This is my first post!")
+///     .create("my-blog")
+///     .content(vec![
+///         crabrave::npf::ContentBlock::text("Hello World!"),
+///     ])
 ///     .tags(vec!["rust", "programming"])
 ///     .send()
 ///     .await?;
@@ -144,7 +145,7 @@ impl Posts {
     /// #     .access_token("token")
     /// #     .build()?;
     /// let post = crab.posts()
-    ///     .create_npf("my-blog")
+    ///     .create("my-blog")
     ///     .content(vec![
     ///         ContentBlock::heading("My Post", 1),
     ///         ContentBlock::text("This is the body of my post."),

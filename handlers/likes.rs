@@ -76,7 +76,7 @@ impl LikesBuilder {
     }
 
     /// Sends the request and returns the liked posts
-    pub async fn get(self) -> CrabResult<LikesResponse> {
+    pub async fn send(self) -> CrabResult<LikesResponse> {
         match self.blog {
             Some(id) => {
                 self.client

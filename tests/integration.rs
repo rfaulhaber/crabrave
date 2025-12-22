@@ -356,7 +356,7 @@ async fn nonexistent_blog() {
 async fn user_likes() {
     let client = test_client().await.expect("Failed to create client");
 
-    let result = client.users().likes().limit(5).get().await;
+    let result = client.users().likes().limit(5).send().await;
 
     match result {
         Ok(likes) => {
@@ -373,7 +373,7 @@ async fn user_likes() {
 async fn user_following() {
     let client = test_client().await.expect("Failed to create client");
 
-    let result = client.users().following(Some(5), None).await;
+    let result = client.users().following().limit(5).send().await;
 
     match result {
         Ok(following) => {
