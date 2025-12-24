@@ -335,6 +335,131 @@ impl Blogs {
     pub fn drafts(&self) -> DraftsBuilder {
         DraftsBuilder::new(self.client.clone(), self.identifier.clone())
     }
+
+    /// Gets submission posts for the blog
+    ///
+    /// Returns a builder for configuring the submissions request.
+    /// Requires OAuth authentication.
+    ///
+    /// Submissions are posts that have been submitted to your blog by other users
+    /// for your consideration before publishing.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let submissions = crab.blogs("my-blog")
+    ///     .submissions()
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for post in submissions.posts {
+    ///     if let Some(author) = &post.post_author {
+    ///         println!("Submission from: {}", author);
+    ///     } else if let Some(anon_name) = &post.anonymous_name {
+    ///         println!("Anonymous submission from: {}", anon_name);
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn submissions(&self) -> SubmissionBuilder {
+        SubmissionBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
+    /// Gets notifications for the blog
+    ///
+    /// Returns a builder for configuring the notifications request.
+    /// Requires OAuth authentication.
+    ///
+    /// Notifications include likes, reblogs, follows, mentions, asks, and more.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # use crabrave::handlers::blog::NotificationType;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Get all notifications
+    /// let all_notifs = crab.blogs("my-blog")
+    ///     .notifications()
+    ///     .send()
+    ///     .await?;
+    ///
+    /// // Get only likes and reblogs
+    /// let filtered = crab.blogs("my-blog")
+    ///     .notifications()
+    ///     .types(vec![NotificationType::Like, NotificationType::ReblogNaked])
+    ///     .rollups(false)
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for notif in filtered.notifications {
+    ///     println!("{} notification from {:?}", notif.notification_type, notif.from_tumblelog_name);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn notifications(&self) -> NotificationsBuilder {
+        NotificationsBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
+    /// Gets notes (interactions) for a specific post on the blog
+    ///
+    /// Returns a builder for configuring the notes request.
+    /// Requires API key authentication.
+    ///
+    /// Notes include likes, reblogs, and replies on a specific post.
+    /// Different modes allow filtering the type of notes returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `post_id` - The ID of the post to fetch notes for
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # use crabrave::handlers::blog::NoteMode;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .build()?;
+    /// // Get all notes on a post
+    /// let notes = crab.blogs("my-blog")
+    ///     .notes("123456789")
+    ///     .send()
+    ///     .await?;
+    ///
+    /// println!("Total notes: {}", notes.total_notes);
+    ///
+    /// // Get only likes
+    /// let likes = crab.blogs("my-blog")
+    ///     .notes("123456789")
+    ///     .mode(NoteMode::Likes)
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for note in likes.notes {
+    ///     println!("{} liked this post", note.blog_name);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn notes(&self, post_id: impl Into<String>) -> NotesBuilder {
+        NotesBuilder::new(self.client.clone(), self.identifier.clone(), post_id)
+    }
 }
 
 /// Response from the blog info endpoint
@@ -612,6 +737,588 @@ pub struct DraftsResponse {
     pub posts: Vec<Post>,
 }
 
+/// Query parameters for fetching submission posts
+#[derive(Debug, Clone, Serialize, Default)]
+struct SubmissionQuery {
+    /// Post number to start at (default: 0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+
+    /// Response format filter: "text" for plain text, "raw" for user-entered format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter: Option<String>,
+}
+
+/// Builder for querying a blog's submission posts
+///
+/// This builder allows you to configure various parameters for fetching submission posts
+/// from a blog before sending the request.
+///
+/// # Example
+///
+/// ```no_run
+/// # use crabrave::Crabrave;
+/// # async fn example() -> Result<(), crabrave::CrabError> {
+/// # let crab = Crabrave::builder()
+/// #     .consumer_key("key")
+/// #     .consumer_secret("secret")
+/// #     .access_token("token")
+/// #     .build()?;
+/// let submissions = crab.blogs("my-blog")
+///     .submissions()
+///     .offset(10)
+///     .send()
+///     .await?;
+///
+/// for post in submissions.posts {
+///     println!("Submission from: {:?}", post.post_author);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub struct SubmissionBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: SubmissionQuery,
+}
+
+impl SubmissionBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self {
+            client,
+            identifier,
+            query: SubmissionQuery::default(),
+        }
+    }
+
+    /// Sets the post offset for pagination (default 0)
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
+    /// Sets the response format filter
+    ///
+    /// Options:
+    /// - "text": Returns plain text only, strips HTML
+    /// - "raw": Returns the content in the user-entered format
+    /// - None (default): Returns HTML formatted content
+    pub fn filter(mut self, filter: impl Into<String>) -> Self {
+        self.query.filter = Some(filter.into());
+        self
+    }
+
+    /// Sends the request and returns the submission posts
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid or missing (OAuth required)
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<SubmissionResponse> {
+        let path = format!("blog/{}/posts/submission", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
+}
+
+/// Response from the submissions endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubmissionResponse {
+    /// List of submission posts
+    pub posts: Vec<Post>,
+}
+
+/// Types of notifications that can be filtered
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NotificationType {
+    Like,
+    Reply,
+    Follow,
+    MentionInReply,
+    MentionInPost,
+    ReblogNaked,
+    ReblogWithContent,
+    Ask,
+    AnsweredAsk,
+    NewGroupBlogMember,
+    PostAttribution,
+    PostFlagged,
+    PostAppealAccepted,
+    PostAppealRejected,
+    WhatYouMissed,
+    ConversationalNote,
+}
+
+impl NotificationType {
+    /// Returns the string representation used in API requests
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NotificationType::Like => "like",
+            NotificationType::Reply => "reply",
+            NotificationType::Follow => "follow",
+            NotificationType::MentionInReply => "mention_in_reply",
+            NotificationType::MentionInPost => "mention_in_post",
+            NotificationType::ReblogNaked => "reblog_naked",
+            NotificationType::ReblogWithContent => "reblog_with_content",
+            NotificationType::Ask => "ask",
+            NotificationType::AnsweredAsk => "answered_ask",
+            NotificationType::NewGroupBlogMember => "new_group_blog_member",
+            NotificationType::PostAttribution => "post_attribution",
+            NotificationType::PostFlagged => "post_flagged",
+            NotificationType::PostAppealAccepted => "post_appeal_accepted",
+            NotificationType::PostAppealRejected => "post_appeal_rejected",
+            NotificationType::WhatYouMissed => "what_you_missed",
+            NotificationType::ConversationalNote => "conversational_note",
+        }
+    }
+}
+
+impl std::fmt::Display for NotificationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Represents a Tumblr notification/activity item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Notification {
+    /// Unique identifier for this notification
+    pub id: String,
+    /// Type of notification (like, reblog, follow, etc.)
+    #[serde(rename = "type")]
+    pub notification_type: String,
+    /// Unix epoch timestamp when the notification occurred
+    pub timestamp: i64,
+    /// Whether this notification is unread
+    #[serde(default)]
+    pub unread: bool,
+    /// The post ID this notification is about (if applicable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_post_id: Option<String>,
+    /// The blog name that triggered this notification
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_tumblelog_name: Option<String>,
+    /// Additional context about the notification (varies by type)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_tumblelog_name: Option<String>,
+    /// Media objects associated with the notification
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub media: Vec<serde_json::Value>,
+    /// Summary text for the notification
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+}
+
+/// Pagination links for notifications
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationLinks {
+    /// Link to fetch the next page of notifications
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next: Option<NotificationNextLink>,
+}
+
+/// Next page link structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationNextLink {
+    /// The href for the next page (contains query parameters)
+    pub href: String,
+}
+
+/// Response from the notifications endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationsResponse {
+    /// List of notifications
+    pub notifications: Vec<Notification>,
+    /// Pagination links
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<NotificationLinks>,
+}
+
+/// Query parameters for fetching notifications
+#[derive(Debug, Clone, Serialize, Default)]
+struct NotificationsQuery {
+    /// Return notifications before this Unix epoch timestamp
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<i64>,
+
+    /// Whether to consolidate similar activity items (default: true)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rollups: Option<bool>,
+
+    /// Filter by notification types (comma-separated in serialization)
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_types_array")]
+    types: Option<Vec<String>>,
+
+    /// Post IDs to exclude from results (comma-separated in serialization)
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_string_array")]
+    omit_post_ids: Option<Vec<String>>,
+}
+
+fn serialize_types_array<S>(value: &Option<Vec<String>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match value {
+        Some(v) => serializer.serialize_str(&v.join(",")),
+        None => serializer.serialize_none(),
+    }
+}
+
+fn serialize_string_array<S>(value: &Option<Vec<String>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match value {
+        Some(v) => serializer.serialize_str(&v.join(",")),
+        None => serializer.serialize_none(),
+    }
+}
+
+/// Builder for querying a blog's notifications
+///
+/// This builder allows you to configure various parameters for fetching notifications
+/// from a blog before sending the request.
+///
+/// # Example
+///
+/// ```no_run
+/// # use crabrave::Crabrave;
+/// # use crabrave::handlers::blog::NotificationType;
+/// # async fn example() -> Result<(), crabrave::CrabError> {
+/// # let crab = Crabrave::builder()
+/// #     .consumer_key("key")
+/// #     .consumer_secret("secret")
+/// #     .access_token("token")
+/// #     .build()?;
+/// let notifications = crab.blogs("my-blog")
+///     .notifications()
+///     .types(vec![NotificationType::Like, NotificationType::ReblogNaked])
+///     .send()
+///     .await?;
+///
+/// for notif in notifications.notifications {
+///     println!("{}: {} from {:?}", notif.notification_type, notif.id, notif.from_tumblelog_name);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub struct NotificationsBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: NotificationsQuery,
+}
+
+impl NotificationsBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self {
+            client,
+            identifier,
+            query: NotificationsQuery::default(),
+        }
+    }
+
+    /// Return notifications before this Unix epoch timestamp
+    ///
+    /// Use this for pagination through notifications.
+    pub fn before(mut self, timestamp: i64) -> Self {
+        self.query.before = Some(timestamp);
+        self
+    }
+
+    /// Whether to consolidate similar activity items
+    ///
+    /// When true (the default), similar notifications may be grouped together.
+    /// Set to false to get individual notifications.
+    pub fn rollups(mut self, rollups: bool) -> Self {
+        self.query.rollups = Some(rollups);
+        self
+    }
+
+    /// Filter notifications by type
+    ///
+    /// Only return notifications of the specified types.
+    pub fn types(mut self, types: Vec<NotificationType>) -> Self {
+        self.query.types = Some(types.iter().map(|t| t.to_string()).collect());
+        self
+    }
+
+    /// Filter notifications by type using string values
+    ///
+    /// Only return notifications of the specified types.
+    /// Use this if you need to specify types not covered by NotificationType enum.
+    pub fn types_str(mut self, types: Vec<impl Into<String>>) -> Self {
+        self.query.types = Some(types.into_iter().map(|t| t.into()).collect());
+        self
+    }
+
+    /// Exclude notifications about specific posts
+    ///
+    /// Notifications about these post IDs will not be returned.
+    pub fn omit_post_ids(mut self, post_ids: Vec<impl Into<String>>) -> Self {
+        self.query.omit_post_ids = Some(post_ids.into_iter().map(|id| id.into()).collect());
+        self
+    }
+
+    /// Sends the request and returns the notifications
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid or missing (OAuth required)
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<NotificationsResponse> {
+        let path = format!("blog/{}/notifications", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
+}
+
+/// Response formatting modes for the notes endpoint
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum NoteMode {
+    /// Returns all notes in reverse chronological order (default)
+    #[default]
+    All,
+    /// Returns only like interactions
+    Likes,
+    /// Returns replies and reblogs with commentary; other notes in rollup_notes
+    Conversation,
+    /// Returns only likes and reblogs
+    Rollup,
+    /// Returns only reblog notes, each including a tags array
+    ReblogsWithTags,
+}
+
+impl NoteMode {
+    /// Returns the string representation used in API requests
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NoteMode::All => "all",
+            NoteMode::Likes => "likes",
+            NoteMode::Conversation => "conversation",
+            NoteMode::Rollup => "rollup",
+            NoteMode::ReblogsWithTags => "reblogs_with_tags",
+        }
+    }
+}
+
+impl std::fmt::Display for NoteMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Represents a note (interaction) on a Tumblr post
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Note {
+    /// Type of interaction (reblog, like, reply, posted, etc.)
+    #[serde(rename = "type")]
+    pub note_type: String,
+    /// Unix epoch timestamp of the interaction
+    pub timestamp: i64,
+    /// Name of the interacting blog
+    pub blog_name: String,
+    /// Unique identifier of the interacting blog
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blog_uuid: Option<String>,
+    /// URL of the interacting blog
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blog_url: Option<String>,
+    /// Whether the requesting user follows this blog
+    #[serde(default)]
+    pub followed: bool,
+    /// Shape of the blog's avatar (square or circle)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar_shape: Option<String>,
+    /// Post ID for reblog notes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post_id: Option<String>,
+    /// Reblog parent blog name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblog_parent_blog_name: Option<String>,
+    /// Reply text for reply notes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_text: Option<String>,
+    /// Formatted reply text (HTML)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub formatting: Option<Vec<serde_json::Value>>,
+    /// Whether this note is from the original poster
+    #[serde(default)]
+    pub can_block: bool,
+    /// Tags added in reblog (for reblogs_with_tags mode)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    /// Added text in reblog
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub added_text: Option<String>,
+}
+
+/// Pagination links for notes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoteLinks {
+    /// Link to fetch the next page of notes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next: Option<NoteNextLink>,
+}
+
+/// Next page link structure for notes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoteNextLink {
+    /// Query parameters for the next page
+    pub query_params: NoteNextQueryParams,
+}
+
+/// Query parameters embedded in next link
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoteNextQueryParams {
+    /// Post ID
+    pub id: String,
+    /// Mode for the next request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    /// Timestamp before which to fetch notes
+    pub before_timestamp: i64,
+}
+
+/// Response from the notes endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotesResponse {
+    /// List of notes
+    pub notes: Vec<Note>,
+    /// Notes excluded from primary array (conversation mode only)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rollup_notes: Vec<Note>,
+    /// Total note count
+    #[serde(default)]
+    pub total_notes: u64,
+    /// Total likes count (conversation mode)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_likes: Option<u64>,
+    /// Total reblogs count (conversation mode)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_reblogs: Option<u64>,
+    /// Pagination links
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<NoteLinks>,
+}
+
+/// Query parameters for fetching notes
+#[derive(Debug, Clone, Serialize, Default)]
+struct NotesQuery {
+    /// Post ID to fetch notes for (required)
+    id: String,
+
+    /// Response formatting mode
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mode: Option<String>,
+
+    /// Fetch notes created before this timestamp
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before_timestamp: Option<i64>,
+}
+
+/// Builder for querying notes on a blog post
+///
+/// This builder allows you to configure various parameters for fetching notes
+/// (interactions like likes, reblogs, and replies) on a specific post.
+///
+/// # Example
+///
+/// ```no_run
+/// # use crabrave::Crabrave;
+/// # use crabrave::handlers::blog::NoteMode;
+/// # async fn example() -> Result<(), crabrave::CrabError> {
+/// # let crab = Crabrave::builder()
+/// #     .consumer_key("key")
+/// #     .build()?;
+/// // Get all notes on a post
+/// let notes = crab.blogs("my-blog")
+///     .notes("123456789")
+///     .send()
+///     .await?;
+///
+/// println!("Total notes: {}", notes.total_notes);
+///
+/// // Get only likes
+/// let likes = crab.blogs("my-blog")
+///     .notes("123456789")
+///     .mode(NoteMode::Likes)
+///     .send()
+///     .await?;
+///
+/// // Get reblogs with their tags
+/// let reblogs = crab.blogs("my-blog")
+///     .notes("123456789")
+///     .mode(NoteMode::ReblogsWithTags)
+///     .send()
+///     .await?;
+///
+/// for note in reblogs.notes {
+///     println!("{} reblogged with tags: {:?}", note.blog_name, note.tags);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub struct NotesBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: NotesQuery,
+}
+
+impl NotesBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier, post_id: impl Into<String>) -> Self {
+        Self {
+            client,
+            identifier,
+            query: NotesQuery {
+                id: post_id.into(),
+                mode: None,
+                before_timestamp: None,
+            },
+        }
+    }
+
+    /// Sets the response formatting mode
+    ///
+    /// - `All` (default): Returns all notes in reverse chronological order
+    /// - `Likes`: Returns only like interactions
+    /// - `Conversation`: Returns replies and reblogs with commentary
+    /// - `Rollup`: Returns only likes and reblogs
+    /// - `ReblogsWithTags`: Returns only reblogs, each including tags
+    pub fn mode(mut self, mode: NoteMode) -> Self {
+        self.query.mode = Some(mode.to_string());
+        self
+    }
+
+    /// Fetch notes created before this Unix timestamp
+    ///
+    /// Use this for pagination through notes. In "conversation" mode,
+    /// this should be in microseconds; otherwise in seconds.
+    pub fn before_timestamp(mut self, timestamp: i64) -> Self {
+        self.query.before_timestamp = Some(timestamp);
+        self
+    }
+
+    /// Sends the request and returns the notes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The post doesn't exist
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<NotesResponse> {
+        let path = format!("blog/{}/notes", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
+}
+
 /// Response from the posts endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostsResponse {
@@ -660,9 +1367,21 @@ pub struct Post {
     /// Note count (reblogs + likes)
     #[serde(default)]
     pub note_count: u64,
-    /// Current state (published, queued, draft, private)
+    /// Current state (published, queued, draft, private, submission)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+    /// Author of the submission (only present for submission posts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post_author: Option<String>,
+    /// Whether this is a submission post
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_submission: Option<bool>,
+    /// Name of anonymous submitter (only present for anonymous submissions)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anonymous_name: Option<String>,
+    /// Email of anonymous submitter (only present for anonymous submissions)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub anonymous_email: Option<String>,
 }
 
 #[derive(Serialize, Default)]

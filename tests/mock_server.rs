@@ -489,6 +489,977 @@ async fn test_blog_drafts_empty() {
     assert!(drafts.posts.is_empty());
 }
 
+// =============================================================================
+// Submission endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_blog_submissions() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/posts/submission", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "posts": [
+                    {
+                        "id": 444444,
+                        "id_string": "444444",
+                        "blog_name": TEST_BLOG_NAME,
+                        "post_url": format!("https://{}.tumblr.com/post/444444", TEST_BLOG_NAME),
+                        "type": "text",
+                        "timestamp": 1234567890,
+                        "state": "submission",
+                        "tags": ["submitted"],
+                        "note_count": 0,
+                        "post_author": "friendly-submitter",
+                        "is_submission": true
+                    },
+                    {
+                        "id": 555555,
+                        "id_string": "555555",
+                        "blog_name": TEST_BLOG_NAME,
+                        "post_url": format!("https://{}.tumblr.com/post/555555", TEST_BLOG_NAME),
+                        "type": "photo",
+                        "timestamp": 1234567891,
+                        "state": "submission",
+                        "tags": [],
+                        "note_count": 0,
+                        "post_author": "photo-lover",
+                        "is_submission": true
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .submissions()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let submissions = result.unwrap();
+    assert_eq!(submissions.posts.len(), 2);
+    assert_eq!(submissions.posts[0].id, "444444");
+    assert_eq!(submissions.posts[0].post_author, Some("friendly-submitter".to_string()));
+    assert_eq!(submissions.posts[0].is_submission, Some(true));
+    assert_eq!(submissions.posts[0].state, Some("submission".to_string()));
+    assert_eq!(submissions.posts[1].id, "555555");
+    assert_eq!(submissions.posts[1].post_author, Some("photo-lover".to_string()));
+}
+
+#[tokio::test]
+async fn test_blog_submissions_with_offset() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/posts/submission", TEST_BLOG_NAME)))
+        .and(query_param("offset", "10"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "posts": [
+                    {
+                        "id": 666666,
+                        "id_string": "666666",
+                        "blog_name": TEST_BLOG_NAME,
+                        "post_url": format!("https://{}.tumblr.com/post/666666", TEST_BLOG_NAME),
+                        "type": "text",
+                        "timestamp": 1234567892,
+                        "state": "submission",
+                        "tags": [],
+                        "note_count": 0,
+                        "post_author": "offset-submitter",
+                        "is_submission": true
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .submissions()
+        .offset(10)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let submissions = result.unwrap();
+    assert_eq!(submissions.posts.len(), 1);
+    assert_eq!(submissions.posts[0].id, "666666");
+}
+
+#[tokio::test]
+async fn test_blog_submissions_with_filter() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/posts/submission", TEST_BLOG_NAME)))
+        .and(query_param("filter", "text"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "posts": [
+                    {
+                        "id": 777777,
+                        "id_string": "777777",
+                        "blog_name": TEST_BLOG_NAME,
+                        "post_url": format!("https://{}.tumblr.com/post/777777", TEST_BLOG_NAME),
+                        "type": "text",
+                        "timestamp": 1234567893,
+                        "state": "submission",
+                        "tags": [],
+                        "note_count": 0,
+                        "post_author": "text-only",
+                        "is_submission": true
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .submissions()
+        .filter("text")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let submissions = result.unwrap();
+    assert_eq!(submissions.posts.len(), 1);
+    assert_eq!(submissions.posts[0].id, "777777");
+}
+
+#[tokio::test]
+async fn test_blog_submissions_empty() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/posts/submission", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "posts": []
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .submissions()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let submissions = result.unwrap();
+    assert!(submissions.posts.is_empty());
+}
+
+#[tokio::test]
+async fn test_blog_submissions_anonymous() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/posts/submission", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "posts": [
+                    {
+                        "id": 888888,
+                        "id_string": "888888",
+                        "blog_name": TEST_BLOG_NAME,
+                        "post_url": format!("https://{}.tumblr.com/post/888888", TEST_BLOG_NAME),
+                        "type": "text",
+                        "timestamp": 1234567894,
+                        "state": "submission",
+                        "tags": ["anonymous"],
+                        "note_count": 0,
+                        "is_submission": true,
+                        "anonymous_name": "Anonymous Fan",
+                        "anonymous_email": "anon@example.com"
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .submissions()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let submissions = result.unwrap();
+    assert_eq!(submissions.posts.len(), 1);
+    assert_eq!(submissions.posts[0].id, "888888");
+    assert_eq!(submissions.posts[0].anonymous_name, Some("Anonymous Fan".to_string()));
+    assert_eq!(submissions.posts[0].anonymous_email, Some("anon@example.com".to_string()));
+    assert!(submissions.posts[0].post_author.is_none());
+}
+
+// =============================================================================
+// Notifications endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_blog_notifications() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": [
+                    {
+                        "id": "notif-001",
+                        "type": "like",
+                        "timestamp": 1234567890,
+                        "unread": true,
+                        "target_post_id": "123456",
+                        "from_tumblelog_name": "friendly-blog"
+                    },
+                    {
+                        "id": "notif-002",
+                        "type": "reblog_naked",
+                        "timestamp": 1234567880,
+                        "unread": false,
+                        "target_post_id": "123456",
+                        "from_tumblelog_name": "reblogger-blog"
+                    },
+                    {
+                        "id": "notif-003",
+                        "type": "follow",
+                        "timestamp": 1234567870,
+                        "unread": true,
+                        "from_tumblelog_name": "new-follower"
+                    }
+                ],
+                "_links": {
+                    "next": {
+                        "href": "/blog/crabrave/notifications?before=1234567870"
+                    }
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert_eq!(notifs.notifications.len(), 3);
+    assert_eq!(notifs.notifications[0].id, "notif-001");
+    assert_eq!(notifs.notifications[0].notification_type, "like");
+    assert!(notifs.notifications[0].unread);
+    assert_eq!(notifs.notifications[0].from_tumblelog_name, Some("friendly-blog".to_string()));
+    assert_eq!(notifs.notifications[1].notification_type, "reblog_naked");
+    assert_eq!(notifs.notifications[2].notification_type, "follow");
+
+    // Check pagination links
+    assert!(notifs.links.is_some());
+    let links = notifs.links.unwrap();
+    assert!(links.next.is_some());
+    assert!(links.next.unwrap().href.contains("before="));
+}
+
+#[tokio::test]
+async fn test_blog_notifications_with_before() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .and(query_param("before", "1234567800"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": [
+                    {
+                        "id": "notif-older-001",
+                        "type": "like",
+                        "timestamp": 1234567750,
+                        "unread": false,
+                        "target_post_id": "111111",
+                        "from_tumblelog_name": "older-liker"
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .before(1234567800)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert_eq!(notifs.notifications.len(), 1);
+    assert_eq!(notifs.notifications[0].id, "notif-older-001");
+}
+
+#[tokio::test]
+async fn test_blog_notifications_with_types_filter() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .and(query_param("types", "like,follow"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": [
+                    {
+                        "id": "notif-like-001",
+                        "type": "like",
+                        "timestamp": 1234567890,
+                        "unread": true,
+                        "target_post_id": "123456",
+                        "from_tumblelog_name": "liker"
+                    },
+                    {
+                        "id": "notif-follow-001",
+                        "type": "follow",
+                        "timestamp": 1234567880,
+                        "unread": true,
+                        "from_tumblelog_name": "follower"
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    use crabrave::handlers::blog::NotificationType;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .types(vec![NotificationType::Like, NotificationType::Follow])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert_eq!(notifs.notifications.len(), 2);
+    assert!(notifs.notifications.iter().all(|n| n.notification_type == "like" || n.notification_type == "follow"));
+}
+
+#[tokio::test]
+async fn test_blog_notifications_with_rollups_disabled() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .and(query_param("rollups", "false"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": [
+                    {
+                        "id": "notif-individual-001",
+                        "type": "like",
+                        "timestamp": 1234567890,
+                        "unread": true,
+                        "target_post_id": "123456",
+                        "from_tumblelog_name": "liker1"
+                    },
+                    {
+                        "id": "notif-individual-002",
+                        "type": "like",
+                        "timestamp": 1234567889,
+                        "unread": true,
+                        "target_post_id": "123456",
+                        "from_tumblelog_name": "liker2"
+                    },
+                    {
+                        "id": "notif-individual-003",
+                        "type": "like",
+                        "timestamp": 1234567888,
+                        "unread": true,
+                        "target_post_id": "123456",
+                        "from_tumblelog_name": "liker3"
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .rollups(false)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert_eq!(notifs.notifications.len(), 3);
+    // All individual like notifications should be present
+    assert!(notifs.notifications.iter().all(|n| n.notification_type == "like"));
+}
+
+#[tokio::test]
+async fn test_blog_notifications_with_omit_post_ids() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .and(query_param("omit_post_ids", "111111,222222"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": [
+                    {
+                        "id": "notif-other-post",
+                        "type": "like",
+                        "timestamp": 1234567890,
+                        "unread": true,
+                        "target_post_id": "333333",
+                        "from_tumblelog_name": "liker"
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .omit_post_ids(vec!["111111", "222222"])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert_eq!(notifs.notifications.len(), 1);
+    assert_eq!(notifs.notifications[0].target_post_id, Some("333333".to_string()));
+}
+
+#[tokio::test]
+async fn test_blog_notifications_empty() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": []
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert!(notifs.notifications.is_empty());
+    assert!(notifs.links.is_none());
+}
+
+#[tokio::test]
+async fn test_blog_notifications_ask_type() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notifications": [
+                    {
+                        "id": "notif-ask-001",
+                        "type": "ask",
+                        "timestamp": 1234567890,
+                        "unread": true,
+                        "from_tumblelog_name": "curious-anon",
+                        "target_tumblelog_name": TEST_BLOG_NAME,
+                        "summary": "What's your favorite color?"
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notifications()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notifs = result.unwrap();
+    assert_eq!(notifs.notifications.len(), 1);
+    assert_eq!(notifs.notifications[0].notification_type, "ask");
+    assert_eq!(notifs.notifications[0].summary, Some("What's your favorite color?".to_string()));
+    assert_eq!(notifs.notifications[0].target_tumblelog_name, Some(TEST_BLOG_NAME.to_string()));
+}
+
+// =============================================================================
+// Notes endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_blog_notes() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [
+                    {
+                        "type": "reblog",
+                        "timestamp": 1234567890,
+                        "blog_name": "reblogger",
+                        "blog_uuid": "t:abc123",
+                        "blog_url": "https://reblogger.tumblr.com",
+                        "followed": false,
+                        "avatar_shape": "square",
+                        "post_id": "987654321",
+                        "reblog_parent_blog_name": TEST_BLOG_NAME
+                    },
+                    {
+                        "type": "like",
+                        "timestamp": 1234567880,
+                        "blog_name": "liker",
+                        "blog_uuid": "t:def456",
+                        "blog_url": "https://liker.tumblr.com",
+                        "followed": true,
+                        "avatar_shape": "circle"
+                    },
+                    {
+                        "type": "reply",
+                        "timestamp": 1234567870,
+                        "blog_name": "replier",
+                        "blog_uuid": "t:ghi789",
+                        "reply_text": "Great post!",
+                        "followed": false
+                    }
+                ],
+                "total_notes": 150,
+                "_links": {
+                    "next": {
+                        "query_params": {
+                            "id": "123456789",
+                            "mode": "all",
+                            "before_timestamp": 1234567870
+                        }
+                    }
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 3);
+    assert_eq!(notes.total_notes, 150);
+    assert_eq!(notes.notes[0].note_type, "reblog");
+    assert_eq!(notes.notes[0].blog_name, "reblogger");
+    assert_eq!(notes.notes[1].note_type, "like");
+    assert!(notes.notes[1].followed);
+    assert_eq!(notes.notes[2].note_type, "reply");
+    assert_eq!(notes.notes[2].reply_text, Some("Great post!".to_string()));
+
+    // Check pagination links
+    assert!(notes.links.is_some());
+    let links = notes.links.unwrap();
+    assert!(links.next.is_some());
+    assert_eq!(links.next.unwrap().query_params.before_timestamp, 1234567870);
+}
+
+#[tokio::test]
+async fn test_blog_notes_likes_mode() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .and(query_param("mode", "likes"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [
+                    {
+                        "type": "like",
+                        "timestamp": 1234567890,
+                        "blog_name": "liker1",
+                        "blog_uuid": "t:aaa111",
+                        "followed": false
+                    },
+                    {
+                        "type": "like",
+                        "timestamp": 1234567880,
+                        "blog_name": "liker2",
+                        "blog_uuid": "t:bbb222",
+                        "followed": true
+                    }
+                ],
+                "total_notes": 50
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    use crabrave::handlers::blog::NoteMode;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .mode(NoteMode::Likes)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 2);
+    assert!(notes.notes.iter().all(|n| n.note_type == "like"));
+}
+
+#[tokio::test]
+async fn test_blog_notes_conversation_mode() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .and(query_param("mode", "conversation"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [
+                    {
+                        "type": "reply",
+                        "timestamp": 1234567890000_i64,
+                        "blog_name": "replier1",
+                        "reply_text": "I agree!",
+                        "followed": false
+                    },
+                    {
+                        "type": "reblog",
+                        "timestamp": 1234567880000_i64,
+                        "blog_name": "reblogger",
+                        "added_text": "Adding my thoughts...",
+                        "followed": true
+                    }
+                ],
+                "rollup_notes": [
+                    {
+                        "type": "like",
+                        "timestamp": 1234567870,
+                        "blog_name": "liker",
+                        "followed": false
+                    }
+                ],
+                "total_notes": 100,
+                "total_likes": 75,
+                "total_reblogs": 25
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    use crabrave::handlers::blog::NoteMode;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .mode(NoteMode::Conversation)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 2);
+    assert_eq!(notes.rollup_notes.len(), 1);
+    assert_eq!(notes.total_likes, Some(75));
+    assert_eq!(notes.total_reblogs, Some(25));
+    assert_eq!(notes.notes[0].reply_text, Some("I agree!".to_string()));
+    assert_eq!(notes.notes[1].added_text, Some("Adding my thoughts...".to_string()));
+}
+
+#[tokio::test]
+async fn test_blog_notes_reblogs_with_tags_mode() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .and(query_param("mode", "reblogs_with_tags"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [
+                    {
+                        "type": "reblog",
+                        "timestamp": 1234567890,
+                        "blog_name": "tagger1",
+                        "blog_uuid": "t:tag111",
+                        "followed": false,
+                        "tags": ["cool", "nice", "reblogged"]
+                    },
+                    {
+                        "type": "reblog",
+                        "timestamp": 1234567880,
+                        "blog_name": "tagger2",
+                        "blog_uuid": "t:tag222",
+                        "followed": true,
+                        "tags": ["art", "favorite"]
+                    }
+                ],
+                "total_notes": 30
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    use crabrave::handlers::blog::NoteMode;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .mode(NoteMode::ReblogsWithTags)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 2);
+    assert!(notes.notes.iter().all(|n| n.note_type == "reblog"));
+    assert_eq!(notes.notes[0].tags, vec!["cool", "nice", "reblogged"]);
+    assert_eq!(notes.notes[1].tags, vec!["art", "favorite"]);
+}
+
+#[tokio::test]
+async fn test_blog_notes_with_before_timestamp() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .and(query_param("before_timestamp", "1234567800"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [
+                    {
+                        "type": "like",
+                        "timestamp": 1234567750,
+                        "blog_name": "older_liker",
+                        "followed": false
+                    }
+                ],
+                "total_notes": 150
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .before_timestamp(1234567800)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 1);
+    assert_eq!(notes.notes[0].blog_name, "older_liker");
+    assert!(notes.notes[0].timestamp < 1234567800);
+}
+
+#[tokio::test]
+async fn test_blog_notes_empty() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [],
+                "total_notes": 0
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert!(notes.notes.is_empty());
+    assert_eq!(notes.total_notes, 0);
+}
+
+#[tokio::test]
+async fn test_blog_notes_rollup_mode() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
+        .and(query_param("id", "123456789"))
+        .and(query_param("mode", "rollup"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "notes": [
+                    {
+                        "type": "like",
+                        "timestamp": 1234567890,
+                        "blog_name": "liker",
+                        "followed": false
+                    },
+                    {
+                        "type": "reblog",
+                        "timestamp": 1234567880,
+                        "blog_name": "reblogger",
+                        "followed": true
+                    }
+                ],
+                "total_notes": 80
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    use crabrave::handlers::blog::NoteMode;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .notes("123456789")
+        .mode(NoteMode::Rollup)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 2);
+    // Rollup mode returns only likes and reblogs
+    assert!(notes.notes.iter().all(|n| n.note_type == "like" || n.note_type == "reblog"));
+}
+
 #[tokio::test]
 async fn test_user_info() {
     let mock_server = MockServer::start().await;

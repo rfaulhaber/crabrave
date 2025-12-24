@@ -10,7 +10,7 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [15/25]
+* Blog [17/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
 ** DONE /blocks – Retrieve Blog's Blocks
@@ -28,8 +28,8 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /posts/queue/reorder — Reorder Queued Posts
 ** DONE /posts/queue/shuffle — Shuffle Queued Posts
 ** DONE /posts/draft — Retrieve Draft Posts
-** TODO /posts/submission — Retrieve Submission Posts
-** TODO /notifications — Retrieve Blog's Activity Feed
+** DONE /posts/submission — Retrieve Submission Posts
+** DONE /notifications — Retrieve Blog's Activity Feed
 ** STRT /posts - Create/Reblog a Post (Neue Post Format)
 - API needs to change
 ** STRT /posts/{post-id} - Fetching a Post (Neue Post Format)
