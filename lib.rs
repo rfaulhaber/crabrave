@@ -631,6 +631,35 @@ impl Crabrave {
         response::parse_response_bytes(&bytes)
     }
 
+    /// Makes a PUT request to the API
+    ///
+    /// This is an internal helper method used by handlers.
+    #[allow(dead_code)]
+    pub(crate) async fn put<T, B>(&self, path: &str, body: &B) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        B: serde::Serialize,
+    {
+        let url = self.url(path);
+        let request = self.client.put(&url).json(body);
+        let request = self.apply_auth(request, "PUT", &url);
+        let response = request.send().await?;
+
+        // Check for rate limiting
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+
+            return Err(CrabError::RateLimit { retry_after });
+        }
+
+        let bytes = response.bytes().await?;
+        response::parse_response_bytes(&bytes)
+    }
+
     pub(crate) async fn post_multipart<T, B>(&self, _path: &str, _body: &B) -> CrabResult<T>
     where
         T: serde::de::DeserializeOwned,

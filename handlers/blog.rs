@@ -146,7 +146,29 @@ impl Blogs {
             .map(|_resp: EmptyResponse| ())
     }
 
-    // TODO unblock via anonymous ID
+    /// Unblocks a specific blog
+    ///
+    /// Removes a block on the specified blog, allowing them to interact with your blog again.
+    ///
+    /// # Arguments
+    ///
+    /// * `blog` - The blog to unblock, specified by any blog identifier
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Unblock a specific blog
+    /// crab.blogs("my-blog").unblock("annoying-blog").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn unblock(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<()> {
         let path = format!("blog/{}/blocks", self.identifier.as_str());
         let blog_id: BlogIdentifier = blog.into();
@@ -156,6 +178,35 @@ impl Blogs {
                 &path,
                 &serde_json::json!({ "blocked_tumblelog": blog_id.as_str() }),
             )
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Clears all anonymous IP blocks
+    ///
+    /// Removes all blocks on anonymous users (users who interacted without being logged in).
+    /// This is a bulk operation that clears ALL anonymous blocks at once.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Clear all anonymous blocks
+    /// crab.blogs("my-blog").unblock_all_anonymous().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn unblock_all_anonymous(&self) -> CrabResult<()> {
+        let path = format!("blog/{}/blocks", self.identifier.as_str());
+
+        self.client
+            .delete_with_query(&path, &serde_json::json!({ "anonymous_only": true }))
             .await
             .map(|_resp: EmptyResponse| ())
     }
@@ -459,6 +510,70 @@ impl Blogs {
     /// ```
     pub fn notes(&self, post_id: impl Into<String>) -> NotesBuilder {
         NotesBuilder::new(self.client.clone(), self.identifier.clone(), post_id)
+    }
+
+    /// Gets custom pages for the blog
+    ///
+    /// Returns a builder for configuring the pages request.
+    /// Requires OAuth authentication.
+    ///
+    /// Pages are static content sections on a blog, distinct from regular posts.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let pages = crab.blogs("my-blog")
+    ///     .pages()
+    ///     .limit(10)
+    ///     .send()
+    ///     .await?;
+    ///
+    /// for page in pages.pages {
+    ///     println!("Page: {} - {}", page.title, page.url);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn pages(&self) -> PagesBuilder {
+        PagesBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
+    /// Gets a specific custom page by name
+    ///
+    /// Requires OAuth authentication.
+    ///
+    /// # Arguments
+    ///
+    /// * `page_name` - The name/slug of the page to retrieve (e.g., "about", "contact")
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let page = crab.blogs("my-blog")
+    ///     .page("about")
+    ///     .await?;
+    ///
+    /// println!("Page: {} - {}", page.page.title, page.page.url);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn page(&self, page_name: impl AsRef<str>) -> CrabResult<SinglePageResponse> {
+        let path = format!("blog/{}/pages/{}", self.identifier.as_str(), page_name.as_ref());
+        self.client.get(&path).await
     }
 }
 
@@ -1317,6 +1432,118 @@ impl NotesBuilder {
         let path = format!("blog/{}/notes", self.identifier.as_str());
         self.client.get_with_query(&path, &self.query).await
     }
+}
+
+/// Query parameters for fetching blog pages
+#[derive(Debug, Clone, Serialize, Default)]
+struct PagesQuery {
+    /// Maximum number of pages to return (1-20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Page offset for pagination
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+}
+
+/// Builder for querying a blog's custom pages
+///
+/// This builder allows you to configure various parameters for fetching pages
+/// from a blog before sending the request.
+///
+/// # Example
+///
+/// ```no_run
+/// # use crabrave::Crabrave;
+/// # async fn example() -> Result<(), crabrave::CrabError> {
+/// # let crab = Crabrave::builder()
+/// #     .consumer_key("key")
+/// #     .consumer_secret("secret")
+/// #     .access_token("token")
+/// #     .build()?;
+/// let pages = crab.blogs("my-blog")
+///     .pages()
+///     .limit(10)
+///     .offset(5)
+///     .send()
+///     .await?;
+///
+/// for page in pages.pages {
+///     println!("Page: {} at {}", page.title, page.url);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub struct PagesBuilder {
+    client: Crabrave,
+    identifier: BlogIdentifier,
+    query: PagesQuery,
+}
+
+impl PagesBuilder {
+    fn new(client: Crabrave, identifier: BlogIdentifier) -> Self {
+        Self {
+            client,
+            identifier,
+            query: PagesQuery::default(),
+        }
+    }
+
+    /// Sets the number of pages to return (1-20)
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.query.limit = Some(limit);
+        self
+    }
+
+    /// Sets the page offset for pagination
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
+    /// Sends the request and returns the pages
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid or missing (OAuth required)
+    /// - The blog doesn't exist
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn send(self) -> CrabResult<PagesResponse> {
+        let path = format!("blog/{}/pages", self.identifier.as_str());
+        self.client.get_with_query(&path, &self.query).await
+    }
+}
+
+/// Response from the pages endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PagesResponse {
+    /// List of custom pages
+    pub pages: Vec<BlogPage>,
+}
+
+/// Response from the single page endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SinglePageResponse {
+    /// The requested page
+    pub page: BlogPage,
+}
+
+/// Represents a custom page on a Tumblr blog
+///
+/// Pages are static content sections distinct from regular posts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlogPage {
+    /// Page title
+    pub title: String,
+    /// Page body content (HTML)
+    pub body: String,
+    /// Full URL to the page
+    pub url: String,
+    /// Unix timestamp when the page was last updated
+    #[serde(default)]
+    pub updated: i64,
 }
 
 /// Response from the posts endpoint

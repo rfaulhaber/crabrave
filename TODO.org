@@ -10,13 +10,14 @@ NPF doc: https://www.tumblr.com/docs/npf
 crab.blogs("staff").posts().get() // fetches posts
 crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 #+end_src
-* Blog [17/25]
+* Blog [24/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
 ** DONE /blocks – Retrieve Blog's Blocks
 ** DONE /blocks – Block a Blog
 ** DONE /blocks/bulk – Block a list of Blogs
 ** DONE /blocks – Remove a Block
+- Supports both blog unblock and bulk anonymous unblock
 ** DONE /likes — Retrieve Blog's Likes
 - Should be a blog method
 ** DONE /following — Retrieve Blog's following
@@ -30,34 +31,36 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /posts/draft — Retrieve Draft Posts
 ** DONE /posts/submission — Retrieve Submission Posts
 ** DONE /notifications — Retrieve Blog's Activity Feed
-** STRT /posts - Create/Reblog a Post (Neue Post Format)
-- API needs to change
+** DONE /posts - Create/Reblog a Post (Neue Post Format)
+- Uses NPF content blocks for create and reblog
 ** STRT /posts/{post-id} - Fetching a Post (Neue Post Format)
 - Works, but should be
   #+begin_src rust :eval never
     client.blogs("foo").post("123").get()
   #+end_src
-** TODO /posts/{post-id} - Editing a Post (Neue Post Format)
-** TODO /post/delete – Delete a Post
-** TODO /posts/{post-id}/mute - Muting a Post's Notifications
-** TODO /notes - Get notes for a specific Post
-** TODO /pages - Retrieve Pages
-** TODO /pages/{page-name} - Retrieve a Page
-* User [4/11]
+** DONE /posts/{post-id} - Editing a Post (Neue Post Format)
+- Uses PUT with NPF content blocks
+** DONE /post/delete – Delete a Post
+** DONE /posts/{post-id}/mute - Muting a Post's Notifications
+** DONE /notes - Get notes for a specific Post
+** DONE /pages - Retrieve Pages
+** DONE /pages/{page-name} - Retrieve a Page
+* User [6/11]
 ** DONE /user/info – Get a User's Information
 ** TODO /user/limits – Get a User's Limits
 ** DONE /user/dashboard – Retrieve a User's Dashboard
 ** DONE /user/likes — Retrieve a User's Likes
 ** DONE /user/following – Retrieve the Blogs a User Is Following
-** TODO /user/follow – Follow a blog
-** TODO /user/unfollow – Unfollow a blog
+** DONE /user/follow – Follow a blog
+** DONE /user/unfollow – Unfollow a blog
 ** TODO /user/like – Like a Post
 ** TODO /user/unlike – Unlike a Post
 ** TODO /user/filtered_tags - Tag Filtering
 ** TODO /user/filtered_content - Content Filtering
-* Tagged [/]
-** /tagged – Get Posts with Tag
-* Communities [/]
+* Tagged [1/1]
+** DONE /tagged – Get Posts with Tag
+* Communities [0/20]
+Note: Current implementation uses wrong paths (=/community/= instead of =/communities/=)
 ** TODO GET /v2/communities - List joined communities
 ** TODO GET /v2/communities/{community-handle} - Get info about a community
 ** TODO PUT /v2/communities/{community-handle} - Edit your community
@@ -66,9 +69,12 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** TODO DELETE /v2/communities/{community-handle}/invitations/{blog-identifier} - Cancel an invitation
 ** TODO GET /v2/communities/{community-handle}/invitations/{blog-identifier} - Check invitation status
 ** TODO POST /v2/communities/{community-handle}/invite_hash - Regenerate the invite URL
-** TODO GET /v2/communities/{community-handle}/members - Get community members
-** TODO PUT /v2/communities/{community-handle}/members - Join a community
-** TODO DELETE /v2/communities/{community-handle}/members/{blog-identifier} - Remove a member
+** STRT GET /v2/communities/{community-handle}/members - Get community members
+- Implemented but uses wrong path
+** STRT PUT /v2/communities/{community-handle}/members - Join a community
+- Implemented but uses wrong path and method (POST /join)
+** STRT DELETE /v2/communities/{community-handle}/members/{blog-identifier} - Remove a member
+- Implemented but uses wrong path and method (POST /leave)
 ** TODO PUT /v2/communities/{community-handle}/members/{blog-identifier} - Change a member's role
 ** TODO DELETE /v2/communities/{community-handle}/mute - Unmute a community
 ** TODO PUT /v2/communities/{community-handle}/mute - Mute a community
@@ -77,4 +83,5 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** TODO GET /v2/communities/{community-handle}/moderation/posts/{post-id} - View a moderated post
 ** TODO DELETE /v2/communities/{community-handle}/moderation/posts/{post-id} - Moderate a post
 ** TODO PUT /v2/communities/{community-handle}/moderation/posts/{post-id} - Restore a post
-** TODO GET /v2/communities/{community-handle}/timeline - Get posts from a community
+** STRT GET /v2/communities/{community-handle}/timeline - Get posts from a community
+- Implemented but uses wrong path

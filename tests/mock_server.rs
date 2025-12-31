@@ -1631,6 +1631,213 @@ async fn test_npf_post_creation() {
 }
 
 #[tokio::test]
+async fn test_npf_post_creation_with_image() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "image-post-123"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .create(TEST_BLOG_NAME)
+        .content(vec![
+            crabrave::npf::ContentBlock::text("Check out this photo!"),
+            crabrave::npf::ContentBlock::image("https://example.com/photo.jpg"),
+        ])
+        .tags(vec!["photo", "photography"])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.id, "image-post-123");
+}
+
+#[tokio::test]
+async fn test_npf_post_creation_as_draft() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "draft-post-456"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .create(TEST_BLOG_NAME)
+        .add_block(crabrave::npf::ContentBlock::text("Work in progress..."))
+        .state("draft")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.id, "draft-post-456");
+}
+
+#[tokio::test]
+async fn test_npf_post_creation_queued() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "queued-post-789"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .create(TEST_BLOG_NAME)
+        .content(vec![
+            crabrave::npf::ContentBlock::heading("Scheduled Post", 1),
+            crabrave::npf::ContentBlock::text("This will be posted later"),
+        ])
+        .state("queue")
+        .tags(vec!["scheduled"])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.id, "queued-post-789");
+}
+
+#[tokio::test]
+async fn test_npf_post_creation_with_slug() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "slug-post-111"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .create(TEST_BLOG_NAME)
+        .add_block(crabrave::npf::ContentBlock::heading("Custom URL Post", 1))
+        .add_block(crabrave::npf::ContentBlock::text("This post has a custom URL slug"))
+        .slug("custom-url-slug")
+        .tags(vec!["custom-slug"])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.id, "slug-post-111");
+}
+
+#[tokio::test]
+async fn test_npf_post_creation_unauthorized() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 401,
+                "msg": "Unauthorized"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .create(TEST_BLOG_NAME)
+        .add_block(crabrave::npf::ContentBlock::text("Test"))
+        .send()
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 401);
+            assert_eq!(message, "Unauthorized");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_npf_post_creation_with_link_block() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "link-post-222"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .create(TEST_BLOG_NAME)
+        .content(vec![
+            crabrave::npf::ContentBlock::text("Check out this awesome link:"),
+            crabrave::npf::ContentBlock::link("https://www.rust-lang.org"),
+        ])
+        .tags(vec!["rust", "programming", "links"])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.id, "link-post-222");
+}
+
+#[tokio::test]
 async fn test_network_error() {
     // Create client with invalid URL to trigger network error
     let client = Crabrave::builder()
@@ -1830,6 +2037,34 @@ async fn test_unblock() {
 }
 
 #[tokio::test]
+async fn test_unblock_all_anonymous() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
+        .and(query_param("anonymous_only", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .unblock_all_anonymous()
+        .await
+        .expect("callout failed");
+
+    assert_eq!(result, ());
+}
+
+#[tokio::test]
 async fn test_blog_likes() {
     let mock_server = MockServer::start().await;
 
@@ -2014,17 +2249,12 @@ async fn test_get_post() {
 }
 
 #[tokio::test]
-async fn test_edit_post() {
+async fn test_edit_post_npf() {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/post/edit", TEST_BLOG_NAME)))
-        .and(body_json(serde_json::json!({
-            "id": "123456",
-            "title": "Updated Title",
-            "body": "Updated body content",
-            "tags": "updated,edited"
-        })))
+    // NPF edit uses PUT to /blog/{blog}/posts/{id} with content blocks
+    Mock::given(method("PUT"))
+        .and(path(format!("/blog/{}/posts/123456", TEST_BLOG_NAME)))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -2041,8 +2271,10 @@ async fn test_edit_post() {
     let result = client
         .posts()
         .edit(TEST_BLOG_NAME, "123456")
-        .title("Updated Title")
-        .body("Updated body content")
+        .content(vec![
+            crabrave::npf::ContentBlock::heading("Updated Title", 1),
+            crabrave::npf::ContentBlock::text("Updated body content"),
+        ])
         .tags(vec!["updated", "edited"])
         .send()
         .await;
@@ -2053,21 +2285,83 @@ async fn test_edit_post() {
 }
 
 #[tokio::test]
-async fn test_reblog_post() {
+async fn test_edit_post_npf_with_state() {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/post/reblog", TEST_BLOG_NAME)))
-        .and(body_json(serde_json::json!({
-            "id": "789012",
-            "reblog_key": "abc123reblogkey",
-            "comment": "Great post!",
-            "tags": "reblog,interesting"
-        })))
+    Mock::given(method("PUT"))
+        .and(path(format!("/blog/{}/posts/789012", TEST_BLOG_NAME)))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
                 "msg": "OK"
+            },
+            "response": {
+                "id": "789012"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .edit(TEST_BLOG_NAME, "789012")
+        .add_block(crabrave::npf::ContentBlock::text("Moving to draft"))
+        .state("draft")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let edit_response = result.unwrap();
+    assert_eq!(edit_response.id, "789012");
+}
+
+#[tokio::test]
+async fn test_edit_post_npf_not_found() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path(format!("/blog/{}/posts/nonexistent", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .edit(TEST_BLOG_NAME, "nonexistent")
+        .content(vec![crabrave::npf::ContentBlock::text("Test")])
+        .send()
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 404);
+            assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_reblog_post_with_comment() {
+    let mock_server = MockServer::start().await;
+
+    // NPF reblog uses POST to /blog/{blog}/posts with parent_tumblelog_uuid
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
             },
             "response": {
                 "id": "999888"
@@ -2088,6 +2382,141 @@ async fn test_reblog_post() {
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let reblog_response = result.unwrap();
     assert_eq!(reblog_response.id, "999888");
+}
+
+#[tokio::test]
+async fn test_reblog_post_with_npf_content() {
+    let mock_server = MockServer::start().await;
+
+    // NPF reblog with rich content blocks instead of simple comment
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "111222333"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .reblog(TEST_BLOG_NAME, "original-post-id", "reblogkey123")
+        .content(vec![
+            crabrave::npf::ContentBlock::heading("My thoughts", 1),
+            crabrave::npf::ContentBlock::text("This is a really interesting post!"),
+            crabrave::npf::ContentBlock::text("I have more to say about it."),
+        ])
+        .tags(vec!["thoughts", "reblog"])
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let reblog_response = result.unwrap();
+    assert_eq!(reblog_response.id, "111222333");
+}
+
+#[tokio::test]
+async fn test_reblog_post_simple() {
+    let mock_server = MockServer::start().await;
+
+    // Simple reblog without comment or content
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "444555666"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .reblog(TEST_BLOG_NAME, "source-post-id", "key123")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let reblog_response = result.unwrap();
+    assert_eq!(reblog_response.id, "444555666");
+}
+
+#[tokio::test]
+async fn test_reblog_post_to_draft() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": {
+                "id": "draft-reblog-123"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .reblog(TEST_BLOG_NAME, "post-to-reblog", "reblogkey")
+        .comment("Saving this for later")
+        .state("draft")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let reblog_response = result.unwrap();
+    assert_eq!(reblog_response.id, "draft-reblog-123");
+}
+
+#[tokio::test]
+async fn test_reblog_post_invalid_key() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 400,
+                "msg": "Bad Request"
+            },
+            "response": {
+                "errors": ["Invalid reblog key"]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .reblog(TEST_BLOG_NAME, "post-id", "invalid-key")
+        .send()
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, .. }) => {
+            assert_eq!(status, 400);
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
 }
 
 // =============================================================================
@@ -2542,6 +2971,599 @@ async fn test_post_not_found() {
         Err(CrabError::Api { status, message }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+// =============================================================================
+// Pages endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_blog_pages() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "pages": [
+                    {
+                        "title": "About Me",
+                        "body": "<h1>About</h1><p>Welcome to my blog!</p>",
+                        "url": format!("https://{}.tumblr.com/about", TEST_BLOG_NAME),
+                        "updated": 1234567890
+                    },
+                    {
+                        "title": "Contact",
+                        "body": "<h1>Contact</h1><p>Email me at test@example.com</p>",
+                        "url": format!("https://{}.tumblr.com/contact", TEST_BLOG_NAME),
+                        "updated": 1234567891
+                    },
+                    {
+                        "title": "FAQ",
+                        "body": "<h1>FAQ</h1><p>Frequently asked questions</p>",
+                        "url": format!("https://{}.tumblr.com/faq", TEST_BLOG_NAME),
+                        "updated": 1234567892
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .pages()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let pages = result.unwrap();
+    assert_eq!(pages.pages.len(), 3);
+    assert_eq!(pages.pages[0].title, "About Me");
+    assert_eq!(pages.pages[0].url, format!("https://{}.tumblr.com/about", TEST_BLOG_NAME));
+    assert_eq!(pages.pages[0].updated, 1234567890);
+    assert!(pages.pages[0].body.contains("Welcome to my blog!"));
+    assert_eq!(pages.pages[1].title, "Contact");
+    assert_eq!(pages.pages[2].title, "FAQ");
+}
+
+#[tokio::test]
+async fn test_blog_pages_with_limit() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
+        .and(query_param("limit", "5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "pages": [
+                    {
+                        "title": "About Me",
+                        "body": "<h1>About</h1><p>Welcome!</p>",
+                        "url": format!("https://{}.tumblr.com/about", TEST_BLOG_NAME),
+                        "updated": 1234567890
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .pages()
+        .limit(5)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let pages = result.unwrap();
+    assert_eq!(pages.pages.len(), 1);
+    assert_eq!(pages.pages[0].title, "About Me");
+}
+
+#[tokio::test]
+async fn test_blog_pages_with_offset() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
+        .and(query_param("offset", "2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "pages": [
+                    {
+                        "title": "Third Page",
+                        "body": "<p>This is the third page</p>",
+                        "url": format!("https://{}.tumblr.com/third", TEST_BLOG_NAME),
+                        "updated": 1234567892
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .pages()
+        .offset(2)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let pages = result.unwrap();
+    assert_eq!(pages.pages.len(), 1);
+    assert_eq!(pages.pages[0].title, "Third Page");
+}
+
+#[tokio::test]
+async fn test_blog_pages_with_limit_and_offset() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
+        .and(query_param("limit", "10"))
+        .and(query_param("offset", "5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "pages": [
+                    {
+                        "title": "Sixth Page",
+                        "body": "<p>Page content</p>",
+                        "url": format!("https://{}.tumblr.com/sixth", TEST_BLOG_NAME),
+                        "updated": 1234567896
+                    },
+                    {
+                        "title": "Seventh Page",
+                        "body": "<p>More content</p>",
+                        "url": format!("https://{}.tumblr.com/seventh", TEST_BLOG_NAME),
+                        "updated": 1234567897
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .pages()
+        .limit(10)
+        .offset(5)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let pages = result.unwrap();
+    assert_eq!(pages.pages.len(), 2);
+    assert_eq!(pages.pages[0].title, "Sixth Page");
+    assert_eq!(pages.pages[1].title, "Seventh Page");
+}
+
+#[tokio::test]
+async fn test_blog_pages_empty() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "pages": []
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .pages()
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let pages = result.unwrap();
+    assert!(pages.pages.is_empty());
+}
+
+#[tokio::test]
+async fn test_blog_pages_unauthorized() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 401,
+                "msg": "Unauthorized"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .pages()
+        .send()
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 401);
+            assert_eq!(message, "Unauthorized");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_blog_pages_not_found() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/nonexistent-blog/pages"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs("nonexistent-blog")
+        .pages()
+        .send()
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 404);
+            assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+// =============================================================================
+// Single page endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_blog_page_by_name() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages/about", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "page": {
+                    "title": "About Me",
+                    "body": "<h1>About</h1><p>Welcome to my blog! This is all about me.</p>",
+                    "url": format!("https://{}.tumblr.com/about", TEST_BLOG_NAME),
+                    "updated": 1234567890
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .page("about")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.page.title, "About Me");
+    assert_eq!(response.page.url, format!("https://{}.tumblr.com/about", TEST_BLOG_NAME));
+    assert_eq!(response.page.updated, 1234567890);
+    assert!(response.page.body.contains("Welcome to my blog!"));
+}
+
+#[tokio::test]
+async fn test_blog_page_contact() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages/contact", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "page": {
+                    "title": "Contact",
+                    "body": "<h1>Contact</h1><p>Email: test@example.com</p>",
+                    "url": format!("https://{}.tumblr.com/contact", TEST_BLOG_NAME),
+                    "updated": 1234567891
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .page("contact")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.page.title, "Contact");
+    assert!(response.page.body.contains("test@example.com"));
+}
+
+#[tokio::test]
+async fn test_blog_page_not_found() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages/nonexistent", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .page("nonexistent")
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 404);
+            assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_blog_page_unauthorized() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{}/pages/private", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 401,
+                "msg": "Unauthorized"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs(TEST_BLOG_NAME)
+        .page("private")
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 401);
+            assert_eq!(message, "Unauthorized");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+// =============================================================================
+// Post mute endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_post_mute() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts/123456789/mute", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "muted": true,
+                "mute_end_timestamp": 0
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .mute(TEST_BLOG_NAME, "123456789")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert!(response.muted);
+    assert_eq!(response.mute_end_timestamp, 0);
+}
+
+#[tokio::test]
+async fn test_post_mute_with_expiration() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts/987654321/mute", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "muted": true,
+                "mute_end_timestamp": 1735689600
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .mute(TEST_BLOG_NAME, "987654321")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert!(response.muted);
+    assert_eq!(response.mute_end_timestamp, 1735689600);
+}
+
+#[tokio::test]
+async fn test_post_mute_not_found() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts/nonexistent/mute", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .mute(TEST_BLOG_NAME, "nonexistent")
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 404);
+            assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_post_mute_unauthorized() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts/123456789/mute", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 401,
+                "msg": "Unauthorized"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .mute(TEST_BLOG_NAME, "123456789")
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 401);
+            assert_eq!(message, "Unauthorized");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_post_mute_forbidden() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(format!("/blog/{}/posts/123456789/mute", TEST_BLOG_NAME)))
+        .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 403,
+                "msg": "Forbidden"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .posts()
+        .mute(TEST_BLOG_NAME, "123456789")
+        .await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 403);
+            assert_eq!(message, "Forbidden");
         }
         Err(e) => panic!("Expected ApiError, got: {:?}", e),
         Ok(_) => panic!("Expected error, got success"),
