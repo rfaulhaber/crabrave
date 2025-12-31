@@ -62,6 +62,7 @@
 
 mod error;
 pub mod handlers;
+pub mod media;
 pub mod models;
 pub mod npf;
 pub mod oauth;
@@ -660,12 +661,132 @@ impl Crabrave {
         response::parse_response_bytes(&bytes)
     }
 
-    pub(crate) async fn post_multipart<T, B>(&self, _path: &str, _body: &B) -> CrabResult<T>
+    /// Makes a POST request with multipart/form-data to the API
+    ///
+    /// This is used for uploading media files along with post content.
+    /// The request includes a "json" field containing the serialized body,
+    /// plus additional fields for each media file keyed by their identifier.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - API endpoint path
+    /// * `body` - JSON body to serialize
+    /// * `media_sources` - Map of identifiers to media sources
+    pub(crate) async fn post_multipart<T, B>(
+        &self,
+        path: &str,
+        body: &B,
+        media_sources: std::collections::HashMap<String, media::MediaSource>,
+    ) -> CrabResult<T>
     where
         T: serde::de::DeserializeOwned,
         B: serde::Serialize,
     {
-        todo!();
+        let url = self.url(path);
+
+        // Build multipart form
+        let mut form = reqwest::multipart::Form::new();
+
+        // Add JSON part
+        let json_str = serde_json::to_string(body).map_err(|e| {
+            CrabError::InvalidResponse(format!("Failed to serialize request body: {}", e))
+        })?;
+        form = form.text("json", json_str);
+
+        // Add media parts
+        for (identifier, source) in media_sources {
+            let bytes = source.read_bytes().map_err(|e| {
+                CrabError::InvalidResponse(format!("Failed to read media source: {}", e))
+            })?;
+
+            let mut part = reqwest::multipart::Part::bytes(bytes).file_name(source.filename().to_string());
+
+            if let Some(mime_type) = source.mime_type() {
+                part = part.mime_str(mime_type).map_err(|e| {
+                    CrabError::InvalidResponse(format!("Invalid MIME type '{}': {}", mime_type, e))
+                })?;
+            }
+
+            form = form.part(identifier, part);
+        }
+
+        let request = self.client.post(&url).multipart(form);
+        let request = self.apply_auth(request, "POST", &url);
+        let response = request.send().await?;
+
+        // Check for rate limiting
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+
+            return Err(CrabError::RateLimit { retry_after });
+        }
+
+        let bytes = response.bytes().await?;
+        response::parse_response_bytes(&bytes)
+    }
+
+    /// Makes a PUT request with multipart/form-data to the API
+    ///
+    /// Similar to post_multipart but uses PUT method for editing existing posts.
+    pub(crate) async fn put_multipart<T, B>(
+        &self,
+        path: &str,
+        body: &B,
+        media_sources: std::collections::HashMap<String, media::MediaSource>,
+    ) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        B: serde::Serialize,
+    {
+        let url = self.url(path);
+
+        // Build multipart form
+        let mut form = reqwest::multipart::Form::new();
+
+        // Add JSON part
+        let json_str = serde_json::to_string(body).map_err(|e| {
+            CrabError::InvalidResponse(format!("Failed to serialize request body: {}", e))
+        })?;
+        form = form.text("json", json_str);
+
+        // Add media parts
+        for (identifier, source) in media_sources {
+            let bytes = source.read_bytes().map_err(|e| {
+                CrabError::InvalidResponse(format!("Failed to read media source: {}", e))
+            })?;
+
+            let mut part = reqwest::multipart::Part::bytes(bytes).file_name(source.filename().to_string());
+
+            if let Some(mime_type) = source.mime_type() {
+                part = part.mime_str(mime_type).map_err(|e| {
+                    CrabError::InvalidResponse(format!("Invalid MIME type '{}': {}", mime_type, e))
+                })?;
+            }
+
+            form = form.part(identifier, part);
+        }
+
+        let request = self.client.put(&url).multipart(form);
+        let request = self.apply_auth(request, "PUT", &url);
+        let response = request.send().await?;
+
+        // Check for rate limiting
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+
+            return Err(CrabError::RateLimit { retry_after });
+        }
+
+        let bytes = response.bytes().await?;
+        response::parse_response_bytes(&bytes)
     }
 
     /// Makes a DELETE request to the API

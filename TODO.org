@@ -33,6 +33,10 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 ** DONE /notifications — Retrieve Blog's Activity Feed
 ** DONE /posts - Create/Reblog a Post (Neue Post Format)
 - Uses NPF content blocks for create and reblog
+- Supports media uploads via multipart/form-data
+- MediaSource type for file paths or byte data
+- Auto-generated identifiers with add_image() and add_video() convenience methods
+- Automatic MIME type detection from file extensions
 ** STRT /posts/{post-id} - Fetching a Post (Neue Post Format)
 - Works, but should be
   #+begin_src rust :eval never
@@ -40,6 +44,8 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
   #+end_src
 ** DONE /posts/{post-id} - Editing a Post (Neue Post Format)
 - Uses PUT with NPF content blocks
+- Supports media uploads via multipart/form-data (same as create)
+- Can add new images/videos when editing posts
 ** DONE /post/delete – Delete a Post
 ** DONE /posts/{post-id}/mute - Muting a Post's Notifications
 ** DONE /notes - Get notes for a specific Post
@@ -85,3 +91,25 @@ Note: Current implementation uses wrong paths (=/community/= instead of =/commun
 ** TODO PUT /v2/communities/{community-handle}/moderation/posts/{post-id} - Restore a post
 ** STRT GET /v2/communities/{community-handle}/timeline - Get posts from a community
 - Implemented but uses wrong path
+* Media Upload Implementation [1/1]
+** DONE Media Upload for Posts
+- New ~media.rs~ module with MediaSource type
+- MediaSource supports:
+  - Creation from file paths: ~MediaSource::from_path()~
+  - Creation from bytes: ~MediaSource::from_bytes()~
+  - Auto-detection of MIME types from file extensions
+  - Manual MIME type override: ~.with_mime_type()~
+  - Support for images (jpg, png, gif, webp, etc.)
+  - Support for videos (mp4, webm, mov, etc.)
+  - Support for audio (mp3, ogg, wav, flac, etc.)
+- NPF MediaObject updated with ~identifier~ field
+- Multipart/form-data implementation:
+  - ~post_multipart()~ for creating posts with media
+  - ~put_multipart()~ for editing posts with media
+  - Follows Tumblr API format: "json" field + media fields by identifier
+- Builder methods:
+  - ~.media_source(identifier, source)~ - explicit identifier control
+  - ~.add_image(source)~ - convenience method with auto-generated IDs
+  - ~.add_video(source)~ - convenience method for videos
+  - Automatic JSON vs multipart selection based on media presence
+- Test coverage: 8 new tests for media upload functionality

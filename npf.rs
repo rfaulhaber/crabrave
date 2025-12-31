@@ -178,12 +178,19 @@ pub struct BlogReference {
 /// Media object for images, videos, and audio
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaObject {
-    /// Media URL
+    /// Media URL (empty string when uploading new media)
+    #[serde(default)]
     pub url: String,
     /// Media type (image/jpg, video/mp4, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "type")]
     pub media_type: Option<String>,
+    /// Identifier for linking to multipart upload data
+    ///
+    /// When uploading media, this identifier is used as the field name in the
+    /// multipart/form-data request. Leave empty when referencing existing media by URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub identifier: Option<String>,
     /// Width in pixels
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,
@@ -402,6 +409,7 @@ impl ContentBlock {
             media: vec![MediaObject {
                 url: url.into(),
                 media_type: None,
+                identifier: None,
                 width: None,
                 height: None,
                 original_dimensions_missing: None,
