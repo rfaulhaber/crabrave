@@ -69,7 +69,7 @@ pub mod oauth;
 mod response;
 
 pub use error::{CrabError, CrabResult};
-pub use handlers::{Blogs, Communities, Posts, Tagged, Users};
+pub use handlers::{Blogs, Communities, Tagged, Users};
 pub use models::{Blog, BlogIdentifier, Page, User};
 pub use response::{ApiResponse, EmptyResponse, Meta};
 
@@ -243,42 +243,6 @@ impl Crabrave {
     /// ```
     pub fn tagged(&self, tag: impl Into<String>) -> handlers::Tagged {
         handlers::Tagged::new(self.clone(), tag.into())
-    }
-
-    /// Creates an API accessor for post operations
-    ///
-    /// This provides access to creating, editing, fetching, and deleting posts.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// // Get a specific post
-    /// let post = crab.posts().get("my-blog", "123456").await?;
-    ///
-    /// // Create a post using NPF
-    /// let new_post = crab.posts()
-    ///     .create("my-blog")
-    ///     .content(vec![
-    ///         crabrave::npf::ContentBlock::text("Hello World!"),
-    ///     ])
-    ///     .tags(vec!["rust", "programming"])
-    ///     .send()
-    ///     .await?;
-    ///
-    /// // Delete a post
-    /// crab.posts().delete("my-blog", "123456").await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn posts(&self) -> Posts {
-        Posts::new(self.clone())
     }
 
     /// Creates an API accessor for community operations

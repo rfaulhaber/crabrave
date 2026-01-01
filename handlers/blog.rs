@@ -575,6 +575,104 @@ impl Blogs {
         let path = format!("blog/{}/pages/{}", self.identifier.as_str(), page_name.as_ref());
         self.client.get(&path).await
     }
+
+    /// Accesses operations for a specific post
+    ///
+    /// Returns a handler for performing operations on an individual post,
+    /// such as fetching, editing, deleting, or muting.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Post ID
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
+    /// // Get a post
+    /// let post = crab.blogs("staff").post("123456789").get().await?;
+    ///
+    /// // Delete a post
+    /// crab.blogs("my-blog").post("123456").delete().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn post(&self, id: impl Into<String>) -> BlogPost {
+        BlogPost::new(self.client.clone(), self.identifier.clone(), id.into())
+    }
+
+    /// Creates a new post on this blog
+    ///
+    /// Returns a builder for creating a post using NPF (Neue Post Format).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # use crabrave::npf::ContentBlock;
+    /// # use crabrave::media::MediaSource;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let post = crab.blogs("my-blog")
+    ///     .create_post()
+    ///     .add_block(ContentBlock::text("Hello World!"))
+    ///     .add_image(MediaSource::from_path("/path/to/image.jpg"))
+    ///     .tags(vec!["rust", "programming"])
+    ///     .send()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn create_post(&self) -> crate::handlers::posts::CreatePostBuilder {
+        crate::handlers::posts::CreatePostBuilder::new(self.client.clone(), self.identifier.clone())
+    }
+
+    /// Reblogs a post to this blog
+    ///
+    /// Returns a builder for reblogging a post with optional comments and tags.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Post ID to reblog
+    /// * `reblog_key` - Reblog key from the original post
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// crab.blogs("my-blog")
+    ///     .reblog("123456", "reblogkey")
+    ///     .comment("Great post!")
+    ///     .tags(vec!["reblog"])
+    ///     .send()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn reblog(
+        &self,
+        id: impl Into<String>,
+        reblog_key: impl Into<String>,
+    ) -> crate::handlers::posts::ReblogBuilder {
+        crate::handlers::posts::ReblogBuilder::new(
+            self.client.clone(),
+            self.identifier.clone(),
+            id.into(),
+            reblog_key.into(),
+        )
+    }
 }
 
 /// Response from the blog info endpoint
@@ -1733,6 +1831,116 @@ impl FollowersBuilder {
     pub async fn send(self) -> CrabResult<FollowersResponse> {
         let path = format!("blog/{}/followers", self.identifier.as_str());
         self.client.get_with_query(&path, &self.query).await
+    }
+}
+
+/// Handler for operations on a specific blog post
+///
+/// Provides methods for fetching, editing, deleting, and muting an individual post.
+/// Created by calling `crab.blogs("blog-name").post("post-id")`.
+#[derive(Clone)]
+pub struct BlogPost {
+    client: Crabrave,
+    blog: BlogIdentifier,
+    id: String,
+}
+
+impl BlogPost {
+    pub(crate) fn new(client: Crabrave, blog: BlogIdentifier, id: String) -> Self {
+        Self { client, blog, id }
+    }
+
+    /// Fetches this post
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
+    /// let post = crab.blogs("staff").post("123456789").get().await?;
+    /// println!("Post: {}", post.post.id);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn get(self) -> CrabResult<crate::handlers::posts::PostResponse> {
+        let path = format!("blog/{}/posts/{}", self.blog.as_str(), self.id);
+        self.client.get(&path).await
+    }
+
+    /// Deletes this post
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// crab.blogs("my-blog").post("123456").delete().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn delete(self) -> CrabResult<crate::handlers::posts::DeleteResponse> {
+        let path = format!("blog/{}/post/delete?id={}", self.blog.as_str(), self.id);
+        self.client.post(&path, &serde_json::json!({})).await
+    }
+
+    /// Edits this post
+    ///
+    /// Returns a builder for editing the post using NPF (Neue Post Format).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # use crabrave::npf::ContentBlock;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let edited = crab.blogs("my-blog")
+    ///     .post("123456")
+    ///     .edit()
+    ///     .content(vec![
+    ///         ContentBlock::heading("Updated Title", 1),
+    ///         ContentBlock::text("Updated content!"),
+    ///     ])
+    ///     .tags(vec!["updated"])
+    ///     .send()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn edit(self) -> crate::handlers::posts::EditPostBuilder {
+        crate::handlers::posts::EditPostBuilder::new(self.client, self.blog, self.id)
+    }
+
+    /// Mutes notifications for this post
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let response = crab.blogs("my-blog").post("123456").mute().await?;
+    /// println!("Post muted: {}", response.muted);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn mute(self) -> CrabResult<crate::handlers::posts::MuteResponse> {
+        let path = format!("blog/{}/posts/{}/mute", self.blog.as_str(), self.id);
+        self.client.post(&path, &serde_json::json!({})).await
     }
 }
 

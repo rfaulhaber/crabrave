@@ -5,12 +5,14 @@ NPF doc: https://www.tumblr.com/docs/npf
 
 * TODO OAuth1 Authorization
 * TODO OAuth2 Authorization
-* TODO Move post methods to under blog endpoints
+* DONE Move post methods to under blog endpoints
 #+begin_src rust
-crab.blogs("staff").posts().get() // fetches posts
-crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
+crab.blogs("staff").posts().send() // fetches multiple posts
+crab.blogs("foo").post("123").get() // fetches single post
+crab.blogs("foo").create_post().content(/*...*/).send() // makes new post
+crab.blogs("foo").post("123").delete() // delete post
 #+end_src
-* Blog [24/25]
+* Blog [25/25]
 ** DONE /info - Retrieve Blog Info
 ** DONE /avatar — Retrieve a Blog Avatar
 ** DONE /blocks – Retrieve Blog's Blocks
@@ -37,11 +39,9 @@ crab.blogs("foo").posts().new(/*...*/).content(/*...*/).send() // makes new post
 - MediaSource type for file paths or byte data
 - Auto-generated identifiers with add_image() and add_video() convenience methods
 - Automatic MIME type detection from file extensions
-** STRT /posts/{post-id} - Fetching a Post (Neue Post Format)
-- Works, but should be
-  #+begin_src rust :eval never
-    client.blogs("foo").post("123").get()
-  #+end_src
+** DONE /posts/{post-id} - Fetching a Post (Neue Post Format)
+- Implemented as ~crab.blogs("foo").post("123").get()~
+- Part of BlogPost handler with get(), delete(), edit(), mute() methods
 ** DONE /posts/{post-id} - Editing a Post (Neue Post Format)
 - Uses PUT with NPF content blocks
 - Supports media uploads via multipart/form-data (same as create)
@@ -113,3 +113,20 @@ Note: Current implementation uses wrong paths (=/community/= instead of =/commun
   - ~.add_video(source)~ - convenience method for videos
   - Automatic JSON vs multipart selection based on media presence
 - Test coverage: 8 new tests for media upload functionality
+* API Refactoring [1/1]
+** DONE Post Operations Moved to Blog Handler
+All post operations now go through ~crab.blogs("blog-name")~ for consistency:
+- Removed ~crab.posts()~ accessor from main client
+- Removed ~Posts~ struct (was redundant with blog parameter)
+- Added ~crab.blogs("foo").post("id")~ - returns BlogPost handler
+  - ~.get()~ - fetch the post
+  - ~.delete()~ - delete the post
+  - ~.edit()~ - returns EditPostBuilder
+  - ~.mute()~ - mute notifications
+- Added ~crab.blogs("foo").create_post()~ - returns CreatePostBuilder
+- Added ~crab.blogs("foo").reblog(id, key)~ - returns ReblogBuilder
+
+Benefits:
+- Consistent API: all blog operations start with ~crab.blogs()~
+- Blog specified once instead of repeated in each operation
+- More natural API: ~crab.blogs("foo").post("123").get()~ vs ~crab.posts().get("foo", "123")~

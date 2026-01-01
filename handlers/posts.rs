@@ -1,4 +1,41 @@
 //! Post creation, editing, and deletion API endpoints
+//!
+//! This module provides builders and types for working with Tumblr posts using
+//! the Neue Post Format (NPF). Post operations are accessed through the Blogs handler:
+//!
+//! - `crab.blogs("blog").post("id").get()` - Fetch a post
+//! - `crab.blogs("blog").post("id").delete()` - Delete a post
+//! - `crab.blogs("blog").post("id").edit()` - Edit a post
+//! - `crab.blogs("blog").create_post()` - Create a new post
+//! - `crab.blogs("blog").reblog(id, key)` - Reblog a post
+//!
+//! # Example
+//!
+//! ```no_run
+//! # use crabrave::Crabrave;
+//! # use crabrave::npf::ContentBlock;
+//! # use crabrave::media::MediaSource;
+//! # async fn example() -> Result<(), crabrave::CrabError> {
+//! # let crab = Crabrave::builder()
+//! #     .consumer_key("key")
+//! #     .consumer_secret("secret")
+//! #     .access_token("token")
+//! #     .build()?;
+//! // Create a post
+//! let post = crab.blogs("my-blog")
+//!     .create_post()
+//!     .add_block(ContentBlock::text("Hello!"))
+//!     .send()
+//!     .await?;
+//!
+//! // Fetch a post
+//! let post = crab.blogs("my-blog").post("123456").get().await?;
+//!
+//! // Delete a post
+//! crab.blogs("my-blog").post("123456").delete().await?;
+//! # Ok(())
+//! # }
+//! ```
 
 use crate::{
     BlogIdentifier, CrabResult, Crabrave,
@@ -8,283 +45,6 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-/// API for post-related operations
-///
-/// Provides access to creating, editing, fetching, and deleting posts.
-///
-/// # Example
-///
-/// ```no_run
-/// use crabrave::Crabrave;
-///
-/// # async fn example() -> Result<(), crabrave::CrabError> {
-/// let crab = Crabrave::builder()
-///     .consumer_key("key")
-///     .consumer_secret("secret")
-///     .access_token("token")
-///     .build()?;
-///
-/// // Get a specific post
-/// let post = crab.posts().get("my-blog", "123456").await?;
-///
-/// // Create a post using NPF
-/// let new_post = crab.posts()
-///     .create("my-blog")
-///     .content(vec![
-///         crabrave::npf::ContentBlock::text("Hello World!"),
-///     ])
-///     .tags(vec!["rust", "programming"])
-///     .send()
-///     .await?;
-/// # Ok(())
-/// # }
-/// ```
-#[derive(Clone)]
-pub struct Posts {
-    client: Crabrave,
-}
-
-impl Posts {
-    /// Creates a new Posts API
-    pub(crate) fn new(client: Crabrave) -> Self {
-        Self { client }
-    }
-
-    /// Gets a specific post by ID
-    ///
-    /// # Arguments
-    ///
-    /// * `blog` - Blog identifier (name, hostname, or UUID)
-    /// * `id` - Post ID
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder().consumer_key("key").build()?;
-    /// let post = crab.posts().get("staff", "123456789").await?;
-    /// println!("Post: {}", post.post.id);
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The blog or post doesn't exist
-    /// - Network request fails
-    /// - API returns an error
-    pub async fn get(
-        &self,
-        blog: impl Into<BlogIdentifier>,
-        id: impl Into<String>,
-    ) -> CrabResult<PostResponse> {
-        let blog = blog.into();
-        let id = id.into();
-        let path = format!("blog/{}/posts/{}", blog.as_str(), id);
-        self.client.get(&path).await
-    }
-
-    /// Deletes a post
-    ///
-    /// # Arguments
-    ///
-    /// * `blog` - Blog identifier (name, hostname, or UUID)
-    /// * `id` - Post ID
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// crab.posts().delete("my-blog", "123456789").await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Authentication is invalid
-    /// - The blog or post doesn't exist
-    /// - Network request fails
-    /// - API returns an error
-    pub async fn delete(
-        &self,
-        blog: impl Into<BlogIdentifier>,
-        id: impl Into<String>,
-    ) -> CrabResult<DeleteResponse> {
-        let blog = blog.into();
-        let id = id.into();
-        let path = format!("blog/{}/post/delete?id={}", blog.as_str(), id);
-        self.client.post(&path, &serde_json::json!({})).await
-    }
-
-    /// Creates a new NPF (Neue Post Format) post
-    ///
-    /// NPF is Tumblr's modern content block system that allows rich, mixed-media posts.
-    ///
-    /// # Arguments
-    ///
-    /// * `blog` - Blog identifier (name, hostname, or UUID)
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # use crabrave::npf::ContentBlock;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// let post = crab.posts()
-    ///     .create("my-blog")
-    ///     .content(vec![
-    ///         ContentBlock::heading("My Post", 1),
-    ///         ContentBlock::text("This is the body of my post."),
-    ///         ContentBlock::image("https://example.com/image.jpg"),
-    ///     ])
-    ///     .tags(vec!["npf", "modern"])
-    ///     .send()
-    ///     .await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn create(&self, blog: impl Into<BlogIdentifier>) -> CreatePostBuilder {
-        CreatePostBuilder::new(self.client.clone(), blog.into())
-    }
-
-    /// Edits an existing post using NPF format
-    ///
-    /// Returns a builder for configuring the post edits using NPF content blocks.
-    ///
-    /// # Arguments
-    ///
-    /// * `blog` - Blog identifier (name, hostname, or UUID)
-    /// * `id` - Post ID to edit
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # use crabrave::npf::ContentBlock;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// let edited = crab.posts()
-    ///     .edit("my-blog", "123456")
-    ///     .content(vec![
-    ///         ContentBlock::heading("Updated Title", 1),
-    ///         ContentBlock::text("Updated content with NPF!"),
-    ///     ])
-    ///     .tags(vec!["updated", "edited"])
-    ///     .send()
-    ///     .await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn edit(&self, blog: impl Into<BlogIdentifier>, id: impl Into<String>) -> EditPostBuilder {
-        EditPostBuilder::new(self.client.clone(), blog.into(), id.into())
-    }
-
-    /// Reblogs a post
-    ///
-    /// # Arguments
-    ///
-    /// * `blog` - Your blog identifier to reblog to
-    /// * `id` - Post ID to reblog
-    /// * `reblog_key` - Reblog key from the original post
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// crab.posts()
-    ///     .reblog("my-blog", "123456", "reblogkey")
-    ///     .comment("Great post!")
-    ///     .tags(vec!["reblog", "interesting"])
-    ///     .send()
-    ///     .await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn reblog(
-        &self,
-        blog: impl Into<BlogIdentifier>,
-        id: impl Into<String>,
-        reblog_key: impl Into<String>,
-    ) -> ReblogBuilder {
-        ReblogBuilder::new(
-            self.client.clone(),
-            blog.into(),
-            id.into(),
-            reblog_key.into(),
-        )
-    }
-
-    /// Mutes notifications for a post
-    ///
-    /// Muting a post suppresses push notifications and activity items for that post.
-    /// This is useful to prevent notification spam while keeping the post published.
-    ///
-    /// # Arguments
-    ///
-    /// * `blog` - Blog identifier (name, hostname, or UUID)
-    /// * `id` - Post ID to mute
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use crabrave::Crabrave;
-    /// # async fn example() -> Result<(), crabrave::CrabError> {
-    /// # let crab = Crabrave::builder()
-    /// #     .consumer_key("key")
-    /// #     .consumer_secret("secret")
-    /// #     .access_token("token")
-    /// #     .build()?;
-    /// let response = crab.posts().mute("my-blog", "123456789").await?;
-    /// println!("Post muted: {}", response.muted);
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - Authentication is invalid
-    /// - The blog or post doesn't exist
-    /// - You don't own the post
-    /// - Network request fails
-    /// - API returns an error
-    pub async fn mute(
-        &self,
-        blog: impl Into<BlogIdentifier>,
-        id: impl Into<String>,
-    ) -> CrabResult<MuteResponse> {
-        let blog = blog.into();
-        let id = id.into();
-        let path = format!("blog/{}/posts/{}/mute", blog.as_str(), id);
-        self.client.post(&path, &serde_json::json!({})).await
-    }
-}
 
 /// Response from getting a single post
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -364,7 +124,7 @@ pub struct CreatePostBuilder {
 }
 
 impl CreatePostBuilder {
-    fn new(client: Crabrave, blog: BlogIdentifier) -> Self {
+    pub(crate) fn new(client: Crabrave, blog: BlogIdentifier) -> Self {
         Self {
             client,
             blog,
@@ -678,7 +438,7 @@ pub struct EditPostBuilder {
 }
 
 impl EditPostBuilder {
-    fn new(client: Crabrave, blog: BlogIdentifier, id: String) -> Self {
+    pub(crate) fn new(client: Crabrave, blog: BlogIdentifier, id: String) -> Self {
         Self {
             client,
             blog,
@@ -907,7 +667,7 @@ pub struct ReblogBuilder {
 }
 
 impl ReblogBuilder {
-    fn new(client: Crabrave, blog: BlogIdentifier, id: String, reblog_key: String) -> Self {
+    pub(crate) fn new(client: Crabrave, blog: BlogIdentifier, id: String, reblog_key: String) -> Self {
         Self {
             client,
             blog,

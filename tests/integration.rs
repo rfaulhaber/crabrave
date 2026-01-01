@@ -288,7 +288,7 @@ async fn get_specific_post() {
             println!("Testing with post ID: {}", post_id);
 
             // Now fetch that specific post
-            let result = client.posts().get(blog.clone(), post_id.clone()).await;
+            let result = client.blogs(blog.clone()).post(post_id.clone()).get().await;
 
             match result {
                 Ok(post) => {
@@ -401,8 +401,8 @@ async fn user_following() {
 async fn make_text_post() {
     let client = test_client().await.expect("Failed to create client");
     let result = client
-        .posts()
-        .create(get_tumblr_test_blog().expect("No test blog set"))
+        .blogs(get_tumblr_test_blog().expect("No test blog set"))
+        .create_post()
         .add_block(ContentBlock::Text {
             text: "hello world".into(),
             subtype: Some("heading1".into()),

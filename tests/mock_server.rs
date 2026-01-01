@@ -1550,7 +1550,7 @@ async fn test_delete_post() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.posts().delete("myblog", "123456").await;
+    let result = client.blogs("myblog").post("123456").delete().await;
 
     assert!(result.is_ok());
 }
@@ -1617,8 +1617,8 @@ async fn test_npf_post_creation() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create("myblog")
+        .blogs("myblog")
+        .create_post()
         .add_block(crabrave::npf::ContentBlock::heading("My Title", 1))
         .add_block(crabrave::npf::ContentBlock::text("Body text"))
         .tags(vec!["npf"])
@@ -1650,8 +1650,8 @@ async fn test_npf_post_creation_with_image() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create(TEST_BLOG_NAME)
+        .blogs(TEST_BLOG_NAME)
+        .create_post()
         .content(vec![
             crabrave::npf::ContentBlock::text("Check out this photo!"),
             crabrave::npf::ContentBlock::image("https://example.com/photo.jpg"),
@@ -1685,8 +1685,8 @@ async fn test_npf_post_creation_as_draft() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create(TEST_BLOG_NAME)
+        .blogs(TEST_BLOG_NAME)
+        .create_post()
         .add_block(crabrave::npf::ContentBlock::text("Work in progress..."))
         .state("draft")
         .send()
@@ -1717,8 +1717,8 @@ async fn test_npf_post_creation_queued() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create(TEST_BLOG_NAME)
+        .blogs(TEST_BLOG_NAME)
+        .create_post()
         .content(vec![
             crabrave::npf::ContentBlock::heading("Scheduled Post", 1),
             crabrave::npf::ContentBlock::text("This will be posted later"),
@@ -1753,8 +1753,8 @@ async fn test_npf_post_creation_with_slug() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create(TEST_BLOG_NAME)
+        .blogs(TEST_BLOG_NAME)
+        .create_post()
         .add_block(crabrave::npf::ContentBlock::heading("Custom URL Post", 1))
         .add_block(crabrave::npf::ContentBlock::text("This post has a custom URL slug"))
         .slug("custom-url-slug")
@@ -1785,8 +1785,8 @@ async fn test_npf_post_creation_unauthorized() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create(TEST_BLOG_NAME)
+        .blogs(TEST_BLOG_NAME)
+        .create_post()
         .add_block(crabrave::npf::ContentBlock::text("Test"))
         .send()
         .await;
@@ -1822,8 +1822,8 @@ async fn test_npf_post_creation_with_link_block() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .create(TEST_BLOG_NAME)
+        .blogs(TEST_BLOG_NAME)
+        .create_post()
         .content(vec![
             crabrave::npf::ContentBlock::text("Check out this awesome link:"),
             crabrave::npf::ContentBlock::link("https://www.rust-lang.org"),
@@ -2240,7 +2240,7 @@ async fn test_get_post() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.posts().get(TEST_BLOG_NAME, "123456").await;
+    let result = client.blogs(TEST_BLOG_NAME).post("123456").get().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let post_response = result.unwrap();
@@ -2269,8 +2269,9 @@ async fn test_edit_post_npf() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .edit(TEST_BLOG_NAME, "123456")
+        .blogs(TEST_BLOG_NAME)
+        .post("123456")
+        .edit()
         .content(vec![
             crabrave::npf::ContentBlock::heading("Updated Title", 1),
             crabrave::npf::ContentBlock::text("Updated body content"),
@@ -2304,8 +2305,9 @@ async fn test_edit_post_npf_with_state() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .edit(TEST_BLOG_NAME, "789012")
+        .blogs(TEST_BLOG_NAME)
+        .post("789012")
+        .edit()
         .add_block(crabrave::npf::ContentBlock::text("Moving to draft"))
         .state("draft")
         .send()
@@ -2334,8 +2336,9 @@ async fn test_edit_post_npf_not_found() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .edit(TEST_BLOG_NAME, "nonexistent")
+        .blogs(TEST_BLOG_NAME)
+        .post("nonexistent")
+        .edit()
         .content(vec![crabrave::npf::ContentBlock::text("Test")])
         .send()
         .await;
@@ -2372,8 +2375,8 @@ async fn test_reblog_post_with_comment() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .reblog(TEST_BLOG_NAME, "789012", "abc123reblogkey")
+        .blogs(TEST_BLOG_NAME)
+        .reblog("789012", "abc123reblogkey")
         .comment("Great post!")
         .tags(vec!["reblog", "interesting"])
         .send()
@@ -2405,8 +2408,8 @@ async fn test_reblog_post_with_npf_content() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .reblog(TEST_BLOG_NAME, "original-post-id", "reblogkey123")
+        .blogs(TEST_BLOG_NAME)
+        .reblog("original-post-id", "reblogkey123")
         .content(vec![
             crabrave::npf::ContentBlock::heading("My thoughts", 1),
             crabrave::npf::ContentBlock::text("This is a really interesting post!"),
@@ -2442,8 +2445,8 @@ async fn test_reblog_post_simple() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .reblog(TEST_BLOG_NAME, "source-post-id", "key123")
+        .blogs(TEST_BLOG_NAME)
+        .reblog("source-post-id", "key123")
         .send()
         .await;
 
@@ -2472,8 +2475,8 @@ async fn test_reblog_post_to_draft() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .reblog(TEST_BLOG_NAME, "post-to-reblog", "reblogkey")
+        .blogs(TEST_BLOG_NAME)
+        .reblog("post-to-reblog", "reblogkey")
         .comment("Saving this for later")
         .state("draft")
         .send()
@@ -2504,8 +2507,8 @@ async fn test_reblog_post_invalid_key() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .reblog(TEST_BLOG_NAME, "post-id", "invalid-key")
+        .blogs(TEST_BLOG_NAME)
+        .reblog("post-id", "invalid-key")
         .send()
         .await;
 
@@ -2964,7 +2967,7 @@ async fn test_post_not_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.posts().get(TEST_BLOG_NAME, "999999").await;
+    let result = client.blogs(TEST_BLOG_NAME).post("999999").get().await;
 
     assert!(result.is_err());
     match result {
@@ -3430,8 +3433,9 @@ async fn test_post_mute() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .mute(TEST_BLOG_NAME, "123456789")
+        .blogs(TEST_BLOG_NAME)
+        .post("123456789")
+        .mute()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
@@ -3461,8 +3465,9 @@ async fn test_post_mute_with_expiration() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .mute(TEST_BLOG_NAME, "987654321")
+        .blogs(TEST_BLOG_NAME)
+        .post("987654321")
+        .mute()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
@@ -3489,8 +3494,9 @@ async fn test_post_mute_not_found() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .mute(TEST_BLOG_NAME, "nonexistent")
+        .blogs(TEST_BLOG_NAME)
+        .post("nonexistent")
+        .mute()
         .await;
 
     assert!(result.is_err());
@@ -3522,8 +3528,9 @@ async fn test_post_mute_unauthorized() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .mute(TEST_BLOG_NAME, "123456789")
+        .blogs(TEST_BLOG_NAME)
+        .post("123456789")
+        .mute()
         .await;
 
     assert!(result.is_err());
@@ -3555,8 +3562,9 @@ async fn test_post_mute_forbidden() {
 
     let client = test_client(&mock_server).await;
     let result = client
-        .posts()
-        .mute(TEST_BLOG_NAME, "123456789")
+        .blogs(TEST_BLOG_NAME)
+        .post("123456789")
+        .mute()
         .await;
 
     assert!(result.is_err());

@@ -11,6 +11,5 @@ pub mod user;
 
 pub use blog::Blogs;
 pub use communities::Communities;
-pub use posts::Posts;
 pub use tagged::Tagged;
 pub use user::Users;
