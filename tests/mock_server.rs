@@ -3577,3 +3577,609 @@ async fn test_post_mute_forbidden() {
         Ok(_) => panic!("Expected error, got success"),
     }
 }
+
+// =============================================================================
+// User limits endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_user_limits() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/user/limits"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "user": {
+                    "posts": {
+                        "description": "posts",
+                        "limit": 250,
+                        "remaining": 245,
+                        "reset_at": 1735776000
+                    },
+                    "photos": {
+                        "description": "photo uploads",
+                        "limit": 250,
+                        "remaining": 250,
+                        "reset_at": 1735776000
+                    },
+                    "videos": {
+                        "description": "video uploads",
+                        "limit": 20,
+                        "remaining": 18,
+                        "reset_at": 1735776000
+                    },
+                    "video_seconds": {
+                        "description": "video upload seconds",
+                        "limit": 3600,
+                        "remaining": 3540,
+                        "reset_at": 1735776000
+                    },
+                    "follows": {
+                        "description": "follows",
+                        "limit": 200,
+                        "remaining": 195,
+                        "reset_at": 1735776000
+                    }
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().limits().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let limits = result.unwrap();
+
+    // Check posts limit
+    let posts = limits.user.posts.expect("posts limit should be present");
+    assert_eq!(posts.description, "posts");
+    assert_eq!(posts.limit, 250);
+    assert_eq!(posts.remaining, 245);
+    assert_eq!(posts.reset_at, 1735776000);
+
+    // Check photos limit
+    let photos = limits.user.photos.expect("photos limit should be present");
+    assert_eq!(photos.description, "photo uploads");
+    assert_eq!(photos.limit, 250);
+    assert_eq!(photos.remaining, 250);
+
+    // Check videos limit
+    let videos = limits.user.videos.expect("videos limit should be present");
+    assert_eq!(videos.description, "video uploads");
+    assert_eq!(videos.limit, 20);
+    assert_eq!(videos.remaining, 18);
+
+    // Check video_seconds limit
+    let video_seconds = limits.user.video_seconds.expect("video_seconds limit should be present");
+    assert_eq!(video_seconds.description, "video upload seconds");
+    assert_eq!(video_seconds.limit, 3600);
+    assert_eq!(video_seconds.remaining, 3540);
+
+    // Check follows limit
+    let follows = limits.user.follows.expect("follows limit should be present");
+    assert_eq!(follows.description, "follows");
+    assert_eq!(follows.limit, 200);
+    assert_eq!(follows.remaining, 195);
+}
+
+#[tokio::test]
+async fn test_user_limits_partial() {
+    let mock_server = MockServer::start().await;
+
+    // Test that partial limit data is handled correctly
+    Mock::given(method("GET"))
+        .and(path("/user/limits"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "user": {
+                    "posts": {
+                        "description": "posts",
+                        "limit": 250,
+                        "remaining": 100,
+                        "reset_at": 1735776000
+                    }
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().limits().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let limits = result.unwrap();
+
+    // Only posts should be present
+    assert!(limits.user.posts.is_some());
+    assert!(limits.user.photos.is_none());
+    assert!(limits.user.videos.is_none());
+    assert!(limits.user.video_seconds.is_none());
+    assert!(limits.user.follows.is_none());
+}
+
+#[tokio::test]
+async fn test_user_limits_unauthorized() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/user/limits"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 401,
+                "msg": "Unauthorized"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().limits().await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 401);
+            assert_eq!(message, "Unauthorized");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+// =============================================================================
+// User like/unlike endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_user_like() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/like"))
+        .and(body_json(serde_json::json!({
+            "id": 123456789,
+            "reblog_key": "aB1cD2eF3"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().like(123456789, "aB1cD2eF3").await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_like_not_found() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/like"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().like(999999999, "invalid_key").await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 404);
+            assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_user_unlike() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/unlike"))
+        .and(body_json(serde_json::json!({
+            "id": 123456789,
+            "reblog_key": "aB1cD2eF3"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().unlike(123456789, "aB1cD2eF3").await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_unlike_not_found() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/unlike"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().unlike(999999999, "invalid_key").await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 404);
+            assert_eq!(message, "Not Found");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+#[tokio::test]
+async fn test_user_like_unauthorized() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/like"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 401,
+                "msg": "Unauthorized"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().like(123456789, "aB1cD2eF3").await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 401);
+            assert_eq!(message, "Unauthorized");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+// =============================================================================
+// User filtered tags endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_user_filtered_tags_get() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/user/filtered_tags"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "filtered_tags": ["spoilers", "nsfw", "politics"]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().filtered_tags().send().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.filtered_tags.len(), 3);
+    assert!(response.filtered_tags.contains(&"spoilers".to_string()));
+    assert!(response.filtered_tags.contains(&"nsfw".to_string()));
+    assert!(response.filtered_tags.contains(&"politics".to_string()));
+}
+
+#[tokio::test]
+async fn test_user_filtered_tags_get_with_pagination() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/user/filtered_tags"))
+        .and(query_param("limit", "10"))
+        .and(query_param("offset", "5"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "filtered_tags": ["tag6", "tag7"]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().filtered_tags().limit(10).offset(5).send().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.filtered_tags.len(), 2);
+}
+
+#[tokio::test]
+async fn test_user_filtered_tags_add() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/filtered_tags"))
+        .and(body_json(serde_json::json!({
+            "filtered_tags": ["spoilers", "nsfw"]
+        })))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().add_filtered_tags(vec!["spoilers", "nsfw"]).await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_filtered_tags_remove() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/user/filtered_tags/spoilers"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().remove_filtered_tag("spoilers").await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_filtered_tags_remove_with_special_chars() {
+    let mock_server = MockServer::start().await;
+
+    // Tag with special characters should be URL-encoded
+    Mock::given(method("DELETE"))
+        .and(path("/user/filtered_tags/tag%20with%20spaces"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().remove_filtered_tag("tag with spaces").await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_filtered_tags_add_limit_exceeded() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/filtered_tags"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 403,
+                "msg": "Forbidden"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().add_filtered_tags(vec!["new-tag"]).await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 403);
+            assert_eq!(message, "Forbidden");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}
+
+// =============================================================================
+// User filtered content endpoint tests
+// =============================================================================
+
+#[tokio::test]
+async fn test_user_filtered_content_get() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/user/filtered_content"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "filtered_content": ["spam", "annoying phrase", "blocked user"]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().filtered_content().send().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.filtered_content.len(), 3);
+    assert!(response.filtered_content.contains(&"spam".to_string()));
+    assert!(response.filtered_content.contains(&"annoying phrase".to_string()));
+}
+
+#[tokio::test]
+async fn test_user_filtered_content_get_with_pagination() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/user/filtered_content"))
+        .and(query_param("limit", "15"))
+        .and(query_param("offset", "10"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "filtered_content": ["content11", "content12"]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().filtered_content().limit(15).offset(10).send().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let response = result.unwrap();
+    assert_eq!(response.filtered_content.len(), 2);
+}
+
+#[tokio::test]
+async fn test_user_filtered_content_add() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/filtered_content"))
+        .and(body_json(serde_json::json!({
+            "filtered_content": ["spam", "unwanted content"]
+        })))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 201,
+                "msg": "Created"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().add_filtered_content(vec!["spam", "unwanted content"]).await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_filtered_content_remove() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/user/filtered_content"))
+        .and(query_param("filtered_content", "spam"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().remove_filtered_content("spam").await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_user_filtered_content_add_limit_exceeded() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/filtered_content"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 403,
+                "msg": "Forbidden"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().add_filtered_content(vec!["new content"]).await;
+
+    assert!(result.is_err());
+    match result {
+        Err(CrabError::Api { status, message }) => {
+            assert_eq!(status, 403);
+            assert_eq!(message, "Forbidden");
+        }
+        Err(e) => panic!("Expected ApiError, got: {:?}", e),
+        Ok(_) => panic!("Expected error, got success"),
+    }
+}

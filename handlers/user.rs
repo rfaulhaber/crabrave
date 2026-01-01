@@ -1,7 +1,7 @@
 //! User-related API endpoints
 
 use crate::{
-    BlogIdentifier, CrabResult, Crabrave, User,
+    BlogIdentifier, CrabResult, Crabrave, EmptyResponse, User,
     handlers::{following::FollowingBuilder, likes::LikesBuilder},
 };
 use serde::{Deserialize, Serialize};
@@ -71,6 +71,43 @@ impl Users {
     /// - API returns an error
     pub async fn info(&self) -> CrabResult<UserInfo> {
         self.client.get("user/info").await
+    }
+
+    /// Gets the authenticated user's rate limits
+    ///
+    /// Returns information about daily limits for various actions like
+    /// posting, uploading photos/videos, following blogs, and liking posts.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let limits = crab.users().limits().await?;
+    ///
+    /// if let Some(posts) = &limits.user.posts {
+    ///     println!("Posts remaining: {}/{}", posts.remaining, posts.limit);
+    /// }
+    /// if let Some(photos) = &limits.user.photos {
+    ///     println!("Photos remaining: {}/{}", photos.remaining, photos.limit);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn limits(&self) -> CrabResult<UserLimitsResponse> {
+        self.client.get("user/limits").await
     }
 
     /// Gets posts from the user's dashboard
@@ -193,6 +230,288 @@ impl Users {
         };
         self.client.post("user/unfollow", &body).await
     }
+
+    /// Likes a post
+    ///
+    /// # Arguments
+    ///
+    /// * `post_id` - The ID of the post to like
+    /// * `reblog_key` - The reblog key for the post (found in post data)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Like a post using its ID and reblog key
+    /// crab.users().like(123456789, "aB1cD2eF3").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid
+    /// - The post doesn't exist
+    /// - The reblog key is invalid
+    /// - Daily like limit has been reached (1000/day)
+    pub async fn like(&self, post_id: u64, reblog_key: impl Into<String>) -> CrabResult<()> {
+        let body = LikeRequest {
+            id: post_id,
+            reblog_key: reblog_key.into(),
+        };
+        self.client
+            .post("user/like", &body)
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Unlikes a post
+    ///
+    /// # Arguments
+    ///
+    /// * `post_id` - The ID of the post to unlike
+    /// * `reblog_key` - The reblog key for the post (found in post data)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Unlike a previously liked post
+    /// crab.users().unlike(123456789, "aB1cD2eF3").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid
+    /// - The post doesn't exist
+    /// - The reblog key is invalid
+    pub async fn unlike(&self, post_id: u64, reblog_key: impl Into<String>) -> CrabResult<()> {
+        let body = LikeRequest {
+            id: post_id,
+            reblog_key: reblog_key.into(),
+        };
+        self.client
+            .post("user/unlike", &body)
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Gets the user's filtered tags
+    ///
+    /// Returns a builder for configuring the filtered tags request with pagination.
+    /// Filtered tags are excluded from the user's dashboard and search results.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let filtered = crab.users().filtered_tags().limit(20).send().await?;
+    /// for tag in filtered.filtered_tags {
+    ///     println!("Filtered tag: {}", tag);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn filtered_tags(&self) -> FilteredTagsBuilder {
+        FilteredTagsBuilder::new(self.client.clone())
+    }
+
+    /// Adds tags to the user's filtered tags list
+    ///
+    /// # Arguments
+    ///
+    /// * `tags` - One or more tags to filter
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Add multiple tags to filter
+    /// crab.users().add_filtered_tags(vec!["spoilers", "nsfw"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid
+    /// - An invalid/empty tag is provided (400)
+    /// - Maximum filter limit reached (403) - limit is 1000 tags
+    pub async fn add_filtered_tags(
+        &self,
+        tags: impl IntoIterator<Item = impl Into<String>>,
+    ) -> CrabResult<()> {
+        let body = FilteredTagsRequest {
+            filtered_tags: tags.into_iter().map(Into::into).collect(),
+        };
+        self.client
+            .post("user/filtered_tags", &body)
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Removes a tag from the user's filtered tags list
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - The tag to remove from the filter list
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Remove a tag from the filter list
+    /// crab.users().remove_filtered_tag("spoilers").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn remove_filtered_tag(&self, tag: impl Into<String>) -> CrabResult<()> {
+        let tag: String = tag.into();
+        let encoded_tag = urlencoding::encode(&tag);
+        let path = format!("user/filtered_tags/{}", encoded_tag);
+        self.client
+            .delete(&path)
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Gets the user's filtered content strings
+    ///
+    /// Returns a builder for configuring the filtered content request with pagination.
+    /// Filtered content strings are hidden from the user's dashboard, including
+    /// blog names in reblog trails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let filtered = crab.users().filtered_content().limit(20).send().await?;
+    /// for content in filtered.filtered_content {
+    ///     println!("Filtered content: {}", content);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn filtered_content(&self) -> FilteredContentBuilder {
+        FilteredContentBuilder::new(self.client.clone())
+    }
+
+    /// Adds content strings to the user's filtered content list
+    ///
+    /// Content filtering is not case sensitive. Adding "horse" will also
+    /// filter "HORSE", "Horse", and partial matches like "horses".
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - One or more content strings to filter (max 250 chars each)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Add content strings to filter
+    /// crab.users().add_filtered_content(vec!["spoiler", "trigger warning"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid
+    /// - An invalid/empty string is provided (400)
+    /// - Maximum filter limit reached (403) - limit is 200 strings
+    pub async fn add_filtered_content(
+        &self,
+        content: impl IntoIterator<Item = impl Into<String>>,
+    ) -> CrabResult<()> {
+        let body = FilteredContentRequest {
+            filtered_content: content.into_iter().map(Into::into).collect(),
+        };
+        self.client
+            .post("user/filtered_content", &body)
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Removes a content string from the user's filtered content list
+    ///
+    /// # Arguments
+    ///
+    /// * `content` - The content string to remove from the filter list
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Remove a content string from the filter list
+    /// crab.users().remove_filtered_content("spoiler").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn remove_filtered_content(&self, content: impl Into<String>) -> CrabResult<()> {
+        let content: String = content.into();
+        self.client
+            .delete_with_query(
+                "user/filtered_content",
+                &serde_json::json!({ "filtered_content": content }),
+            )
+            .await
+            .map(|_resp: EmptyResponse| ())
+    }
 }
 
 /// Response from the user info endpoint
@@ -200,6 +519,57 @@ impl Users {
 pub struct UserInfo {
     /// User information
     pub user: User,
+}
+
+/// Response from the user limits endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserLimitsResponse {
+    /// User limit information
+    pub user: UserLimits,
+}
+
+/// User rate limit information
+///
+/// Contains the current limits and remaining counts for various
+/// daily actions. All fields are optional as the API may not
+/// return all limit types.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserLimits {
+    /// Daily post limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub posts: Option<Limit>,
+
+    /// Daily photo upload limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photos: Option<Limit>,
+
+    /// Daily video upload limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub videos: Option<Limit>,
+
+    /// Daily video duration limit (in seconds)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub video_seconds: Option<Limit>,
+
+    /// Daily follow limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub follows: Option<Limit>,
+}
+
+/// A single rate limit with description and remaining count
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Limit {
+    /// Human-readable description of this limit
+    pub description: String,
+
+    /// Maximum number of actions allowed in the time period
+    pub limit: u64,
+
+    /// Number of actions remaining until the limit resets
+    pub remaining: u64,
+
+    /// Unix timestamp when the limit will reset
+    pub reset_at: u64,
 }
 
 /// Query parameters for the user dashboard
@@ -301,12 +671,147 @@ struct FollowRequest {
     url: String,
 }
 
+/// Request body for like/unlike operations
+#[derive(Debug, Serialize)]
+struct LikeRequest {
+    /// The post ID to like/unlike
+    id: u64,
+    /// The reblog key for the post
+    reblog_key: String,
+}
+
 /// Response from follow/unfollow operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FollowResponse {
     /// Information about the followed/unfollowed blog
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blog: Option<crate::Blog>,
+}
+
+// =============================================================================
+// Filtered Tags Types
+// =============================================================================
+
+/// Query parameters for filtered tags
+#[derive(Debug, Clone, Serialize, Default)]
+struct FilteredTagsQuery {
+    /// Results per request, 1-20 inclusive (default: 20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Starting position (default: 0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+}
+
+/// Builder for querying filtered tags
+pub struct FilteredTagsBuilder {
+    client: Crabrave,
+    query: FilteredTagsQuery,
+}
+
+impl FilteredTagsBuilder {
+    fn new(client: Crabrave) -> Self {
+        Self {
+            client,
+            query: FilteredTagsQuery::default(),
+        }
+    }
+
+    /// Sets the number of results to return (max 20, default 20)
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.query.limit = Some(limit);
+        self
+    }
+
+    /// Sets the starting position for pagination
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
+    /// Sends the request and returns the filtered tags
+    pub async fn send(self) -> CrabResult<FilteredTagsResponse> {
+        self.client
+            .get_with_query("user/filtered_tags", &self.query)
+            .await
+    }
+}
+
+/// Response from the filtered tags endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilteredTagsResponse {
+    /// List of filtered tags
+    pub filtered_tags: Vec<String>,
+}
+
+/// Request body for adding filtered tags
+#[derive(Debug, Serialize)]
+struct FilteredTagsRequest {
+    filtered_tags: Vec<String>,
+}
+
+// =============================================================================
+// Filtered Content Types
+// =============================================================================
+
+/// Query parameters for filtered content
+#[derive(Debug, Clone, Serialize, Default)]
+struct FilteredContentQuery {
+    /// Results per request, 1-20 inclusive (default: 20)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+
+    /// Starting position (default: 0)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    offset: Option<u64>,
+}
+
+/// Builder for querying filtered content
+pub struct FilteredContentBuilder {
+    client: Crabrave,
+    query: FilteredContentQuery,
+}
+
+impl FilteredContentBuilder {
+    fn new(client: Crabrave) -> Self {
+        Self {
+            client,
+            query: FilteredContentQuery::default(),
+        }
+    }
+
+    /// Sets the number of results to return (max 20, default 20)
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.query.limit = Some(limit);
+        self
+    }
+
+    /// Sets the starting position for pagination
+    pub fn offset(mut self, offset: u64) -> Self {
+        self.query.offset = Some(offset);
+        self
+    }
+
+    /// Sends the request and returns the filtered content strings
+    pub async fn send(self) -> CrabResult<FilteredContentResponse> {
+        self.client
+            .get_with_query("user/filtered_content", &self.query)
+            .await
+    }
+}
+
+/// Response from the filtered content endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilteredContentResponse {
+    /// List of filtered content strings
+    pub filtered_content: Vec<String>,
+}
+
+/// Request body for adding filtered content
+#[derive(Debug, Serialize)]
+struct FilteredContentRequest {
+    filtered_content: Vec<String>,
 }
 
 #[cfg(test)]

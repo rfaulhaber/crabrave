@@ -51,18 +51,18 @@ crab.blogs("foo").post("123").delete() // delete post
 ** DONE /notes - Get notes for a specific Post
 ** DONE /pages - Retrieve Pages
 ** DONE /pages/{page-name} - Retrieve a Page
-* User [6/11]
+* User [11/11]
 ** DONE /user/info – Get a User's Information
-** TODO /user/limits – Get a User's Limits
+** DONE /user/limits – Get a User's Limits
 ** DONE /user/dashboard – Retrieve a User's Dashboard
 ** DONE /user/likes — Retrieve a User's Likes
 ** DONE /user/following – Retrieve the Blogs a User Is Following
 ** DONE /user/follow – Follow a blog
 ** DONE /user/unfollow – Unfollow a blog
-** TODO /user/like – Like a Post
-** TODO /user/unlike – Unlike a Post
-** TODO /user/filtered_tags - Tag Filtering
-** TODO /user/filtered_content - Content Filtering
+** DONE /user/like – Like a Post
+** DONE /user/unlike – Unlike a Post
+** DONE /user/filtered_tags - Tag Filtering
+** DONE /user/filtered_content - Content Filtering
 * Tagged [1/1]
 ** DONE /tagged – Get Posts with Tag
 * Communities [0/20]
