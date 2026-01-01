@@ -39,7 +39,7 @@
 
 use crate::{
     BlogIdentifier, CrabResult, Crabrave,
-    handlers::blog::Post,
+    handlers::blog::NpfPost,
     media::MediaSource,
     npf::{ContentBlock, LayoutBlock, MediaObject},
 };
@@ -50,7 +50,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostResponse {
     /// The requested post
-    pub post: Post,
+    pub post: NpfPost,
 }
 
 /// Response from deleting a post
@@ -391,7 +391,9 @@ impl CreatePostBuilder {
         if self.media_sources.is_empty() {
             self.client.post(&path, &body).await
         } else {
-            self.client.post_multipart(&path, &body, self.media_sources).await
+            self.client
+                .post_multipart(&path, &body, self.media_sources)
+                .await
         }
     }
 }
@@ -605,7 +607,9 @@ impl EditPostBuilder {
         if self.media_sources.is_empty() {
             self.client.put(&path, &body).await
         } else {
-            self.client.put_multipart(&path, &body, self.media_sources).await
+            self.client
+                .put_multipart(&path, &body, self.media_sources)
+                .await
         }
     }
 }
@@ -667,7 +671,12 @@ pub struct ReblogBuilder {
 }
 
 impl ReblogBuilder {
-    pub(crate) fn new(client: Crabrave, blog: BlogIdentifier, id: String, reblog_key: String) -> Self {
+    pub(crate) fn new(
+        client: Crabrave,
+        blog: BlogIdentifier,
+        id: String,
+        reblog_key: String,
+    ) -> Self {
         Self {
             client,
             blog,
@@ -871,23 +880,21 @@ mod tests {
 
         let media_source = MediaSource::from_bytes("custom.jpg", vec![1, 2, 3]);
         let builder = CreatePostBuilder::new(client, blog)
-            .content(vec![
-                ContentBlock::Image {
-                    media: vec![MediaObject {
-                        url: String::new(),
-                        media_type: Some("image/jpeg".to_string()),
-                        identifier: Some("custom_id".to_string()),
-                        width: None,
-                        height: None,
-                        original_dimensions_missing: None,
-                        cropped: None,
-                        has_original_dimensions: None,
-                    }],
-                    alt_text: Some("Custom image".to_string()),
-                    caption: None,
-                    attribution: None,
-                }
-            ])
+            .content(vec![ContentBlock::Image {
+                media: vec![MediaObject {
+                    url: String::new(),
+                    media_type: Some("image/jpeg".to_string()),
+                    identifier: Some("custom_id".to_string()),
+                    width: None,
+                    height: None,
+                    original_dimensions_missing: None,
+                    cropped: None,
+                    has_original_dimensions: None,
+                }],
+                alt_text: Some("Custom image".to_string()),
+                caption: None,
+                attribution: None,
+            }])
             .media_source("custom_id", media_source);
 
         assert_eq!(builder.content.len(), 1);
@@ -901,8 +908,8 @@ mod tests {
         let blog = BlogIdentifier::from("my-blog");
 
         let media_source = MediaSource::from_bytes("updated.jpg", vec![1, 2, 3]);
-        let builder = EditPostBuilder::new(client, blog, "123456".to_string())
-            .add_image(media_source);
+        let builder =
+            EditPostBuilder::new(client, blog, "123456".to_string()).add_image(media_source);
 
         assert!(builder.content.is_some());
         assert_eq!(builder.content.as_ref().unwrap().len(), 1);
@@ -926,8 +933,8 @@ mod tests {
 
     #[test]
     fn test_media_source_custom_mime_type() {
-        let source = MediaSource::from_bytes("data.bin", vec![1, 2, 3])
-            .with_mime_type("application/custom");
+        let source =
+            MediaSource::from_bytes("data.bin", vec![1, 2, 3]).with_mime_type("application/custom");
         assert_eq!(source.mime_type(), Some("application/custom"));
     }
 }

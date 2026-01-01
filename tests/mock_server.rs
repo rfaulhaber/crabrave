@@ -208,12 +208,7 @@ async fn test_blog_queue() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .queue()
-        .limit(5)
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).queue().limit(5).send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let queue = result.unwrap();
@@ -273,7 +268,10 @@ async fn test_queue_reorder() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/queue/reorder", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/queue/reorder",
+            TEST_BLOG_NAME
+        )))
         .and(body_json(serde_json::json!({
             "post_id": "123456",
             "insert_after": "0"
@@ -304,7 +302,10 @@ async fn test_queue_reorder_after_post() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/queue/reorder", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/queue/reorder",
+            TEST_BLOG_NAME
+        )))
         .and(body_json(serde_json::json!({
             "post_id": "123456",
             "insert_after": "789012"
@@ -335,7 +336,10 @@ async fn test_queue_shuffle() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/queue/shuffle", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/queue/shuffle",
+            TEST_BLOG_NAME
+        )))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -349,10 +353,7 @@ async fn test_queue_shuffle() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .shuffle_queue()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).shuffle_queue().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -401,11 +402,7 @@ async fn test_blog_drafts() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .drafts()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).drafts().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let drafts = result.unwrap();
@@ -478,11 +475,7 @@ async fn test_blog_drafts_empty() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .drafts()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).drafts().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let drafts = result.unwrap();
@@ -539,21 +532,23 @@ async fn test_blog_submissions() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .submissions()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).submissions().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let submissions = result.unwrap();
     assert_eq!(submissions.posts.len(), 2);
     assert_eq!(submissions.posts[0].id, "444444");
-    assert_eq!(submissions.posts[0].post_author, Some("friendly-submitter".to_string()));
+    assert_eq!(
+        submissions.posts[0].post_author,
+        Some("friendly-submitter".to_string())
+    );
     assert_eq!(submissions.posts[0].is_submission, Some(true));
     assert_eq!(submissions.posts[0].state, Some("submission".to_string()));
     assert_eq!(submissions.posts[1].id, "555555");
-    assert_eq!(submissions.posts[1].post_author, Some("photo-lover".to_string()));
+    assert_eq!(
+        submissions.posts[1].post_author,
+        Some("photo-lover".to_string())
+    );
 }
 
 #[tokio::test]
@@ -669,11 +664,7 @@ async fn test_blog_submissions_empty() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .submissions()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).submissions().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let submissions = result.unwrap();
@@ -714,18 +705,20 @@ async fn test_blog_submissions_anonymous() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .submissions()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).submissions().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let submissions = result.unwrap();
     assert_eq!(submissions.posts.len(), 1);
     assert_eq!(submissions.posts[0].id, "888888");
-    assert_eq!(submissions.posts[0].anonymous_name, Some("Anonymous Fan".to_string()));
-    assert_eq!(submissions.posts[0].anonymous_email, Some("anon@example.com".to_string()));
+    assert_eq!(
+        submissions.posts[0].anonymous_name,
+        Some("Anonymous Fan".to_string())
+    );
+    assert_eq!(
+        submissions.posts[0].anonymous_email,
+        Some("anon@example.com".to_string())
+    );
     assert!(submissions.posts[0].post_author.is_none());
 }
 
@@ -781,11 +774,7 @@ async fn test_blog_notifications() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notifications()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).notifications().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notifs = result.unwrap();
@@ -793,7 +782,10 @@ async fn test_blog_notifications() {
     assert_eq!(notifs.notifications[0].id, "notif-001");
     assert_eq!(notifs.notifications[0].notification_type, "like");
     assert!(notifs.notifications[0].unread);
-    assert_eq!(notifs.notifications[0].from_tumblelog_name, Some("friendly-blog".to_string()));
+    assert_eq!(
+        notifs.notifications[0].from_tumblelog_name,
+        Some("friendly-blog".to_string())
+    );
     assert_eq!(notifs.notifications[1].notification_type, "reblog_naked");
     assert_eq!(notifs.notifications[2].notification_type, "follow");
 
@@ -894,7 +886,12 @@ async fn test_blog_notifications_with_types_filter() {
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notifs = result.unwrap();
     assert_eq!(notifs.notifications.len(), 2);
-    assert!(notifs.notifications.iter().all(|n| n.notification_type == "like" || n.notification_type == "follow"));
+    assert!(
+        notifs
+            .notifications
+            .iter()
+            .all(|n| n.notification_type == "like" || n.notification_type == "follow")
+    );
 }
 
 #[tokio::test]
@@ -953,7 +950,12 @@ async fn test_blog_notifications_with_rollups_disabled() {
     let notifs = result.unwrap();
     assert_eq!(notifs.notifications.len(), 3);
     // All individual like notifications should be present
-    assert!(notifs.notifications.iter().all(|n| n.notification_type == "like"));
+    assert!(
+        notifs
+            .notifications
+            .iter()
+            .all(|n| n.notification_type == "like")
+    );
 }
 
 #[tokio::test]
@@ -995,7 +997,10 @@ async fn test_blog_notifications_with_omit_post_ids() {
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notifs = result.unwrap();
     assert_eq!(notifs.notifications.len(), 1);
-    assert_eq!(notifs.notifications[0].target_post_id, Some("333333".to_string()));
+    assert_eq!(
+        notifs.notifications[0].target_post_id,
+        Some("333333".to_string())
+    );
 }
 
 #[tokio::test]
@@ -1017,11 +1022,7 @@ async fn test_blog_notifications_empty() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notifications()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).notifications().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notifs = result.unwrap();
@@ -1058,18 +1059,20 @@ async fn test_blog_notifications_ask_type() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notifications()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).notifications().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notifs = result.unwrap();
     assert_eq!(notifs.notifications.len(), 1);
     assert_eq!(notifs.notifications[0].notification_type, "ask");
-    assert_eq!(notifs.notifications[0].summary, Some("What's your favorite color?".to_string()));
-    assert_eq!(notifs.notifications[0].target_tumblelog_name, Some(TEST_BLOG_NAME.to_string()));
+    assert_eq!(
+        notifs.notifications[0].summary,
+        Some("What's your favorite color?".to_string())
+    );
+    assert_eq!(
+        notifs.notifications[0].target_tumblelog_name,
+        Some(TEST_BLOG_NAME.to_string())
+    );
 }
 
 // =============================================================================
@@ -1135,11 +1138,7 @@ async fn test_blog_notes() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notes("123456789")
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).notes("123456789").send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notes = result.unwrap();
@@ -1156,7 +1155,10 @@ async fn test_blog_notes() {
     assert!(notes.links.is_some());
     let links = notes.links.unwrap();
     assert!(links.next.is_some());
-    assert_eq!(links.next.unwrap().query_params.before_timestamp, 1234567870);
+    assert_eq!(
+        links.next.unwrap().query_params.before_timestamp,
+        1234567870
+    );
 }
 
 #[tokio::test]
@@ -1274,7 +1276,10 @@ async fn test_blog_notes_conversation_mode() {
     assert_eq!(notes.total_likes, Some(75));
     assert_eq!(notes.total_reblogs, Some(25));
     assert_eq!(notes.notes[0].reply_text, Some("I agree!".to_string()));
-    assert_eq!(notes.notes[1].added_text, Some("Adding my thoughts...".to_string()));
+    assert_eq!(
+        notes.notes[1].added_text,
+        Some("Adding my thoughts...".to_string())
+    );
 }
 
 #[tokio::test]
@@ -1397,11 +1402,7 @@ async fn test_blog_notes_empty() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notes("123456789")
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).notes("123456789").send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notes = result.unwrap();
@@ -1457,7 +1458,12 @@ async fn test_blog_notes_rollup_mode() {
     let notes = result.unwrap();
     assert_eq!(notes.notes.len(), 2);
     // Rollup mode returns only likes and reblogs
-    assert!(notes.notes.iter().all(|n| n.note_type == "like" || n.note_type == "reblog"));
+    assert!(
+        notes
+            .notes
+            .iter()
+            .all(|n| n.note_type == "like" || n.note_type == "reblog")
+    );
 }
 
 #[tokio::test]
@@ -1756,7 +1762,9 @@ async fn test_npf_post_creation_with_slug() {
         .blogs(TEST_BLOG_NAME)
         .create_post()
         .add_block(crabrave::npf::ContentBlock::heading("Custom URL Post", 1))
-        .add_block(crabrave::npf::ContentBlock::text("This post has a custom URL slug"))
+        .add_block(crabrave::npf::ContentBlock::text(
+            "This post has a custom URL slug",
+        ))
         .slug("custom-url-slug")
         .tags(vec!["custom-slug"])
         .send()
@@ -2232,7 +2240,8 @@ async fn test_get_post() {
                     "tags": ["test", "example"],
                     "note_count": 42,
                     "title": "Test Post",
-                    "body": "<p>This is the post body</p>"
+                    "body": "<p>This is the post body</p>",
+                    "object_type": "post"
                 }
             }
         })))
@@ -2244,8 +2253,8 @@ async fn test_get_post() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let post_response = result.unwrap();
-    assert_eq!(post_response.post.id, "123456");
-    assert_eq!(post_response.post.blog_name, TEST_BLOG_NAME);
+    assert_eq!(post_response.id, "123456");
+    assert_eq!(post_response.blog_name, TEST_BLOG_NAME);
 }
 
 #[tokio::test]
@@ -2622,7 +2631,10 @@ async fn test_community_members() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.communities("rust-community").members(Some(10), None).await;
+    let result = client
+        .communities("rust-community")
+        .members(Some(10), None)
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -3022,17 +3034,16 @@ async fn test_blog_pages() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .pages()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).pages().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let pages = result.unwrap();
     assert_eq!(pages.pages.len(), 3);
     assert_eq!(pages.pages[0].title, "About Me");
-    assert_eq!(pages.pages[0].url, format!("https://{}.tumblr.com/about", TEST_BLOG_NAME));
+    assert_eq!(
+        pages.pages[0].url,
+        format!("https://{}.tumblr.com/about", TEST_BLOG_NAME)
+    );
     assert_eq!(pages.pages[0].updated, 1234567890);
     assert!(pages.pages[0].body.contains("Welcome to my blog!"));
     assert_eq!(pages.pages[1].title, "Contact");
@@ -3066,12 +3077,7 @@ async fn test_blog_pages_with_limit() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .pages()
-        .limit(5)
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).pages().limit(5).send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let pages = result.unwrap();
@@ -3106,12 +3112,7 @@ async fn test_blog_pages_with_offset() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .pages()
-        .offset(2)
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).pages().offset(2).send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let pages = result.unwrap();
@@ -3187,11 +3188,7 @@ async fn test_blog_pages_empty() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .pages()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).pages().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let pages = result.unwrap();
@@ -3215,11 +3212,7 @@ async fn test_blog_pages_unauthorized() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .pages()
-        .send()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).pages().send().await;
 
     assert!(result.is_err());
     match result {
@@ -3249,11 +3242,7 @@ async fn test_blog_pages_not_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs("nonexistent-blog")
-        .pages()
-        .send()
-        .await;
+    let result = client.blogs("nonexistent-blog").pages().send().await;
 
     assert!(result.is_err());
     match result {
@@ -3294,15 +3283,15 @@ async fn test_blog_page_by_name() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .page("about")
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).page("about").await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
     assert_eq!(response.page.title, "About Me");
-    assert_eq!(response.page.url, format!("https://{}.tumblr.com/about", TEST_BLOG_NAME));
+    assert_eq!(
+        response.page.url,
+        format!("https://{}.tumblr.com/about", TEST_BLOG_NAME)
+    );
     assert_eq!(response.page.updated, 1234567890);
     assert!(response.page.body.contains("Welcome to my blog!"));
 }
@@ -3331,10 +3320,7 @@ async fn test_blog_page_contact() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .page("contact")
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).page("contact").await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -3359,10 +3345,7 @@ async fn test_blog_page_not_found() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .page("nonexistent")
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).page("nonexistent").await;
 
     assert!(result.is_err());
     match result {
@@ -3392,10 +3375,7 @@ async fn test_blog_page_unauthorized() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .page("private")
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).page("private").await;
 
     assert!(result.is_err());
     match result {
@@ -3417,7 +3397,10 @@ async fn test_post_mute() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/123456789/mute", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/123456789/mute",
+            TEST_BLOG_NAME
+        )))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -3432,11 +3415,7 @@ async fn test_post_mute() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .post("123456789")
-        .mute()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).post("123456789").mute().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -3449,7 +3428,10 @@ async fn test_post_mute_with_expiration() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/987654321/mute", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/987654321/mute",
+            TEST_BLOG_NAME
+        )))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -3464,11 +3446,7 @@ async fn test_post_mute_with_expiration() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .post("987654321")
-        .mute()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).post("987654321").mute().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -3481,7 +3459,10 @@ async fn test_post_mute_not_found() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/nonexistent/mute", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/nonexistent/mute",
+            TEST_BLOG_NAME
+        )))
         .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
             "meta": {
                 "status": 404,
@@ -3515,7 +3496,10 @@ async fn test_post_mute_unauthorized() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/123456789/mute", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/123456789/mute",
+            TEST_BLOG_NAME
+        )))
         .respond_with(ResponseTemplate::new(401).set_body_json(serde_json::json!({
             "meta": {
                 "status": 401,
@@ -3527,11 +3511,7 @@ async fn test_post_mute_unauthorized() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .post("123456789")
-        .mute()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).post("123456789").mute().await;
 
     assert!(result.is_err());
     match result {
@@ -3549,7 +3529,10 @@ async fn test_post_mute_forbidden() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path(format!("/blog/{}/posts/123456789/mute", TEST_BLOG_NAME)))
+        .and(path(format!(
+            "/blog/{}/posts/123456789/mute",
+            TEST_BLOG_NAME
+        )))
         .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
             "meta": {
                 "status": 403,
@@ -3561,11 +3544,7 @@ async fn test_post_mute_forbidden() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .post("123456789")
-        .mute()
-        .await;
+    let result = client.blogs(TEST_BLOG_NAME).post("123456789").mute().await;
 
     assert!(result.is_err());
     match result {
@@ -3657,13 +3636,19 @@ async fn test_user_limits() {
     assert_eq!(videos.remaining, 18);
 
     // Check video_seconds limit
-    let video_seconds = limits.user.video_seconds.expect("video_seconds limit should be present");
+    let video_seconds = limits
+        .user
+        .video_seconds
+        .expect("video_seconds limit should be present");
     assert_eq!(video_seconds.description, "video upload seconds");
     assert_eq!(video_seconds.limit, 3600);
     assert_eq!(video_seconds.remaining, 3540);
 
     // Check follows limit
-    let follows = limits.user.follows.expect("follows limit should be present");
+    let follows = limits
+        .user
+        .follows
+        .expect("follows limit should be present");
     assert_eq!(follows.description, "follows");
     assert_eq!(follows.limit, 200);
     assert_eq!(follows.remaining, 195);
@@ -3939,7 +3924,13 @@ async fn test_user_filtered_tags_get_with_pagination() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.users().filtered_tags().limit(10).offset(5).send().await;
+    let result = client
+        .users()
+        .filtered_tags()
+        .limit(10)
+        .offset(5)
+        .send()
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -3966,7 +3957,10 @@ async fn test_user_filtered_tags_add() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.users().add_filtered_tags(vec!["spoilers", "nsfw"]).await;
+    let result = client
+        .users()
+        .add_filtered_tags(vec!["spoilers", "nsfw"])
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
 }
@@ -4075,7 +4069,11 @@ async fn test_user_filtered_content_get() {
     let response = result.unwrap();
     assert_eq!(response.filtered_content.len(), 3);
     assert!(response.filtered_content.contains(&"spam".to_string()));
-    assert!(response.filtered_content.contains(&"annoying phrase".to_string()));
+    assert!(
+        response
+            .filtered_content
+            .contains(&"annoying phrase".to_string())
+    );
 }
 
 #[tokio::test]
@@ -4099,7 +4097,13 @@ async fn test_user_filtered_content_get_with_pagination() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.users().filtered_content().limit(15).offset(10).send().await;
+    let result = client
+        .users()
+        .filtered_content()
+        .limit(15)
+        .offset(10)
+        .send()
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
@@ -4126,7 +4130,10 @@ async fn test_user_filtered_content_add() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.users().add_filtered_content(vec!["spam", "unwanted content"]).await;
+    let result = client
+        .users()
+        .add_filtered_content(vec!["spam", "unwanted content"])
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
 }
@@ -4171,7 +4178,10 @@ async fn test_user_filtered_content_add_limit_exceeded() {
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.users().add_filtered_content(vec!["new content"]).await;
+    let result = client
+        .users()
+        .add_filtered_content(vec!["new content"])
+        .await;
 
     assert!(result.is_err());
     match result {

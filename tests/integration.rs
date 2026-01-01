@@ -292,8 +292,8 @@ async fn get_specific_post() {
 
             match result {
                 Ok(post) => {
-                    println!("Retrieved post: {}", post.post.id);
-                    assert_eq!(&post.post.id, post_id);
+                    println!("Retrieved post: {}", post.id);
+                    assert_eq!(&post.id, post_id);
                 }
                 Err(e) => panic!("Failed to get specific post: {}", e),
             }

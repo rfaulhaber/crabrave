@@ -4,6 +4,7 @@ use crate::{
     Blog, BlogIdentifier, CrabResult, Crabrave, EmptyResponse,
     handlers::{following::FollowingBuilder, likes::LikesBuilder},
     models::TumblrmartAccessories,
+    npf::{self, ContentBlock, LayoutBlock},
 };
 use serde::{Deserialize, Serialize};
 
@@ -572,7 +573,11 @@ impl Blogs {
     /// # }
     /// ```
     pub async fn page(&self, page_name: impl AsRef<str>) -> CrabResult<SinglePageResponse> {
-        let path = format!("blog/{}/pages/{}", self.identifier.as_str(), page_name.as_ref());
+        let path = format!(
+            "blog/{}/pages/{}",
+            self.identifier.as_str(),
+            page_name.as_ref()
+        );
         self.client.get(&path).await
     }
 
@@ -1162,11 +1167,17 @@ struct NotificationsQuery {
     rollups: Option<bool>,
 
     /// Filter by notification types (comma-separated in serialization)
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_types_array")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_types_array"
+    )]
     types: Option<Vec<String>>,
 
     /// Post IDs to exclude from results (comma-separated in serialization)
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_string_array")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_string_array"
+    )]
     omit_post_ids: Option<Vec<String>>,
 }
 
@@ -1657,6 +1668,39 @@ pub struct PostsResponse {
     pub blog: Option<Blog>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NpfPost {
+    pub object_type: String,
+    #[serde(rename(deserialize = "type"))]
+    pub post_type: String,
+    #[serde(rename(deserialize = "id_string"))]
+    pub id: String,
+    pub tumblelog_uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_post_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_tumblelog_uuid: Option<String>,
+    pub reblog_key: String,
+    #[serde(default)]
+    pub trail: Vec<TrailItem>,
+    #[serde(default)]
+    pub content: Vec<ContentBlock>,
+    #[serde(default)]
+    pub layout: Vec<LayoutBlock>,
+    pub queued_state: Option<String>,
+    #[serde(default)]
+    pub scheduled_publish_time: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_on: Option<String>,
+    pub interactability_reblog: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub blog_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrailItem {}
+
 /// Represents a Tumblr post
 ///
 /// Note: This is a simplified representation. The full post structure
@@ -1863,7 +1907,7 @@ impl BlogPost {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn get(self) -> CrabResult<crate::handlers::posts::PostResponse> {
+    pub async fn get(self) -> CrabResult<NpfPost> {
         let path = format!("blog/{}/posts/{}", self.blog.as_str(), self.id);
         self.client.get(&path).await
     }
