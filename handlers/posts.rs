@@ -92,7 +92,7 @@ pub struct MuteResponse {
 ///
 /// ```no_run
 /// # use crabrave::Crabrave;
-/// # use crabrave::npf::{ContentBlock, MediaObject};
+/// # use crabrave::npf::ContentBlock;
 /// # use crabrave::media::MediaSource;
 /// # async fn example() -> Result<(), crabrave::CrabError> {
 /// # let crab = Crabrave::builder()
@@ -101,8 +101,8 @@ pub struct MuteResponse {
 /// #     .access_token("token")
 /// #     .build()?;
 /// // Create a post with an uploaded image
-/// let post = crab.posts()
-///     .create("my-blog")
+/// let post = crab.blogs("my-blog")
+///     .create_post()
 ///     .add_image(MediaSource::from_path("/path/to/image.jpg"))
 ///     .tags(vec!["photography"])
 ///     .send()
@@ -203,7 +203,7 @@ impl CreatePostBuilder {
     ///
     /// ```no_run
     /// # use crabrave::Crabrave;
-    /// # use crabrave::npf::{ContentBlock, MediaObject};
+    /// # use crabrave::npf::ContentBlock;
     /// # use crabrave::media::MediaSource;
     /// # async fn example() -> Result<(), crabrave::CrabError> {
     /// # let crab = Crabrave::builder()
@@ -211,27 +211,10 @@ impl CreatePostBuilder {
     /// #     .consumer_secret("secret")
     /// #     .access_token("token")
     /// #     .build()?;
-    /// // Manually control identifiers
-    /// let post = crab.posts()
-    ///     .create("my-blog")
-    ///     .content(vec![
-    ///         ContentBlock::Image {
-    ///             media: vec![MediaObject {
-    ///                 url: String::new(),
-    ///                 media_type: Some("image/jpeg".to_string()),
-    ///                 identifier: Some("my_image".to_string()),
-    ///                 width: None,
-    ///                 height: None,
-    ///                 original_dimensions_missing: None,
-    ///                 cropped: None,
-    ///                 has_original_dimensions: None,
-    ///             }],
-    ///             alt_text: Some("My photo".to_string()),
-    ///             caption: None,
-    ///             attribution: None,
-    ///         }
-    ///     ])
-    ///     .media_source("my_image", MediaSource::from_path("/path/to/image.jpg"))
+    /// // Using add_image is simpler, but you can also use media_source for manual control
+    /// let post = crab.blogs("my-blog")
+    ///     .create_post()
+    ///     .add_image(MediaSource::from_path("/path/to/image.jpg"))
     ///     .send()
     ///     .await?;
     /// # Ok(())
@@ -263,8 +246,8 @@ impl CreatePostBuilder {
     /// #     .access_token("token")
     /// #     .build()?;
     /// // Simple image upload
-    /// let post = crab.posts()
-    ///     .create("my-blog")
+    /// let post = crab.blogs("my-blog")
+    ///     .create_post()
     ///     .add_image(MediaSource::from_path("/path/to/photo.jpg"))
     ///     .send()
     ///     .await?;
@@ -279,12 +262,15 @@ impl CreatePostBuilder {
             media: vec![MediaObject {
                 url: String::new(),
                 media_type: mime_type,
+                media_key: None,
                 identifier: Some(identifier.clone()),
                 width: None,
                 height: None,
                 original_dimensions_missing: None,
                 cropped: None,
                 has_original_dimensions: None,
+                colors: None,
+                exif: None,
             }],
             alt_text: None,
             caption: None,
@@ -316,8 +302,8 @@ impl CreatePostBuilder {
     /// #     .access_token("token")
     /// #     .build()?;
     /// // Simple video upload
-    /// let post = crab.posts()
-    ///     .create("my-blog")
+    /// let post = crab.blogs("my-blog")
+    ///     .create_post()
     ///     .add_video(MediaSource::from_path("/path/to/video.mp4"))
     ///     .send()
     ///     .await?;
@@ -332,12 +318,15 @@ impl CreatePostBuilder {
             media: Some(vec![MediaObject {
                 url: String::new(),
                 media_type: mime_type,
+                media_key: None,
                 identifier: Some(identifier.clone()),
                 width: None,
                 height: None,
                 original_dimensions_missing: None,
                 cropped: None,
                 has_original_dimensions: None,
+                colors: None,
+                exif: None,
             }]),
             url: None,
             provider: Some("tumblr".to_string()),
@@ -414,8 +403,9 @@ impl CreatePostBuilder {
 /// #     .consumer_secret("secret")
 /// #     .access_token("token")
 /// #     .build()?;
-/// let edited = crab.posts()
-///     .edit("my-blog", "123456")
+/// let edited = crab.blogs("my-blog")
+///     .post("123456")
+///     .edit()
 ///     .content(vec![
 ///         ContentBlock::heading("Updated Title", 1),
 ///         ContentBlock::text("Updated content with NPF!"),
@@ -520,12 +510,15 @@ impl EditPostBuilder {
             media: vec![MediaObject {
                 url: String::new(),
                 media_type: mime_type,
+                media_key: None,
                 identifier: Some(identifier.clone()),
                 width: None,
                 height: None,
                 original_dimensions_missing: None,
                 cropped: None,
                 has_original_dimensions: None,
+                colors: None,
+                exif: None,
             }],
             alt_text: None,
             caption: None,
@@ -549,12 +542,15 @@ impl EditPostBuilder {
             media: Some(vec![MediaObject {
                 url: String::new(),
                 media_type: mime_type,
+                media_key: None,
                 identifier: Some(identifier.clone()),
                 width: None,
                 height: None,
                 original_dimensions_missing: None,
                 cropped: None,
                 has_original_dimensions: None,
+                colors: None,
+                exif: None,
             }]),
             url: None,
             provider: Some("tumblr".to_string()),
@@ -639,16 +635,16 @@ pub struct EditPostResponse {
 /// #     .access_token("token")
 /// #     .build()?;
 /// // Simple text comment
-/// crab.posts()
-///     .reblog("my-blog", "123456", "reblogkey")
+/// crab.blogs("my-blog")
+///     .reblog("123456", "reblogkey")
 ///     .comment("Great post!")
 ///     .tags(vec!["reblog"])
 ///     .send()
 ///     .await?;
 ///
 /// // NPF content blocks for richer comments
-/// crab.posts()
-///     .reblog("my-blog", "123456", "reblogkey")
+/// crab.blogs("my-blog")
+///     .reblog("123456", "reblogkey")
 ///     .content(vec![
 ///         ContentBlock::heading("My thoughts", 1),
 ///         ContentBlock::text("This is a really interesting post!"),
@@ -884,12 +880,15 @@ mod tests {
                 media: vec![MediaObject {
                     url: String::new(),
                     media_type: Some("image/jpeg".to_string()),
+                    media_key: None,
                     identifier: Some("custom_id".to_string()),
                     width: None,
                     height: None,
                     original_dimensions_missing: None,
                     cropped: None,
                     has_original_dimensions: None,
+                    colors: None,
+                    exif: None,
                 }],
                 alt_text: Some("Custom image".to_string()),
                 caption: None,

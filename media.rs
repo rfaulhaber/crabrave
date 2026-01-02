@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 /// let source = MediaSource::from_bytes("photo.jpg", bytes);
 ///
 /// // Override MIME type
-/// let source = MediaSource::from_bytes("image.data", bytes)
+/// let source = MediaSource::from_bytes("image.data", vec![0u8; 1024])
 ///     .with_mime_type("image/jpeg");
 /// ```
 #[derive(Debug, Clone)]

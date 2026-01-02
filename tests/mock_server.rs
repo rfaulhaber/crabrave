@@ -2230,19 +2230,25 @@ async fn test_get_post() {
                 "msg": "OK"
             },
             "response": {
-                "post": {
-                    "id": 123456,
-                    "id_string": "123456",
-                    "blog_name": TEST_BLOG_NAME,
-                    "post_url": format!("https://{}.tumblr.com/post/123456", TEST_BLOG_NAME),
-                    "type": "text",
-                    "timestamp": 1234567890,
-                    "tags": ["test", "example"],
-                    "note_count": 42,
-                    "title": "Test Post",
-                    "body": "<p>This is the post body</p>",
-                    "object_type": "post"
-                }
+                "object_type": "post",
+                "type": "blocks",
+                "id": 123456,
+                "id_string": "123456",
+                "tumblelog_uuid": "t:abc123",
+                "blog_name": TEST_BLOG_NAME,
+                "post_url": format!("https://{}.tumblr.com/post/123456", TEST_BLOG_NAME),
+                "timestamp": 1234567890,
+                "tags": ["test", "example"],
+                "reblog_key": "abc123xyz",
+                "interactability_reblog": "everyone",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "This is the post body"
+                    }
+                ],
+                "layout": [],
+                "trail": []
             }
         })))
         .mount(&mock_server)

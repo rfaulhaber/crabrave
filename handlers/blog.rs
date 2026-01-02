@@ -4,7 +4,7 @@ use crate::{
     Blog, BlogIdentifier, CrabResult, Crabrave, EmptyResponse,
     handlers::{following::FollowingBuilder, likes::LikesBuilder},
     models::TumblrmartAccessories,
-    npf::{self, ContentBlock, LayoutBlock},
+    npf::{ContentBlock, LayoutBlock},
 };
 use serde::{Deserialize, Serialize};
 
@@ -1698,35 +1698,73 @@ pub struct NpfPost {
     pub blog_name: String,
 }
 
+/// Item in a reblog trail
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrailItem {}
+pub struct TrailItem {
+    /// Content blocks in this trail item (NPF format)
+    /// Note: Legacy posts may have this as a string; we skip those
+    #[serde(default, deserialize_with = "crate::deserialize_content_blocks")]
+    pub content: Vec<ContentBlock>,
+    /// Raw HTML content (legacy format)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_raw: Option<String>,
+    /// Layout blocks for this trail item
+    #[serde(default)]
+    pub layout: Vec<LayoutBlock>,
+    /// Post information for this trail item
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post: Option<TrailPost>,
+    /// Blog information for this trail item
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blog: Option<TrailBlog>,
+    /// Whether this trail item is the root post
+    #[serde(default)]
+    pub is_root_item: bool,
+}
+
+/// Post reference in a trail item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrailPost {
+    /// Post ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+}
+
+/// Blog reference in a trail item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrailBlog {
+    /// Blog name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Blog URL
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Blog UUID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
+}
 
 /// Represents a Tumblr post
 ///
-/// Note: This is a simplified representation. The full post structure
-/// varies significantly based on post type and format (legacy vs NPF).
+/// This struct captures the essential fields from the Tumblr API response.
+/// Additional fields not captured here are ignored during deserialization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Post {
-    /// Post ID
-    // posts have an id and id_string field.
-    // I'm opting to grab the ID string and treat that as the ID instead of grabbing the integer value.
+    /// Post ID (uses id_string from API for precision with large IDs)
     #[serde(rename(deserialize = "id_string"))]
     pub id: String,
-    /// ID of the post this is reblogged from (if applicable)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reblogged_from_id: Option<String>,
-    /// URL of the post this is reblogged from (if applicable)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reblogged_from_url: Option<String>,
     /// Name of the blog that created this post
     pub blog_name: String,
     /// URL of the post
     pub post_url: String,
-    /// Type of post (text, photo, quote, link, chat, audio, video, answer)
+    /// Type of post (text, photo, quote, link, chat, audio, video, answer, blocks)
     #[serde(rename = "type")]
     pub post_type: String,
     /// Timestamp when the post was created (Unix time)
     pub timestamp: i64,
+    /// Human-readable date string (e.g., "2024-01-15 12:30:45 GMT")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
     /// Post tags
     #[serde(default)]
     pub tags: Vec<String>,
@@ -1739,18 +1777,131 @@ pub struct Post {
     /// Current state (published, queued, draft, private, submission)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
+
+    // === Format and content ===
+    /// Whether this post uses NPF (blocks) format
+    #[serde(default)]
+    pub is_blocks_post_format: bool,
+    /// Content format ("html" for legacy posts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<String>,
+    /// Reblog key (needed for reblogging this post)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblog_key: Option<String>,
+    /// URL slug
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
+    /// Short URL (tmblr.co)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub short_url: Option<String>,
+
+    // === Legacy HTML content ===
+    /// Post title (for text/chat posts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Post body HTML (for text posts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+
+    // === NPF content ===
+    /// Content blocks (for NPF posts)
+    #[serde(default)]
+    pub content: Vec<ContentBlock>,
+    /// Layout blocks (for NPF posts)
+    #[serde(default)]
+    pub layout: Vec<LayoutBlock>,
+    /// Reblog trail
+    #[serde(default)]
+    pub trail: Vec<TrailItem>,
+
+    // === Blog info ===
+    /// Embedded blog information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blog: Option<Blog>,
+
+    // === Reblog info ===
+    /// ID of the post this is reblogged from
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_from_id: Option<String>,
+    /// URL of the post this is reblogged from
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_from_url: Option<String>,
+    /// Name of the blog this was reblogged from
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_from_name: Option<String>,
+    /// ID of the root post in the reblog chain
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_root_id: Option<String>,
+    /// URL of the root post in the reblog chain
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_root_url: Option<String>,
+    /// Name of the original poster
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reblogged_root_name: Option<String>,
+
+    // === User relationship ===
+    /// Whether the authenticated user follows this blog
+    #[serde(default)]
+    pub followed: bool,
+    /// Whether the authenticated user has liked this post
+    #[serde(default)]
+    pub liked: bool,
+
+    // === Interaction permissions ===
+    /// Whether the user can like this post
+    #[serde(default)]
+    pub can_like: bool,
+    /// Whether the user can reblog this post
+    #[serde(default)]
+    pub can_reblog: bool,
+    /// Whether the user can reply to this post
+    #[serde(default)]
+    pub can_reply: bool,
+    /// Whether the user can send this post in a message
+    #[serde(default)]
+    pub can_send_in_message: bool,
+    /// Whether to display the blog's avatar
+    #[serde(default)]
+    pub display_avatar: bool,
+
+    // === Blaze/promotion ===
+    /// Whether this post is currently blazed
+    #[serde(default)]
+    pub is_blazed: bool,
+    /// Whether there's a pending blaze for this post
+    #[serde(default)]
+    pub is_blaze_pending: bool,
+    /// Whether this post can be ignited (boosted)
+    #[serde(default)]
+    pub can_ignite: bool,
+    /// Whether this post can be blazed
+    #[serde(default)]
+    pub can_blaze: bool,
+
+    // === Submission info ===
     /// Author of the submission (only present for submission posts)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub post_author: Option<String>,
     /// Whether this is a submission post
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_submission: Option<bool>,
-    /// Name of anonymous submitter (only present for anonymous submissions)
+    /// Name of anonymous submitter
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymous_name: Option<String>,
-    /// Email of anonymous submitter (only present for anonymous submissions)
+    /// Email of anonymous submitter
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymous_email: Option<String>,
+
+    // === Scheduling ===
+    /// Scheduled publish time (Unix timestamp, for queued posts)
+    #[serde(default)]
+    pub scheduled_publish_time: i64,
+    /// Human-readable publish time (for queued posts)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_on: Option<String>,
+    /// Queued state
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub queued_state: Option<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -1903,7 +2054,7 @@ impl BlogPost {
     /// # async fn example() -> Result<(), crabrave::CrabError> {
     /// # let crab = Crabrave::builder().consumer_key("key").build()?;
     /// let post = crab.blogs("staff").post("123456789").get().await?;
-    /// println!("Post: {}", post.post.id);
+    /// println!("Post ID: {}", post.id);
     /// # Ok(())
     /// # }
     /// ```

@@ -943,6 +943,28 @@ where
     }
 }
 
+/// Custom deserializer for content blocks that handles both NPF arrays and legacy HTML strings.
+/// Legacy posts have `content` as an HTML string, while NPF posts have it as an array of ContentBlock.
+/// This deserializer returns the array for NPF posts and an empty Vec for legacy posts.
+pub(crate) fn deserialize_content_blocks<'de, D>(
+    deserializer: D,
+) -> Result<Vec<npf::ContentBlock>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum ContentOrString {
+        Blocks(Vec<npf::ContentBlock>),
+        Html(String),
+    }
+
+    match ContentOrString::deserialize(deserializer)? {
+        ContentOrString::Blocks(blocks) => Ok(blocks),
+        ContentOrString::Html(_) => Ok(Vec::new()), // Legacy HTML content - return empty Vec
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

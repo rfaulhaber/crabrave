@@ -76,9 +76,12 @@ pub struct Blog {
     pub uuid: String,
     /// Last update timestamp (Unix time)
     pub updated: i64,
-    /// Total number of posts
+    /// Total number of posts (from `posts` field)
     #[serde(default)]
     pub posts: u64,
+    /// Total number of posts (from `total_posts` field, sometimes present)
+    #[serde(default)]
+    pub total_posts: u64,
     /// Whether the blog is NSFW
     #[serde(default)]
     pub is_nsfw: bool,
@@ -88,6 +91,146 @@ pub struct Blog {
     /// Whether the user is following this blog
     #[serde(default)]
     pub followed: bool,
+
+    // === Ask settings ===
+    /// Whether the blog accepts asks
+    #[serde(default)]
+    pub ask: bool,
+    /// Whether the blog accepts anonymous asks
+    #[serde(default)]
+    pub ask_anon: bool,
+    /// Custom title for the ask page
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ask_page_title: Option<String>,
+    /// Whether asks allow media attachments
+    #[serde(default)]
+    pub asks_allow_media: bool,
+
+    // === Interaction settings ===
+    /// Whether the blog allows chat
+    #[serde(default)]
+    pub can_chat: bool,
+    /// Whether the user can send fan mail to this blog
+    #[serde(default)]
+    pub can_send_fan_mail: bool,
+    /// Whether the blog can be subscribed to
+    #[serde(default)]
+    pub can_subscribe: bool,
+    /// Whether the user is subscribed to this blog
+    #[serde(default)]
+    pub subscribed: bool,
+    /// Whether the blog shares its likes publicly
+    #[serde(default)]
+    pub share_likes: bool,
+    /// Whether the blog shares who it follows publicly
+    #[serde(default)]
+    pub share_following: bool,
+
+    // === Avatar and theme ===
+    /// Blog avatar in various sizes
+    #[serde(default)]
+    pub avatar: Vec<AvatarImage>,
+    /// Blog theme configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<Theme>,
+    /// Theme ID
+    #[serde(default)]
+    pub theme_id: u64,
+
+    // === Premium features ===
+    /// Tumblrmart accessories (badges, etc.)
+    #[serde(default, deserialize_with = "crate::empty_object_as_none")]
+    pub tumblrmart_accessories: Option<TumblrmartAccessories>,
+    /// Whether the blog can show badges
+    #[serde(default)]
+    pub can_show_badges: bool,
+
+    // === Other flags ===
+    /// Whether the blog is blocked from primary
+    #[serde(default)]
+    pub is_blocked_from_primary: bool,
+}
+
+/// Avatar image at a specific size
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AvatarImage {
+    /// Width in pixels
+    pub width: u32,
+    /// Height in pixels
+    pub height: u32,
+    /// URL to the avatar image
+    pub url: String,
+    /// Avatar accessories (hats, frames, etc.)
+    #[serde(default)]
+    pub accessories: Vec<serde_json::Value>,
+}
+
+/// Blog theme configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Theme {
+    /// Avatar shape ("circle" or "square")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar_shape: Option<String>,
+    /// Background color (hex)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_color: Option<String>,
+    /// Body font name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body_font: Option<String>,
+    /// Header bounds for cropping
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_bounds: Option<serde_json::Value>,
+    /// Header image URL
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_image: Option<String>,
+    /// Focused header image URL
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_image_focused: Option<String>,
+    /// Header image poster URL (for video headers)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_image_poster: Option<String>,
+    /// Scaled header image URL
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_image_scaled: Option<String>,
+    /// Whether the header stretches to fill width
+    #[serde(default)]
+    pub header_stretch: bool,
+    /// Link color (hex)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link_color: Option<String>,
+    /// Whether to show the avatar
+    #[serde(default)]
+    pub show_avatar: bool,
+    /// Whether to show the description
+    #[serde(default)]
+    pub show_description: bool,
+    /// Whether to show the header image
+    #[serde(default)]
+    pub show_header_image: bool,
+    /// Whether to show the title
+    #[serde(default)]
+    pub show_title: bool,
+    /// Title color (hex)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_color: Option<String>,
+    /// Title font name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_font: Option<String>,
+    /// Title font weight ("regular", "bold")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_font_weight: Option<String>,
+    /// Full header width in pixels
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_full_width: Option<u32>,
+    /// Full header height in pixels
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_full_height: Option<u32>,
+    /// Focus width for header cropping
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_focus_width: Option<u32>,
+    /// Focus height for header cropping
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub header_focus_height: Option<u32>,
 }
 
 /// Information about a Tumblr user
@@ -168,17 +311,28 @@ impl<T> Default for Page<T> {
     }
 }
 
+/// Tumblrmart accessories (badges, checkmarks, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TumblrmartAccessories {
+    /// List of badges the blog has
+    #[serde(default)]
     pub badges: Vec<Badge>,
-    pub blue_checkmark_account: u8,
+    /// Number of blue checkmarks purchased
+    #[serde(default)]
+    pub blue_checkmark_count: u8,
 }
 
+/// A Tumblrmart badge
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Badge {
+    /// Badge product group identifier (e.g., "blue-checkmark")
     pub product_group: String,
+    /// Badge image URLs at various sizes
+    #[serde(default)]
     pub urls: Vec<String>,
-    pub destination_url: Vec<String>,
+    /// URL to purchase more of this badge
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination_url: Option<String>,
 }
 
 #[cfg(test)]

@@ -185,6 +185,9 @@ pub struct MediaObject {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "type")]
     pub media_type: Option<String>,
+    /// Unique media key identifier
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media_key: Option<String>,
     /// Identifier for linking to multipart upload data
     ///
     /// When uploading media, this identifier is used as the field name in the
@@ -206,6 +209,58 @@ pub struct MediaObject {
     /// Whether the media has original dimensions available
     #[serde(skip_serializing_if = "Option::is_none")]
     pub has_original_dimensions: Option<bool>,
+    /// Extracted colors from the image (c0, c1, c2, c3, c4 as hex strings)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub colors: Option<MediaColors>,
+    /// EXIF metadata from the original image
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exif: Option<MediaExif>,
+}
+
+/// Extracted color palette from an image
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediaColors {
+    /// Primary color (hex without #)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c0: Option<String>,
+    /// Secondary color (hex without #)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c1: Option<String>,
+    /// Tertiary color (hex without #)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c2: Option<String>,
+    /// Quaternary color (hex without #)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c3: Option<String>,
+    /// Quinary color (hex without #)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c4: Option<String>,
+}
+
+/// EXIF metadata from an image
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediaExif {
+    /// Timestamp when the photo was taken (Unix timestamp as string)
+    #[serde(rename = "Time", skip_serializing_if = "Option::is_none")]
+    pub time: Option<String>,
+    /// Camera make
+    #[serde(rename = "Make", skip_serializing_if = "Option::is_none")]
+    pub make: Option<String>,
+    /// Camera model
+    #[serde(rename = "Model", skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// Focal length
+    #[serde(rename = "FocalLength", skip_serializing_if = "Option::is_none")]
+    pub focal_length: Option<String>,
+    /// Aperture value
+    #[serde(rename = "Aperture", skip_serializing_if = "Option::is_none")]
+    pub aperture: Option<String>,
+    /// Exposure time
+    #[serde(rename = "Exposure", skip_serializing_if = "Option::is_none")]
+    pub exposure: Option<String>,
+    /// ISO speed
+    #[serde(rename = "ISO", skip_serializing_if = "Option::is_none")]
+    pub iso: Option<String>,
 }
 
 /// Attribution for content sources
@@ -409,12 +464,15 @@ impl ContentBlock {
             media: vec![MediaObject {
                 url: url.into(),
                 media_type: None,
+                media_key: None,
                 identifier: None,
                 width: None,
                 height: None,
                 original_dimensions_missing: None,
                 cropped: None,
                 has_original_dimensions: None,
+                colors: None,
+                exif: None,
             }],
             alt_text: None,
             caption: None,
