@@ -25,6 +25,8 @@ urlencoding = "2.1"
 wiremock = "0.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 dirs = "5.0"
+proptest = "1.9.0"
+arbitrary = { version = "1.4.2", features = ["derive"] }
 
 [workspace.lints.clippy]
 await_holding_invalid_type = "deny"
