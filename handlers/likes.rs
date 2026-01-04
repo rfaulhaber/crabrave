@@ -31,6 +31,7 @@ pub struct LikesBuilder {
 }
 
 impl LikesBuilder {
+    #[cfg(test)]
     pub(crate) fn query(&self) -> &LikesQuery {
         &self.query
     }

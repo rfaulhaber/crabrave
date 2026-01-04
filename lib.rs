@@ -958,6 +958,8 @@ where
     #[serde(untagged)]
     enum ContentOrString {
         Blocks(Vec<npf::ContentBlock>),
+        // String variant needed for serde to match legacy HTML content
+        #[allow(dead_code)]
         Html(String),
     }
 
