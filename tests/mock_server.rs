@@ -1566,7 +1566,7 @@ async fn test_communities_timeline() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path("/community/rust-community/timeline"))
+        .and(path("/communities/rust-community/timeline"))
         .and(query_param("limit", "20"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
@@ -2006,13 +2006,11 @@ async fn test_bulk_block() {
 
     let client = test_client(&mock_server).await;
 
-    let result = client
+    client
         .blogs(TEST_BLOG_NAME)
         .bulk_block(vec!["foo", "bar", "baz"], true)
         .await
         .expect("callout failed");
-
-    assert_eq!(result, ());
 }
 
 #[tokio::test]
@@ -2035,13 +2033,11 @@ async fn test_unblock() {
 
     let client = test_client(&mock_server).await;
 
-    let result = client
+    client
         .blogs(TEST_BLOG_NAME)
         .unblock(blog_to_unblock)
         .await
         .expect("callout failed");
-
-    assert_eq!(result, ());
 }
 
 #[tokio::test]
@@ -2063,13 +2059,11 @@ async fn test_unblock_all_anonymous() {
 
     let client = test_client(&mock_server).await;
 
-    let result = client
+    client
         .blogs(TEST_BLOG_NAME)
         .unblock_all_anonymous()
         .await
         .expect("callout failed");
-
-    assert_eq!(result, ());
 }
 
 #[tokio::test]
@@ -2545,8 +2539,8 @@ async fn test_reblog_post_invalid_key() {
 async fn test_community_join() {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method("POST"))
-        .and(path("/community/rust-community/join"))
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/members"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -2571,26 +2565,22 @@ async fn test_community_join() {
 async fn test_community_leave() {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method("POST"))
-        .and(path("/community/rust-community/leave"))
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/members/my-blog"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
                 "msg": "OK"
             },
-            "response": {
-                "success": true
-            }
+            "response": []
         })))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.communities("rust-community").leave().await;
+    let result = client.communities("rust-community").leave("my-blog").await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
-    let response = result.unwrap();
-    assert_eq!(response.success, Some(true));
 }
 
 #[tokio::test]
@@ -2598,7 +2588,7 @@ async fn test_community_members() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path("/community/rust-community/members"))
+        .and(path("/communities/rust-community/members"))
         .and(query_param("limit", "10"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
@@ -2609,26 +2599,32 @@ async fn test_community_members() {
                 "total_members": 150,
                 "members": [
                     {
-                        "name": "rustdev",
-                        "title": "Rust Developer",
-                        "description": "Learning Rust",
-                        "url": "https://rustdev.tumblr.com/",
-                        "uuid": "t:abc123",
-                        "updated": 1234567890,
-                        "posts": 50,
-                        "is_nsfw": false,
-                        "is_adult": false
+                        "blog": {
+                            "name": "rustdev",
+                            "title": "Rust Developer",
+                            "description": "Learning Rust",
+                            "url": "https://rustdev.tumblr.com/",
+                            "uuid": "t:abc123",
+                            "updated": 1234567890,
+                            "posts": 50,
+                            "is_nsfw": false,
+                            "is_adult": false
+                        },
+                        "role": "member"
                     },
                     {
-                        "name": "crabfan",
-                        "title": "Crab Fan",
-                        "description": "I love crabs",
-                        "url": "https://crabfan.tumblr.com/",
-                        "uuid": "t:def456",
-                        "updated": 1234567891,
-                        "posts": 25,
-                        "is_nsfw": false,
-                        "is_adult": false
+                        "blog": {
+                            "name": "crabfan",
+                            "title": "Crab Fan",
+                            "description": "I love crabs",
+                            "url": "https://crabfan.tumblr.com/",
+                            "uuid": "t:def456",
+                            "updated": 1234567891,
+                            "posts": 25,
+                            "is_nsfw": false,
+                            "is_adult": false
+                        },
+                        "role": "moderator"
                     }
                 ]
             }
@@ -2639,14 +2635,16 @@ async fn test_community_members() {
     let client = test_client(&mock_server).await;
     let result = client
         .communities("rust-community")
-        .members(Some(10), None)
+        .members()
+        .limit(10)
+        .send()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
     assert_eq!(response.total_members, 150);
     assert_eq!(response.members.len(), 2);
-    assert_eq!(response.members[0].name, "rustdev");
+    assert_eq!(response.members[0].blog.name, "rustdev");
 }
 
 // =============================================================================

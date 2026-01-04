@@ -156,24 +156,64 @@ crab.users().likes().before(timestamp).send().await?
 crab.users().following().limit(20).send().await?
 crab.users().follow("blog").await?
 crab.users().unfollow("blog").await?
+
+// List joined communities
+crab.users().joined_communities().await?
+
+// Like/unlike posts
+crab.users().like(post_id, reblog_key).await?
+crab.users().unlike(post_id, reblog_key).await?
+
+// Filtered tags management
+crab.users().filtered_tags().limit(20).send().await?
+crab.users().add_filtered_tags(vec!["spoilers", "nsfw"]).await?
+crab.users().remove_filtered_tag("spoilers").await?
+
+// Filtered content management
+crab.users().filtered_content().limit(20).send().await?
+crab.users().add_filtered_content(vec!["trigger warning"]).await?
+crab.users().remove_filtered_content("trigger warning").await?
 ```
 
 **Posts API** (`handlers/posts.rs`)
 ```rust
 // Get a specific post
-crab.posts().get("my-blog", "123456").await?
+crab.blogs("my-blog").post("123456").get().await?
 
 // Create posts using NPF
-crab.posts()
-    .create_text("my-blog")
-    .title("Hello World")
-    .body("This is my first post!")
+crab.blogs("my-blog")
+    .create_post()
+    .add_block(ContentBlock::text("Hello World!"))
     .tags(vec!["rust", "programming"])
     .send()
     .await?
 
+// Create post with media uploads
+crab.blogs("my-blog")
+    .create_post()
+    .add_image(MediaSource::from_path("/path/to/image.jpg"))
+    .add_video(MediaSource::from_path("/path/to/video.mp4"))
+    .add_audio(MediaSource::from_path("/path/to/audio.mp3"))
+    .send()
+    .await?
+
+// Edit a post
+crab.blogs("my-blog")
+    .post("123456")
+    .edit()
+    .add_block(ContentBlock::text("Updated content"))
+    .send()
+    .await?
+
 // Delete a post
-crab.posts().delete("my-blog", "123456").await?
+crab.blogs("my-blog").post("123456").delete().await?
+
+// Reblog a post
+crab.blogs("my-blog")
+    .reblog("source-blog", "123456", "reblog_key")
+    .comment("Great post!")
+    .send()
+    .await?
 ```
 
 **Tagged API** (`handlers/tagged.rs`)
@@ -186,6 +226,9 @@ crab.tagged("rust").filter("text").send().await?
 
 **Communities API** (`handlers/communities.rs`)
 ```rust
+// Community info
+crab.communities("rust-community").info().await?
+
 // Community timeline
 crab.communities("rust-community")
     .timeline()
@@ -195,15 +238,52 @@ crab.communities("rust-community")
 
 // Join/leave communities
 crab.communities("rust-community").join().await?
-crab.communities("rust-community").leave().await?
+crab.communities("rust-community").leave("my-blog").await?
 
-// Get members
-crab.communities("rust-community").members(Some(20), None).await?
+// Get members with pagination
+crab.communities("rust-community")
+    .members()
+    .limit(20)
+    .send()
+    .await?
+
+// Member management (moderator/admin)
+crab.communities("rust-community").remove_member("bad-blog").await?
+crab.communities("rust-community").change_role("trusted-blog", MemberRole::Moderator).await?
+
+// Mute/unmute notifications
+crab.communities("rust-community").mute().await?
+crab.communities("rust-community").unmute().await?
+
+// Invitation management
+crab.communities("rust-community").invitations().await?
+crab.communities("rust-community").invite("friend-blog").await?
+crab.communities("rust-community").cancel_invitation("friend-blog").await?
+crab.communities("rust-community").invitation_status("friend-blog").await?
+crab.communities("rust-community").regenerate_invite_url().await?
+
+// Reactions on posts
+crab.communities("rust-community").add_reaction("123456", "heart").await?
+crab.communities("rust-community").remove_reaction("123456", "heart").await?
+
+// Moderation (moderator/admin)
+crab.communities("rust-community").moderated_post("123456").await?
+crab.communities("rust-community").moderate_post("123456").await?
+crab.communities("rust-community").restore_post("123456").await?
 ```
 
 **Internal Handlers:**
 - `following.rs` - Following/followers operations used by both Blogs and Users APIs
 - `likes.rs` - Likes operations used by both Blogs and Users APIs
+
+**Media Module** (`media.rs`)
+```rust
+// Create media sources for uploads
+let image = MediaSource::from_path("/path/to/image.jpg");
+let video = MediaSource::from_bytes("video.mp4", video_bytes);
+let audio = MediaSource::from_path("/path/to/song.mp3")
+    .with_mime_type("audio/mpeg");
+```
 
 ### Builder Pattern
 
@@ -214,7 +294,11 @@ All complex queries use type-safe builders:
 - `FollowingBuilder` - Following list with pagination
 - `TaggedBuilder` - Tagged posts search
 - `TimelineBuilder` - Community timeline
+- `MembersBuilder` - Community members with pagination
 - `BlocksBuilder` - Blocked blogs
+- `CreatePostBuilder` - NPF post creation with media uploads
+- `EditPostBuilder` - NPF post editing with media uploads
+- `ReblogBuilder` - Reblog with comments/content
 
 ### API Endpoints
 
@@ -258,18 +342,17 @@ All complex queries use type-safe builders:
 - Error handling and response parsing
 - Models and type system
 - NPF (Neue Post Format) support
-- Blogs API (info, posts, avatar, followers, following, likes, blocks)
-- Users API (info, dashboard, likes, following operations)
-- Posts API (get, create, delete)
+- Media uploads (images, videos, audio) via multipart/form-data
+- Blogs API (info, posts, avatar, followers, following, likes, blocks, drafts, queue, submissions, notifications, notes, pages)
+- Users API (info, dashboard, likes, following, like/unlike, filtered tags, filtered content, joined communities)
+- Posts API (get, create, edit, delete, reblog, mute) with NPF and media upload support
 - Tagged API (search by tag)
-- Communities API (timeline, join/leave, members)
+- Communities API (info, timeline, join/leave, members, member management, mute/unmute, invitations, reactions, moderation)
 
 🚧 **Potential Future Work:**
 - Additional NPF content block types
-- More comprehensive post creation builders
-- Pagination helper utilities
-- Media upload support (post_multipart method exists but not implemented)
-- Rate limit retry logic
+- Pagination helper utilities (cursor-based iteration)
+- Rate limit retry logic (automatic backoff)
 - Token refresh for OAuth2
 
 ## Important Notes

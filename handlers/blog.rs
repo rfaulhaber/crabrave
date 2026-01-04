@@ -127,7 +127,11 @@ impl Blogs {
             .await
     }
 
-    pub async fn bulk_block(&self, blogs: Vec<impl Into<String>>, force: bool) -> CrabResult<()> {
+    pub async fn bulk_block(
+        &self,
+        blogs: Vec<impl Into<String>>,
+        force: bool,
+    ) -> CrabResult<EmptyResponse> {
         let path = format!("blog/{}/blocks/bulk", self.identifier.as_str());
         let blogs_str = blogs
             .into_iter()
@@ -144,7 +148,6 @@ impl Blogs {
                 },
             )
             .await
-            .map(|_resp: EmptyResponse| ())
     }
 
     /// Unblocks a specific blog
@@ -170,7 +173,7 @@ impl Blogs {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn unblock(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<()> {
+    pub async fn unblock(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<EmptyResponse> {
         let path = format!("blog/{}/blocks", self.identifier.as_str());
         let blog_id: BlogIdentifier = blog.into();
 
@@ -180,7 +183,6 @@ impl Blogs {
                 &serde_json::json!({ "blocked_tumblelog": blog_id.as_str() }),
             )
             .await
-            .map(|_resp: EmptyResponse| ())
     }
 
     /// Clears all anonymous IP blocks
@@ -203,13 +205,12 @@ impl Blogs {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn unblock_all_anonymous(&self) -> CrabResult<()> {
+    pub async fn unblock_all_anonymous(&self) -> CrabResult<EmptyResponse> {
         let path = format!("blog/{}/blocks", self.identifier.as_str());
 
         self.client
             .delete_with_query(&path, &serde_json::json!({ "anonymous_only": true }))
             .await
-            .map(|_resp: EmptyResponse| ())
     }
 
     /// Get this blog's likes

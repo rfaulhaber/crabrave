@@ -261,15 +261,16 @@ impl Users {
     /// - The post doesn't exist
     /// - The reblog key is invalid
     /// - Daily like limit has been reached (1000/day)
-    pub async fn like(&self, post_id: u64, reblog_key: impl Into<String>) -> CrabResult<()> {
+    pub async fn like(
+        &self,
+        post_id: u64,
+        reblog_key: impl Into<String>,
+    ) -> CrabResult<EmptyResponse> {
         let body = LikeRequest {
             id: post_id,
             reblog_key: reblog_key.into(),
         };
-        self.client
-            .post("user/like", &body)
-            .await
-            .map(|_resp: EmptyResponse| ())
+        self.client.post("user/like", &body).await
     }
 
     /// Unlikes a post
@@ -301,15 +302,16 @@ impl Users {
     /// - Authentication is invalid
     /// - The post doesn't exist
     /// - The reblog key is invalid
-    pub async fn unlike(&self, post_id: u64, reblog_key: impl Into<String>) -> CrabResult<()> {
+    pub async fn unlike(
+        &self,
+        post_id: u64,
+        reblog_key: impl Into<String>,
+    ) -> CrabResult<EmptyResponse> {
         let body = LikeRequest {
             id: post_id,
             reblog_key: reblog_key.into(),
         };
-        self.client
-            .post("user/unlike", &body)
-            .await
-            .map(|_resp: EmptyResponse| ())
+        self.client.post("user/unlike", &body).await
     }
 
     /// Gets the user's filtered tags
@@ -369,14 +371,11 @@ impl Users {
     pub async fn add_filtered_tags(
         &self,
         tags: impl IntoIterator<Item = impl Into<String>>,
-    ) -> CrabResult<()> {
+    ) -> CrabResult<EmptyResponse> {
         let body = FilteredTagsRequest {
             filtered_tags: tags.into_iter().map(Into::into).collect(),
         };
-        self.client
-            .post("user/filtered_tags", &body)
-            .await
-            .map(|_resp: EmptyResponse| ())
+        self.client.post("user/filtered_tags", &body).await
     }
 
     /// Removes a tag from the user's filtered tags list
@@ -400,14 +399,11 @@ impl Users {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn remove_filtered_tag(&self, tag: impl Into<String>) -> CrabResult<()> {
+    pub async fn remove_filtered_tag(&self, tag: impl Into<String>) -> CrabResult<EmptyResponse> {
         let tag: String = tag.into();
         let encoded_tag = urlencoding::encode(&tag);
         let path = format!("user/filtered_tags/{}", encoded_tag);
-        self.client
-            .delete(&path)
-            .await
-            .map(|_resp: EmptyResponse| ())
+        self.client.delete(&path).await
     }
 
     /// Gets the user's filtered content strings
@@ -471,14 +467,11 @@ impl Users {
     pub async fn add_filtered_content(
         &self,
         content: impl IntoIterator<Item = impl Into<String>>,
-    ) -> CrabResult<()> {
+    ) -> CrabResult<EmptyResponse> {
         let body = FilteredContentRequest {
             filtered_content: content.into_iter().map(Into::into).collect(),
         };
-        self.client
-            .post("user/filtered_content", &body)
-            .await
-            .map(|_resp: EmptyResponse| ())
+        self.client.post("user/filtered_content", &body).await
     }
 
     /// Removes a content string from the user's filtered content list
@@ -502,7 +495,10 @@ impl Users {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn remove_filtered_content(&self, content: impl Into<String>) -> CrabResult<()> {
+    pub async fn remove_filtered_content(
+        &self,
+        content: impl Into<String>,
+    ) -> CrabResult<EmptyResponse> {
         let content: String = content.into();
         self.client
             .delete_with_query(
@@ -510,7 +506,36 @@ impl Users {
                 &serde_json::json!({ "filtered_content": content }),
             )
             .await
-            .map(|_resp: EmptyResponse| ())
+    }
+
+    /// Gets the list of communities the authenticated user has joined
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// let communities = crab.users().joined_communities().await?;
+    /// for community in communities.communities {
+    ///     println!("Community: {}", community.name);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Authentication is invalid
+    /// - Network request fails
+    /// - API returns an error
+    pub async fn joined_communities(&self) -> CrabResult<JoinedCommunitiesResponse> {
+        self.client.get("communities").await
     }
 }
 
@@ -526,6 +551,13 @@ pub struct UserInfo {
 pub struct UserLimitsResponse {
     /// User limit information
     pub user: UserLimits,
+}
+
+/// Response from the joined communities endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JoinedCommunitiesResponse {
+    /// List of communities the user has joined
+    pub communities: Vec<crate::handlers::communities::Community>,
 }
 
 /// User rate limit information

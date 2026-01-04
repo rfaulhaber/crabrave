@@ -344,6 +344,69 @@ impl CreatePostBuilder {
         self
     }
 
+    /// Adds an audio file to the post with auto-generated identifier
+    ///
+    /// This is a convenience method that automatically creates an audio content
+    /// block and associates it with the media source.
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - Media source for the audio file
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # use crabrave::media::MediaSource;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Simple audio upload
+    /// let post = crab.blogs("my-blog")
+    ///     .create_post()
+    ///     .add_audio(MediaSource::from_path("/path/to/song.mp3"))
+    ///     .send()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn add_audio(mut self, source: MediaSource) -> Self {
+        let identifier = self.generate_media_id();
+        let mime_type = source.mime_type().map(|s| s.to_string());
+
+        self.content.push(ContentBlock::Audio {
+            media: Some(vec![MediaObject {
+                url: String::new(),
+                media_type: mime_type,
+                media_key: None,
+                identifier: Some(identifier.clone()),
+                width: None,
+                height: None,
+                original_dimensions_missing: None,
+                cropped: None,
+                has_original_dimensions: None,
+                colors: None,
+                exif: None,
+            }]),
+            url: None,
+            provider: Some("tumblr".to_string()),
+            artist: None,
+            album: None,
+            title: None,
+            embed_html: None,
+            embed_url: None,
+            poster: None,
+            attribution: None,
+            metadata: None,
+        });
+
+        self.media_sources.insert(identifier, source);
+        self
+    }
+
     /// Sends the request to create the NPF post
     ///
     /// # Errors
@@ -565,6 +628,45 @@ impl EditPostBuilder {
         };
 
         self.content.get_or_insert_with(Vec::new).push(video_block);
+        self.media_sources.insert(identifier, source);
+        self
+    }
+
+    /// Adds an audio file to the post with auto-generated identifier
+    ///
+    /// This is a convenience method that automatically creates an audio content
+    /// block and associates it with the media source.
+    pub fn add_audio(mut self, source: MediaSource) -> Self {
+        let identifier = self.generate_media_id();
+        let mime_type = source.mime_type().map(|s| s.to_string());
+
+        let audio_block = ContentBlock::Audio {
+            media: Some(vec![MediaObject {
+                url: String::new(),
+                media_type: mime_type,
+                media_key: None,
+                identifier: Some(identifier.clone()),
+                width: None,
+                height: None,
+                original_dimensions_missing: None,
+                cropped: None,
+                has_original_dimensions: None,
+                colors: None,
+                exif: None,
+            }]),
+            url: None,
+            provider: Some("tumblr".to_string()),
+            artist: None,
+            album: None,
+            title: None,
+            embed_html: None,
+            embed_url: None,
+            poster: None,
+            attribution: None,
+            metadata: None,
+        };
+
+        self.content.get_or_insert_with(Vec::new).push(audio_block);
         self.media_sources.insert(identifier, source);
         self
     }
@@ -935,5 +1037,35 @@ mod tests {
         let source =
             MediaSource::from_bytes("data.bin", vec![1, 2, 3]).with_mime_type("application/custom");
         assert_eq!(source.mime_type(), Some("application/custom"));
+    }
+
+    #[test]
+    fn test_create_post_with_audio() {
+        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let blog = BlogIdentifier::from("my-blog");
+
+        let media_source = MediaSource::from_bytes("song.mp3", vec![1, 2, 3, 4]);
+        let builder = CreatePostBuilder::new(client, blog)
+            .add_block(ContentBlock::text("Check out this track!"))
+            .add_audio(media_source)
+            .tags(vec!["music"]);
+
+        assert_eq!(builder.content.len(), 2);
+        assert_eq!(builder.media_sources.len(), 1);
+        assert!(builder.media_sources.contains_key("media_0"));
+    }
+
+    #[test]
+    fn test_edit_post_with_audio() {
+        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let blog = BlogIdentifier::from("my-blog");
+
+        let media_source = MediaSource::from_bytes("updated.mp3", vec![1, 2, 3]);
+        let builder =
+            EditPostBuilder::new(client, blog, "123456".to_string()).add_audio(media_source);
+
+        assert!(builder.content.is_some());
+        assert_eq!(builder.content.as_ref().unwrap().len(), 1);
+        assert_eq!(builder.media_sources.len(), 1);
     }
 }

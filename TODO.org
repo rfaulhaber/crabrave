@@ -3,8 +3,15 @@
 API doc: https://www.tumblr.com/docs/en/api/v2
 NPF doc: https://www.tumblr.com/docs/npf
 
-* TODO OAuth1 Authorization
-* TODO OAuth2 Authorization
+* DONE OAuth1 Authorization
+- HMAC-SHA1 signature generation
+- Automatic Authorization header construction
+- Support for consumer key/secret and access token/secret
+* DONE OAuth2 Authorization
+- OAuth2Config for managing auth flow
+- Authorization URL generation with PKCE support
+- Token exchange and refresh functionality
+- Bearer token authentication
 * DONE Move post methods to under blog endpoints
 #+begin_src rust
 crab.blogs("staff").posts().send() // fetches multiple posts
@@ -65,32 +72,51 @@ crab.blogs("foo").post("123").delete() // delete post
 ** DONE /user/filtered_content - Content Filtering
 * Tagged [1/1]
 ** DONE /tagged – Get Posts with Tag
-* Communities [0/20]
-Note: Current implementation uses wrong paths (=/community/= instead of =/communities/=)
-** TODO GET /v2/communities - List joined communities
-** TODO GET /v2/communities/{community-handle} - Get info about a community
+* Communities [19/20]
+All endpoints use correct paths (=/communities/=) with proper HTTP methods.
+** DONE GET /v2/communities - List joined communities
+- Implemented as ~crab.users().joined_communities()~
+** DONE GET /v2/communities/{community-handle} - Get info about a community
+- Implemented as ~crab.communities("handle").info()~
 ** TODO PUT /v2/communities/{community-handle} - Edit your community
-** TODO GET /v2/communities/{community-handle}/invitations - View pending invites
-** TODO PUT /v2/communities/{community-handle}/invitations - Invite someone to the community
-** TODO DELETE /v2/communities/{community-handle}/invitations/{blog-identifier} - Cancel an invitation
-** TODO GET /v2/communities/{community-handle}/invitations/{blog-identifier} - Check invitation status
-** TODO POST /v2/communities/{community-handle}/invite_hash - Regenerate the invite URL
-** STRT GET /v2/communities/{community-handle}/members - Get community members
-- Implemented but uses wrong path
-** STRT PUT /v2/communities/{community-handle}/members - Join a community
-- Implemented but uses wrong path and method (POST /join)
-** STRT DELETE /v2/communities/{community-handle}/members/{blog-identifier} - Remove a member
-- Implemented but uses wrong path and method (POST /leave)
-** TODO PUT /v2/communities/{community-handle}/members/{blog-identifier} - Change a member's role
-** TODO DELETE /v2/communities/{community-handle}/mute - Unmute a community
-** TODO PUT /v2/communities/{community-handle}/mute - Mute a community
-** TODO PUT /v2/communities/{community-handle}/posts/{post-id}/reactions - Add reaction to post
-** TODO DELETE /v2/communities/{community-handle}/posts/{post-id}/reactions/{reaction-id} - Remove reaction from post
-** TODO GET /v2/communities/{community-handle}/moderation/posts/{post-id} - View a moderated post
-** TODO DELETE /v2/communities/{community-handle}/moderation/posts/{post-id} - Moderate a post
-** TODO PUT /v2/communities/{community-handle}/moderation/posts/{post-id} - Restore a post
-** STRT GET /v2/communities/{community-handle}/timeline - Get posts from a community
-- Implemented but uses wrong path
+- Not yet implemented (admin-only endpoint)
+** DONE GET /v2/communities/{community-handle}/invitations - View pending invites
+- Implemented as ~crab.communities("handle").invitations()~
+** DONE PUT /v2/communities/{community-handle}/invitations - Invite someone to the community
+- Implemented as ~crab.communities("handle").invite("blog")~
+** DONE DELETE /v2/communities/{community-handle}/invitations/{blog-identifier} - Cancel an invitation
+- Implemented as ~crab.communities("handle").cancel_invitation("blog")~
+** DONE GET /v2/communities/{community-handle}/invitations/{blog-identifier} - Check invitation status
+- Implemented as ~crab.communities("handle").invitation_status("blog")~
+** DONE POST /v2/communities/{community-handle}/invite_hash - Regenerate the invite URL
+- Implemented as ~crab.communities("handle").regenerate_invite_url()~
+** DONE GET /v2/communities/{community-handle}/members - Get community members
+- Implemented as ~crab.communities("handle").members().limit(20).send()~
+- Uses MembersBuilder for pagination
+** DONE PUT /v2/communities/{community-handle}/members - Join a community
+- Implemented as ~crab.communities("handle").join()~
+** DONE DELETE /v2/communities/{community-handle}/members/{blog-identifier} - Leave/remove a member
+- Implemented as ~crab.communities("handle").leave("blog")~ (for self)
+- Implemented as ~crab.communities("handle").remove_member("blog")~ (for moderators)
+** DONE PUT /v2/communities/{community-handle}/members/{blog-identifier} - Change a member's role
+- Implemented as ~crab.communities("handle").change_role("blog", MemberRole::Moderator)~
+** DONE DELETE /v2/communities/{community-handle}/mute - Unmute a community
+- Implemented as ~crab.communities("handle").unmute()~
+** DONE PUT /v2/communities/{community-handle}/mute - Mute a community
+- Implemented as ~crab.communities("handle").mute()~
+** DONE PUT /v2/communities/{community-handle}/posts/{post-id}/reactions - Add reaction to post
+- Implemented as ~crab.communities("handle").add_reaction("post_id", "reaction_id")~
+** DONE DELETE /v2/communities/{community-handle}/posts/{post-id}/reactions/{reaction-id} - Remove reaction from post
+- Implemented as ~crab.communities("handle").remove_reaction("post_id", "reaction_id")~
+** DONE GET /v2/communities/{community-handle}/moderation/posts/{post-id} - View a moderated post
+- Implemented as ~crab.communities("handle").moderated_post("post_id")~
+** DONE DELETE /v2/communities/{community-handle}/moderation/posts/{post-id} - Moderate a post
+- Implemented as ~crab.communities("handle").moderate_post("post_id")~
+** DONE PUT /v2/communities/{community-handle}/moderation/posts/{post-id} - Restore a post
+- Implemented as ~crab.communities("handle").restore_post("post_id")~
+** DONE GET /v2/communities/{community-handle}/timeline - Get posts from a community
+- Implemented as ~crab.communities("handle").timeline().limit(20).send()~
+- Uses TimelineBuilder for pagination
 * Media Upload Implementation [1/1]
 ** DONE Media Upload for Posts
 - New ~media.rs~ module with MediaSource type
@@ -111,8 +137,9 @@ Note: Current implementation uses wrong paths (=/community/= instead of =/commun
   - ~.media_source(identifier, source)~ - explicit identifier control
   - ~.add_image(source)~ - convenience method with auto-generated IDs
   - ~.add_video(source)~ - convenience method for videos
+  - ~.add_audio(source)~ - convenience method for audio files
   - Automatic JSON vs multipart selection based on media presence
-- Test coverage: 8 new tests for media upload functionality
+- Test coverage: 10 new tests for media upload functionality
 * API Refactoring [1/1]
 ** DONE Post Operations Moved to Blog Handler
 All post operations now go through ~crab.blogs("blog-name")~ for consistency:

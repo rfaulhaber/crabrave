@@ -276,7 +276,9 @@ impl Crabrave {
     ///
     /// // Get community members
     /// let members = crab.communities("rust-community")
-    ///     .members(Some(20), None)
+    ///     .members()
+    ///     .limit(20)
+    ///     .send()
     ///     .await?;
     /// # Ok(())
     /// # }
