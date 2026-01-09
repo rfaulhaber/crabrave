@@ -13,7 +13,7 @@
 use crabrave::{
     CrabError, Crabrave,
     handlers::blog::AvatarResponse,
-    npf::{ContentBlock, MediaObject},
+    npf::ContentBlock,
     oauth::{OAuth2Config, parse_callback},
 };
 use serde::Deserialize;
@@ -385,17 +385,6 @@ async fn user_following() {
     }
 }
 
-// #[tokio::test]
-// #[ignore]
-// async fn get_blocks() {
-//     let client = test_client().await.expect("Failed to create client");
-//     let result = client
-//         .blogs(get_tumblr_test_blog().expect("No test blog set"))
-//         .blocks()
-//         .get()
-//         .await;
-// }
-
 #[tokio::test]
 #[ignore]
 async fn make_text_post() {
@@ -418,45 +407,6 @@ async fn make_text_post() {
         Err(e) => panic!("failed to make a post: {}", e),
     }
 }
-
-// #[tokio::test]
-// #[ignore]
-// async fn make_image_post() {
-//     let client = test_client().await.expect("Failed to create client");
-//     let test_blog_name = get_tumblr_test_blog().expect("No test blog set");
-//     let avatar = match client.blogs(test_blog_name).avatar(64).await {
-//         Ok(image) => image,
-//         Err(e) => panic!("Failed to get blog avatar: ", e),
-//     };
-
-//     let result = client
-//         .posts()
-//         .create(get_tumblr_test_blog().expect("No test blog set"))
-//         .add_block(ContentBlock::Text {
-//             text: "this is my icon:".into(),
-//             subtype: Some("heading1".into()),
-//             formatting: None,
-//         })
-//         .add_block(ContentBlock::Image {
-//             media: MediaObject {
-//                 url: todo!(),
-//                 media_type: todo!(),
-//                 width: todo!(),
-//                 height: todo!(),
-//             },
-//             alt_text: (),
-//             caption: (),
-//         })
-//         .send()
-//         .await;
-
-//     match result {
-//         Ok(r) => {
-//             println!("new post id: {}", r.id)
-//         }
-//         Err(e) => panic!("failed to make a post: {}", e),
-//     }
-// }
 
 // ============================================================================
 // OAuth2 Flow Tests

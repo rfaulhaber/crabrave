@@ -2,7 +2,7 @@
 //!
 //! This module provides types for specifying media to upload when creating or editing posts.
 
-use std::path::{Path, PathBuf};
+use camino::{Utf8Path, Utf8PathBuf};
 
 /// A source of media data to upload to Tumblr
 ///
@@ -37,7 +37,7 @@ enum MediaData {
     /// Media loaded from bytes in memory
     Bytes(Vec<u8>),
     /// Media to be loaded from a file path
-    Path(PathBuf),
+    Path(Utf8PathBuf),
 }
 
 impl MediaSource {
@@ -55,11 +55,10 @@ impl MediaSource {
     /// # use crabrave::media::MediaSource;
     /// let source = MediaSource::from_path("/path/to/video.mp4");
     /// ```
-    pub fn from_path(path: impl Into<PathBuf>) -> Self {
+    pub fn from_path(path: impl Into<Utf8PathBuf>) -> Self {
         let path = path.into();
         let filename = path
             .file_name()
-            .and_then(|n| n.to_str())
             .unwrap_or("file")
             .to_string();
         let mime_type = detect_mime_type_from_filename(&filename);
@@ -132,7 +131,7 @@ impl MediaSource {
     pub(crate) fn read_bytes(&self) -> std::io::Result<Vec<u8>> {
         match &self.data {
             MediaData::Bytes(bytes) => Ok(bytes.clone()),
-            MediaData::Path(path) => std::fs::read(path),
+            MediaData::Path(path) => fs_err::read(path),
         }
     }
 }
@@ -141,9 +140,8 @@ impl MediaSource {
 ///
 /// Returns `None` if the extension is not recognized.
 fn detect_mime_type_from_filename(filename: &str) -> Option<String> {
-    let extension = Path::new(filename)
+    let extension = Utf8Path::new(filename)
         .extension()
-        .and_then(|e| e.to_str())
         .map(|e| e.to_lowercase())?;
 
     let mime_type = match extension.as_str() {

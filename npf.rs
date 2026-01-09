@@ -299,9 +299,9 @@ pub enum Attribution {
         /// App display text
         #[serde(skip_serializing_if = "Option::is_none")]
         display_text: Option<String>,
-        /// App logo
+        /// App logo (boxed to reduce enum size)
         #[serde(skip_serializing_if = "Option::is_none")]
-        logo: Option<MediaObject>,
+        logo: Option<Box<MediaObject>>,
     },
 }
 

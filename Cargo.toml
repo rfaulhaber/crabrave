@@ -2,6 +2,13 @@
 name = "crabrave"
 version = "0.1.0"
 edition = "2024"
+description = "A Tumblr API client for Rust."
+license = "AGPL-3.0-or-later"
+repository = "https://codeberg.org/ryf/crabrave"
+authors = ["Ryan Faulhaber"]
+keywords = ["tumblr", "api", "client", "social-media"]
+categories = ["api-bindings", "web-programming::http-client"]
+readme = "README.md"
 
 [lib]
 path = "lib.rs"
@@ -20,6 +27,8 @@ sha1 = "0.10"
 thiserror = "2"
 url = "2.5"
 urlencoding = "2.1"
+camino = "1.2.2"
+fs-err = "3.2.2"
 
 [dev-dependencies]
 wiremock = "0.6"
