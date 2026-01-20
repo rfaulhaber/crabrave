@@ -7,6 +7,7 @@ An ergonomic Rust client for the Tumblr API, inspired by [Octocrab](https://gith
 - OAuth1 and OAuth2 authentication
 - Type-safe builder patterns for all API operations
 - NPF (Neue Post Format) support for modern posts
+    - Note that this project supports NPF _only_. Legacy posts will be returned in the trail content of `Post` structs
 - Media uploads 
 - Runtime-agnostic async
 - Comprehensive error handling with rate limit detection
@@ -15,7 +16,7 @@ An ergonomic Rust client for the Tumblr API, inspired by [Octocrab](https://gith
 
 ```toml
 [dependencies]
-crabrave = "0.1"
+crabrave = "0.2"
 ```
 
 ## Quick Start

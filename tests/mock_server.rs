@@ -4197,3 +4197,29 @@ async fn test_user_filtered_content_add_limit_exceeded() {
         Ok(_) => panic!("Expected error, got success"),
     }
 }
+
+#[tokio::test]
+async fn test_npf_posts() {
+    let mock_server = MockServer::start().await;
+    let mock_response = include_str!("./fixtures/posts_npf.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    // NPF is now always used by default
+    let result = client.blogs(TEST_BLOG_NAME).posts().send().await;
+
+    assert!(result.is_ok(), "failed with: {:?}", result);
+    let posts = result.unwrap();
+    assert!(!posts.posts.is_empty());
+    assert_eq!(posts.posts.get(2).unwrap().trail.len(), 1);
+}

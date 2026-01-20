@@ -820,9 +820,15 @@ struct TimelineQuery {
     /// Return posts before this timestamp (Unix time)
     #[serde(skip_serializing_if = "Option::is_none")]
     before: Option<i64>,
+
+    /// Return posts in NPF format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    npf: Option<bool>,
 }
 
 /// Builder for querying a community timeline
+///
+/// Posts are always returned in NPF (Neue Post Format) with structured content blocks.
 pub struct TimelineBuilder {
     client: Crabrave,
     handle: String,
@@ -856,7 +862,7 @@ impl TimelineBuilder {
         self
     }
 
-    /// Sends the request and returns the timeline posts
+    /// Sends the request and returns the timeline posts in NPF format
     ///
     /// # Errors
     ///
@@ -865,7 +871,9 @@ impl TimelineBuilder {
     /// - The community doesn't exist
     /// - Network request fails
     /// - API returns an error
-    pub async fn send(self) -> CrabResult<TimelineResponse> {
+    pub async fn send(mut self) -> CrabResult<TimelineResponse> {
+        // Always request NPF format
+        self.query.npf = Some(true);
         let path = format!("communities/{}/timeline", self.handle);
         self.client.get_with_query(&path, &self.query).await
     }

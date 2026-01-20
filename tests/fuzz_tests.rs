@@ -329,10 +329,11 @@ proptest! {
     fn fuzz_post_structure(
         id in 1u64..u64::MAX,
         blog_name in "[a-zA-Z0-9_-]{3,32}",
-        post_type in "(text|photo|quote|link|chat|audio|video|answer)",
+        post_type in "(text|photo|quote|link|chat|audio|video|answer|blocks)",
         timestamp in 1000000000i64..2000000000i64,
         note_count in 0u64..1000000u64,
         tags in prop::collection::vec("[a-zA-Z0-9]{1,20}", 0..10),
+        reblog_key in "[a-zA-Z0-9]{8}",
     ) {
         use crabrave::handlers::blog::Post;
 
@@ -344,6 +345,7 @@ proptest! {
             "timestamp": timestamp,
             "note_count": note_count,
             "tags": tags,
+            "reblog_key": reblog_key,
         });
 
         let result: Result<Post, _> = serde_json::from_value(json);
