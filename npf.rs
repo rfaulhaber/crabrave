@@ -5,7 +5,7 @@
 //!
 //! See [this](https://www.tumblr.com/docs/npf) for Tumblr's NPF specification.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// A content block in the NPF format
 ///
@@ -91,7 +91,11 @@ pub enum ContentBlock {
     /// Video content block
     Video {
         /// Media objects for this video (used for Tumblr-hosted video)
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_media_single_or_vec"
+        )]
         media: Option<Vec<MediaObject>>,
         /// External video URL (used for external providers like YouTube, Vimeo)
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -513,6 +517,30 @@ impl ContentBlock {
             metadata: None,
         }
     }
+}
+
+/// Deserializes a media field that can be either a single object or an array.
+///
+/// The Tumblr API sometimes returns `media` as a single `MediaObject` and sometimes
+/// as an array of `MediaObject`s. This deserializer handles both cases.
+fn deserialize_media_single_or_vec<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<MediaObject>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum MediaOneOrMany {
+        One(MediaObject),
+        Many(Vec<MediaObject>),
+    }
+
+    let value: Option<MediaOneOrMany> = Option::deserialize(deserializer)?;
+    Ok(value.map(|v| match v {
+        MediaOneOrMany::One(obj) => vec![obj],
+        MediaOneOrMany::Many(vec) => vec,
+    }))
 }
 
 #[cfg(test)]

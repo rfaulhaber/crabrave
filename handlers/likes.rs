@@ -21,9 +21,15 @@ pub(crate) struct LikesQuery {
     /// Return posts liked after this timestamp (Unix time)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub after: Option<i64>,
+
+    /// Return posts in NPF format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub npf: Option<bool>,
 }
 
 /// Builder for querying the user's liked posts
+///
+/// Posts are always returned in NPF (Neue Post Format) with structured content blocks.
 pub struct LikesBuilder {
     client: Crabrave,
     query: LikesQuery,
@@ -76,8 +82,10 @@ impl LikesBuilder {
         self
     }
 
-    /// Sends the request and returns the liked posts
-    pub async fn send(self) -> CrabResult<LikesResponse> {
+    /// Sends the request and returns the liked posts in NPF format
+    pub async fn send(mut self) -> CrabResult<LikesResponse> {
+        // Always request NPF format
+        self.query.npf = Some(true);
         match self.blog {
             Some(id) => {
                 self.client

@@ -39,7 +39,7 @@
 
 use crate::{
     BlogIdentifier, CrabResult, Crabrave,
-    handlers::blog::NpfPost,
+    handlers::blog::Post,
     media::MediaSource,
     npf::{ContentBlock, LayoutBlock, MediaObject},
 };
@@ -50,7 +50,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostResponse {
     /// The requested post
-    pub post: NpfPost,
+    pub post: Post,
 }
 
 /// Response from deleting a post

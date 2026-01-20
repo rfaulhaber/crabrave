@@ -630,9 +630,15 @@ struct DashboardQuery {
     /// Include notes information in responses
     #[serde(skip_serializing_if = "Option::is_none")]
     notes_info: Option<bool>,
+
+    /// Return posts in NPF format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    npf: Option<bool>,
 }
 
 /// Builder for querying the user's dashboard
+///
+/// Posts are always returned in NPF (Neue Post Format) with structured content blocks.
 pub struct DashboardBuilder {
     client: Crabrave,
     query: DashboardQuery,
@@ -682,8 +688,10 @@ impl DashboardBuilder {
         self
     }
 
-    /// Sends the request and returns the dashboard posts
-    pub async fn send(self) -> CrabResult<DashboardResponse> {
+    /// Sends the request and returns the dashboard posts in NPF format
+    pub async fn send(mut self) -> CrabResult<DashboardResponse> {
+        // Always request NPF format
+        self.query.npf = Some(true);
         self.client
             .get_with_query("user/dashboard", &self.query)
             .await

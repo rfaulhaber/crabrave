@@ -139,12 +139,18 @@ struct TaggedQuery {
     /// Post format filter ("text", "raw")
     #[serde(skip_serializing_if = "Option::is_none")]
     filter: Option<String>,
+
+    /// Return posts in NPF format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    npf: Option<bool>,
 }
 
 /// Builder for querying tagged posts
 ///
 /// This builder allows you to configure various parameters for searching posts
 /// by tag before sending the request.
+///
+/// Posts are always returned in NPF (Neue Post Format) with structured content blocks.
 pub struct TaggedBuilder {
     client: Crabrave,
     query: TaggedQuery,
@@ -159,6 +165,7 @@ impl TaggedBuilder {
                 limit: None,
                 before: None,
                 filter: None,
+                npf: None,
             },
         }
     }
@@ -181,7 +188,7 @@ impl TaggedBuilder {
         self
     }
 
-    /// Sends the request and returns the tagged posts
+    /// Sends the request and returns the tagged posts in NPF format
     ///
     /// # Errors
     ///
@@ -189,7 +196,9 @@ impl TaggedBuilder {
     /// - Network request fails
     /// - API returns an error
     /// - Response cannot be parsed
-    pub async fn send(self) -> CrabResult<TaggedResponse> {
+    pub async fn send(mut self) -> CrabResult<TaggedResponse> {
+        // Always request NPF format
+        self.query.npf = Some(true);
         // for this endpoint the Tumblr API does not return response.posts like it does for other endpoints
         let posts: Vec<Post> = self.client.get_with_query("tagged", &self.query).await?;
 
