@@ -399,14 +399,7 @@ fn test_unicode_content() {
 #[test]
 fn test_special_characters_in_tags() {
     // Tags with special characters
-    let special_tags = vec![
-        "c++",
-        "c#",
-        "node.js",
-        "1984",
-        "year:2024",
-        "it's working",
-    ];
+    let special_tags = vec!["c++", "c#", "node.js", "1984", "year:2024", "it's working"];
 
     for tag in special_tags {
         let encoded = urlencoding::encode(tag);

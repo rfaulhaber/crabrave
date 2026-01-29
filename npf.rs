@@ -532,13 +532,13 @@ where
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum MediaOneOrMany {
-        One(MediaObject),
+        One(Box<MediaObject>),
         Many(Vec<MediaObject>),
     }
 
     let value: Option<MediaOneOrMany> = Option::deserialize(deserializer)?;
     Ok(value.map(|v| match v {
-        MediaOneOrMany::One(obj) => vec![obj],
+        MediaOneOrMany::One(obj) => vec![*obj],
         MediaOneOrMany::Many(vec) => vec,
     }))
 }

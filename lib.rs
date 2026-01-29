@@ -36,7 +36,7 @@
 //!     "your_consumer_key",
 //!     "your_consumer_secret",
 //!     "http://localhost:8080/callback"
-//! );
+//! )?;
 //!
 //! // 2. Generate authorization URL
 //! let (auth_url, csrf_token) = config.authorize_url();
@@ -314,8 +314,8 @@ impl Crabrave {
             .unwrap_or_else(|_| "0".to_string());
 
         // Generate cryptographically random nonce (32 alphanumeric characters)
-        let nonce: String = rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
+        let nonce: String = rand::rng()
+            .sample_iter(&rand::distr::Alphanumeric)
             .take(32)
             .map(char::from)
             .collect();
@@ -364,8 +364,10 @@ impl Crabrave {
 
         // Generate HMAC-SHA1 signature
         type HmacSha1 = Hmac<Sha1>;
+        // HMAC-SHA1 accepts keys of any size per specification
+        #[allow(clippy::expect_used)]
         let mut mac = HmacSha1::new_from_slice(signing_key.as_bytes())
-            .unwrap_or_else(|_| panic!("HMAC can take key of any size"));
+            .expect("HMAC-SHA1 accepts keys of any size");
         mac.update(signature_base.as_bytes());
         let result = mac.finalize();
         let signature = base64::engine::general_purpose::STANDARD.encode(result.into_bytes());
@@ -421,6 +423,19 @@ impl Crabrave {
         request
     }
 
+    /// Checks if the response indicates rate limiting and returns an error if so.
+    fn check_rate_limit(response: &reqwest::Response) -> CrabResult<()> {
+        if response.status().as_u16() == 429 {
+            let retry_after = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok());
+            return Err(CrabError::RateLimit { retry_after });
+        }
+        Ok(())
+    }
+
     /// Makes a GET request to the API
     ///
     /// This is an internal helper method used by handlers.
@@ -434,16 +449,7 @@ impl Crabrave {
         let request = self.apply_auth(request, "GET", &url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
+        Self::check_rate_limit(&response)?;
 
         let bytes = response.bytes().await?;
 
@@ -477,16 +483,7 @@ impl Crabrave {
         let request = self.apply_auth(request, "GET", &full_url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
+        Self::check_rate_limit(&response)?;
 
         let bytes = response.bytes().await?;
 
@@ -514,16 +511,7 @@ impl Crabrave {
         let request = self.apply_auth(request, "DELETE", &full_url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
+        Self::check_rate_limit(&response)?;
 
         let bytes = response.bytes().await?;
 
@@ -538,16 +526,7 @@ impl Crabrave {
         let request = self.apply_auth(request, "GET", &url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
+        Self::check_rate_limit(&response)?;
 
         let content_type = response
             .headers()
@@ -583,16 +562,7 @@ impl Crabrave {
         let request = self.apply_auth(request, "POST", &url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
+        Self::check_rate_limit(&response)?;
 
         let bytes = response.bytes().await?;
         response::parse_response_bytes(&bytes)
@@ -612,32 +582,68 @@ impl Crabrave {
         let request = self.apply_auth(request, "PUT", &url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
+        Self::check_rate_limit(&response)?;
 
-            return Err(CrabError::RateLimit { retry_after });
+        let bytes = response.bytes().await?;
+        response::parse_response_bytes(&bytes)
+    }
+
+    /// Makes a multipart/form-data request to the API using the given HTTP method.
+    ///
+    /// This is used for uploading media files along with post content.
+    /// The request includes a "json" field containing the serialized body,
+    /// plus additional fields for each media file keyed by their identifier.
+    async fn send_multipart<T, B>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: &B,
+        media_sources: std::collections::HashMap<String, media::MediaSource>,
+    ) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        B: serde::Serialize,
+    {
+        let url = self.url(path);
+
+        // Build multipart form
+        let mut form = reqwest::multipart::Form::new();
+
+        // Add JSON part
+        let json_str = serde_json::to_string(body).map_err(|e| {
+            CrabError::InvalidResponse(format!("Failed to serialize request body: {}", e))
+        })?;
+        form = form.text("json", json_str);
+
+        // Add media parts
+        for (identifier, source) in media_sources {
+            let bytes = source.read_bytes().map_err(|e| {
+                CrabError::InvalidResponse(format!("Failed to read media source: {}", e))
+            })?;
+
+            let mut part =
+                reqwest::multipart::Part::bytes(bytes).file_name(source.filename().to_string());
+
+            if let Some(mime_type) = source.mime_type() {
+                part = part.mime_str(mime_type).map_err(|e| {
+                    CrabError::InvalidResponse(format!("Invalid MIME type '{}': {}", mime_type, e))
+                })?;
+            }
+
+            form = form.part(identifier, part);
         }
+
+        let request = self.client.request(method.clone(), &url).multipart(form);
+        let request = self.apply_auth(request, method.as_str(), &url);
+        let response = request.send().await?;
+
+        Self::check_rate_limit(&response)?;
 
         let bytes = response.bytes().await?;
         response::parse_response_bytes(&bytes)
     }
 
     /// Makes a POST request with multipart/form-data to the API
-    ///
-    /// This is used for uploading media files along with post content.
-    /// The request includes a "json" field containing the serialized body,
-    /// plus additional fields for each media file keyed by their identifier.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - API endpoint path
-    /// * `body` - JSON body to serialize
-    /// * `media_sources` - Map of identifiers to media sources
     pub(crate) async fn post_multipart<T, B>(
         &self,
         path: &str,
@@ -648,56 +654,11 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
         B: serde::Serialize,
     {
-        let url = self.url(path);
-
-        // Build multipart form
-        let mut form = reqwest::multipart::Form::new();
-
-        // Add JSON part
-        let json_str = serde_json::to_string(body).map_err(|e| {
-            CrabError::InvalidResponse(format!("Failed to serialize request body: {}", e))
-        })?;
-        form = form.text("json", json_str);
-
-        // Add media parts
-        for (identifier, source) in media_sources {
-            let bytes = source.read_bytes().map_err(|e| {
-                CrabError::InvalidResponse(format!("Failed to read media source: {}", e))
-            })?;
-
-            let mut part = reqwest::multipart::Part::bytes(bytes).file_name(source.filename().to_string());
-
-            if let Some(mime_type) = source.mime_type() {
-                part = part.mime_str(mime_type).map_err(|e| {
-                    CrabError::InvalidResponse(format!("Invalid MIME type '{}': {}", mime_type, e))
-                })?;
-            }
-
-            form = form.part(identifier, part);
-        }
-
-        let request = self.client.post(&url).multipart(form);
-        let request = self.apply_auth(request, "POST", &url);
-        let response = request.send().await?;
-
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        self.send_multipart(reqwest::Method::POST, path, body, media_sources)
+            .await
     }
 
     /// Makes a PUT request with multipart/form-data to the API
-    ///
-    /// Similar to post_multipart but uses PUT method for editing existing posts.
     pub(crate) async fn put_multipart<T, B>(
         &self,
         path: &str,
@@ -708,51 +669,8 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
         B: serde::Serialize,
     {
-        let url = self.url(path);
-
-        // Build multipart form
-        let mut form = reqwest::multipart::Form::new();
-
-        // Add JSON part
-        let json_str = serde_json::to_string(body).map_err(|e| {
-            CrabError::InvalidResponse(format!("Failed to serialize request body: {}", e))
-        })?;
-        form = form.text("json", json_str);
-
-        // Add media parts
-        for (identifier, source) in media_sources {
-            let bytes = source.read_bytes().map_err(|e| {
-                CrabError::InvalidResponse(format!("Failed to read media source: {}", e))
-            })?;
-
-            let mut part = reqwest::multipart::Part::bytes(bytes).file_name(source.filename().to_string());
-
-            if let Some(mime_type) = source.mime_type() {
-                part = part.mime_str(mime_type).map_err(|e| {
-                    CrabError::InvalidResponse(format!("Invalid MIME type '{}': {}", mime_type, e))
-                })?;
-            }
-
-            form = form.part(identifier, part);
-        }
-
-        let request = self.client.put(&url).multipart(form);
-        let request = self.apply_auth(request, "PUT", &url);
-        let response = request.send().await?;
-
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        self.send_multipart(reqwest::Method::PUT, path, body, media_sources)
+            .await
     }
 
     /// Makes a DELETE request to the API
@@ -768,16 +686,7 @@ impl Crabrave {
         let request = self.apply_auth(request, "DELETE", &url);
         let response = request.send().await?;
 
-        // Check for rate limiting
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
-
-            return Err(CrabError::RateLimit { retry_after });
-        }
+        Self::check_rate_limit(&response)?;
 
         let bytes = response.bytes().await?;
         response::parse_response_bytes(&bytes)

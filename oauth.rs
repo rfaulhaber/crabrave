@@ -6,8 +6,8 @@
 use crate::{CrabError, CrabResult, OAUTH_AUTHORIZE_URL, OAUTH_TOKEN_URL};
 use oauth2::basic::BasicClient;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
-    RedirectUrl, Scope, TokenResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope,
+    TokenResponse, TokenUrl,
 };
 use std::collections::HashMap;
 
@@ -27,6 +27,10 @@ impl OAuth2Config {
     /// * `client_secret` - Your application's consumer secret
     /// * `redirect_uri` - The redirect URI registered with your app
     ///
+    /// # Errors
+    ///
+    /// Returns `CrabError::Auth` if the redirect URI is not a valid URL.
+    ///
     /// # Example
     ///
     /// ```
@@ -36,18 +40,23 @@ impl OAuth2Config {
     ///     "your_consumer_key",
     ///     "your_consumer_secret",
     ///     "http://localhost:8080/callback"
-    /// );
+    /// )?;
+    /// # Ok::<(), crabrave::CrabError>(())
     /// ```
     pub fn new(
         client_id: impl Into<String>,
         client_secret: impl Into<String>,
         redirect_uri: impl Into<String>,
-    ) -> Self {
-        Self {
+    ) -> CrabResult<Self> {
+        let redirect_uri = redirect_uri.into();
+        // Validate redirect URI eagerly so callers get a clear error at construction time
+        let _ = RedirectUrl::new(redirect_uri.clone())
+            .map_err(|e| CrabError::Auth(format!("Invalid redirect URI: {e}")))?;
+        Ok(Self {
             client_id: client_id.into(),
             client_secret: client_secret.into(),
-            redirect_uri: redirect_uri.into(),
-        }
+            redirect_uri,
+        })
     }
 
     /// Generates the authorization URL and CSRF token
@@ -64,25 +73,30 @@ impl OAuth2Config {
     /// ```
     /// use crabrave::oauth::OAuth2Config;
     ///
-    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback");
+    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback")?;
     /// let (auth_url, csrf_token) = config.authorize_url();
     ///
     /// println!("Visit this URL to authorize: {}", auth_url);
     /// println!("CSRF token (verify this later): {}", csrf_token.secret());
+    /// # Ok::<(), crabrave::CrabError>(())
     /// ```
     pub fn authorize_url(&self) -> (String, CsrfToken) {
-        let auth_url_obj = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
-            .expect("Invalid auth URL");
-        let token_url_obj = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
-            .expect("Invalid token URL");
-        let redirect_url_obj = RedirectUrl::new(self.redirect_uri.clone())
-            .expect("Invalid redirect URI");
+        // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
+        #[allow(clippy::expect_used)]
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
+            .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
+        #[allow(clippy::expect_used)]
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
+            .expect("hardcoded OAUTH_TOKEN_URL is always valid");
+        #[allow(clippy::expect_used)]
+        let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
+            .expect("redirect_uri was validated in new()");
 
         let client = BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
-            .set_auth_uri(auth_url_obj)
-            .set_token_uri(token_url_obj)
-            .set_redirect_uri(redirect_url_obj);
+            .set_auth_uri(auth_url)
+            .set_token_uri(token_url)
+            .set_redirect_uri(redirect_url);
 
         let (auth_url, csrf_token) = client
             .authorize_url(CsrfToken::new_random)
@@ -111,7 +125,7 @@ impl OAuth2Config {
     /// use crabrave::oauth::OAuth2Config;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback");
+    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback")?;
     ///
     /// // After user authorizes and you receive the code in the callback:
     /// let code = "authorization_code_from_callback";
@@ -122,11 +136,22 @@ impl OAuth2Config {
     /// # }
     /// ```
     pub async fn exchange_code(&self, code: impl Into<String>) -> CrabResult<OAuth2Token> {
+        // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
+        #[allow(clippy::expect_used)]
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
+            .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
+        #[allow(clippy::expect_used)]
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
+            .expect("hardcoded OAUTH_TOKEN_URL is always valid");
+        #[allow(clippy::expect_used)]
+        let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
+            .expect("redirect_uri was validated in new()");
+
         let client = BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
-            .set_auth_uri(AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string()).expect("Invalid auth URL"))
-            .set_token_uri(TokenUrl::new(OAUTH_TOKEN_URL.to_string()).expect("Invalid token URL"))
-            .set_redirect_uri(RedirectUrl::new(self.redirect_uri.clone()).expect("Invalid redirect URI"));
+            .set_auth_uri(auth_url)
+            .set_token_uri(token_url)
+            .set_redirect_uri(redirect_url);
 
         let http_client = reqwest::Client::new();
         let token_result = client
@@ -137,12 +162,8 @@ impl OAuth2Config {
 
         Ok(OAuth2Token {
             access_token: token_result.access_token().secret().clone(),
-            refresh_token: token_result
-                .refresh_token()
-                .map(|t| t.secret().clone()),
-            expires_in: token_result
-                .expires_in()
-                .map(|d| d.as_secs()),
+            refresh_token: token_result.refresh_token().map(|t| t.secret().clone()),
+            expires_in: token_result.expires_in().map(|d| d.as_secs()),
         })
     }
 
@@ -161,7 +182,7 @@ impl OAuth2Config {
     /// use crabrave::oauth::OAuth2Config;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback");
+    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback")?;
     ///
     /// // Use the refresh token from a previous exchange:
     /// let refresh_token = "your_refresh_token";
@@ -175,11 +196,22 @@ impl OAuth2Config {
         &self,
         refresh_token: impl Into<String>,
     ) -> CrabResult<OAuth2Token> {
+        // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
+        #[allow(clippy::expect_used)]
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
+            .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
+        #[allow(clippy::expect_used)]
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
+            .expect("hardcoded OAUTH_TOKEN_URL is always valid");
+        #[allow(clippy::expect_used)]
+        let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
+            .expect("redirect_uri was validated in new()");
+
         let client = BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
-            .set_auth_uri(AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string()).expect("Invalid auth URL"))
-            .set_token_uri(TokenUrl::new(OAUTH_TOKEN_URL.to_string()).expect("Invalid token URL"))
-            .set_redirect_uri(RedirectUrl::new(self.redirect_uri.clone()).expect("Invalid redirect URI"));
+            .set_auth_uri(auth_url)
+            .set_token_uri(token_url)
+            .set_redirect_uri(redirect_url);
 
         let http_client = reqwest::Client::new();
         let token_result = client
@@ -190,12 +222,8 @@ impl OAuth2Config {
 
         Ok(OAuth2Token {
             access_token: token_result.access_token().secret().clone(),
-            refresh_token: token_result
-                .refresh_token()
-                .map(|t| t.secret().clone()),
-            expires_in: token_result
-                .expires_in()
-                .map(|d| d.as_secs()),
+            refresh_token: token_result.refresh_token().map(|t| t.secret().clone()),
+            expires_in: token_result.expires_in().map(|d| d.as_secs()),
         })
     }
 }
@@ -272,15 +300,21 @@ mod tests {
 
     #[test]
     fn test_oauth_config_creation() {
-        let config = OAuth2Config::new("key", "secret", "http://localhost/callback");
+        let config = OAuth2Config::new("key", "secret", "http://localhost/callback").unwrap();
         assert_eq!(config.client_id, "key");
         assert_eq!(config.client_secret, "secret");
         assert_eq!(config.redirect_uri, "http://localhost/callback");
     }
 
     #[test]
+    fn test_oauth_config_invalid_redirect_uri() {
+        let result = OAuth2Config::new("key", "secret", "not a valid url");
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_authorize_url_generation() {
-        let config = OAuth2Config::new("key", "secret", "http://localhost/callback");
+        let config = OAuth2Config::new("key", "secret", "http://localhost/callback").unwrap();
         let (auth_url, csrf_token) = config.authorize_url();
 
         assert!(auth_url.contains("https://www.tumblr.com/oauth2/authorize"));

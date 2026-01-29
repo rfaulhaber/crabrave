@@ -57,10 +57,7 @@ impl MediaSource {
     /// ```
     pub fn from_path(path: impl Into<Utf8PathBuf>) -> Self {
         let path = path.into();
-        let filename = path
-            .file_name()
-            .unwrap_or("file")
-            .to_string();
+        let filename = path.file_name().unwrap_or("file").to_string();
         let mime_type = detect_mime_type_from_filename(&filename);
 
         Self {

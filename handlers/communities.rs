@@ -216,7 +216,10 @@ impl Communities {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn remove_member(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<EmptyResponse> {
+    pub async fn remove_member(
+        &self,
+        blog: impl Into<BlogIdentifier>,
+    ) -> CrabResult<EmptyResponse> {
         let blog_id: BlogIdentifier = blog.into();
         let path = format!("communities/{}/members/{}", self.handle, blog_id.as_str());
         self.client.delete(&path).await
@@ -354,7 +357,12 @@ impl Communities {
         let blog_id: BlogIdentifier = blog.into();
         let path = format!("communities/{}/invitations", self.handle);
         self.client
-            .put(&path, &InviteRequest { blog: blog_id.to_string() })
+            .put(
+                &path,
+                &InviteRequest {
+                    blog: blog_id.to_string(),
+                },
+            )
             .await
     }
 
@@ -489,7 +497,12 @@ impl Communities {
             post_id.into()
         );
         self.client
-            .put(&path, &ReactionRequest { reaction_id: reaction_id.into() })
+            .put(
+                &path,
+                &ReactionRequest {
+                    reaction_id: reaction_id.into(),
+                },
+            )
             .await
     }
 

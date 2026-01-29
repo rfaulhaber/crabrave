@@ -103,7 +103,7 @@ impl Blogs {
     pub async fn block_blog(
         &self,
         blog: impl Into<BlogIdentifier>,
-    ) -> CrabResult<BlockBlogRespsone> {
+    ) -> CrabResult<BlockBlogResponse> {
         let path = format!("blog/{}/blocks", self.identifier.as_str());
         let blog_id: BlogIdentifier = blog.into();
         self.client
@@ -119,7 +119,7 @@ impl Blogs {
     pub async fn block_with_post_id(
         &self,
         post_id: impl Into<String>,
-    ) -> CrabResult<BlockBlogRespsone> {
+    ) -> CrabResult<BlockBlogResponse> {
         let path = format!("blog/{}/blocks", self.identifier.as_str());
         let post_id = post_id.into();
         self.client
@@ -645,6 +645,7 @@ impl Blogs {
     ///
     /// # Arguments
     ///
+    /// * `parent_tumblelog_uuid` - UUID of the blog that owns the post being reblogged
     /// * `id` - Post ID to reblog
     /// * `reblog_key` - Reblog key from the original post
     ///
@@ -659,7 +660,7 @@ impl Blogs {
     /// #     .access_token("token")
     /// #     .build()?;
     /// crab.blogs("my-blog")
-    ///     .reblog("123456", "reblogkey")
+    ///     .reblog("parent-blog-uuid", "123456", "reblogkey")
     ///     .comment("Great post!")
     ///     .tags(vec!["reblog"])
     ///     .send()
@@ -669,12 +670,14 @@ impl Blogs {
     /// ```
     pub fn reblog(
         &self,
+        parent_tumblelog_uuid: impl Into<String>,
         id: impl Into<String>,
         reblog_key: impl Into<String>,
     ) -> crate::handlers::posts::ReblogBuilder {
         crate::handlers::posts::ReblogBuilder::new(
             self.client.clone(),
             self.identifier.clone(),
+            parent_tumblelog_uuid.into(),
             id.into(),
             reblog_key.into(),
         )
@@ -722,6 +725,10 @@ struct PostsQuery {
     /// Return posts before this timestamp (Unix time)
     #[serde(skip_serializing_if = "Option::is_none")]
     before: Option<i64>,
+
+    /// Return posts after this timestamp (Unix time)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    after: Option<i64>,
 
     /// Return posts in NPF format.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -776,6 +783,12 @@ impl PostsBuilder {
     /// Returns posts before this timestamp (Unix time)
     pub fn before(mut self, timestamp: i64) -> Self {
         self.query.before = Some(timestamp);
+        self
+    }
+
+    /// Returns posts before this timestamp (Unix time)
+    pub fn after(mut self, timestamp: i64) -> Self {
+        self.query.after = Some(timestamp);
         self
     }
 
@@ -1993,7 +2006,7 @@ enum BlockBlogRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct BlockBlogRespsone {
+pub struct BlockBlogResponse {
     pub already_blocked: bool,
 }
 

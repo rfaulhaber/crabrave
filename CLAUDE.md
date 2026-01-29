@@ -210,7 +210,7 @@ crab.blogs("my-blog").post("123456").delete().await?
 
 // Reblog a post
 crab.blogs("my-blog")
-    .reblog("source-blog", "123456", "reblog_key")
+    .reblog("source-blog-uuid", "123456", "reblog_key")
     .comment("Great post!")
     .send()
     .await?

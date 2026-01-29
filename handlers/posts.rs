@@ -7,7 +7,7 @@
 //! - `crab.blogs("blog").post("id").delete()` - Delete a post
 //! - `crab.blogs("blog").post("id").edit()` - Edit a post
 //! - `crab.blogs("blog").create_post()` - Create a new post
-//! - `crab.blogs("blog").reblog(id, key)` - Reblog a post
+//! - `crab.blogs("blog").reblog(parent_uuid, id, key)` - Reblog a post
 //!
 //! # Example
 //!
@@ -738,7 +738,7 @@ pub struct EditPostResponse {
 /// #     .build()?;
 /// // Simple text comment
 /// crab.blogs("my-blog")
-///     .reblog("123456", "reblogkey")
+///     .reblog("parent-blog-uuid", "123456", "reblogkey")
 ///     .comment("Great post!")
 ///     .tags(vec!["reblog"])
 ///     .send()
@@ -746,7 +746,7 @@ pub struct EditPostResponse {
 ///
 /// // NPF content blocks for richer comments
 /// crab.blogs("my-blog")
-///     .reblog("123456", "reblogkey")
+///     .reblog("parent-blog-uuid", "123456", "reblogkey")
 ///     .content(vec![
 ///         ContentBlock::heading("My thoughts", 1),
 ///         ContentBlock::text("This is a really interesting post!"),
@@ -759,6 +759,7 @@ pub struct EditPostResponse {
 pub struct ReblogBuilder {
     client: Crabrave,
     blog: BlogIdentifier,
+    parent_tumblelog_uuid: String,
     id: String,
     reblog_key: String,
     content: Option<Vec<ContentBlock>>,
@@ -772,12 +773,14 @@ impl ReblogBuilder {
     pub(crate) fn new(
         client: Crabrave,
         blog: BlogIdentifier,
+        parent_tumblelog_uuid: String,
         id: String,
         reblog_key: String,
     ) -> Self {
         Self {
             client,
             blog,
+            parent_tumblelog_uuid,
             id,
             reblog_key,
             content: None,
@@ -840,7 +843,8 @@ impl ReblogBuilder {
     /// - API returns an error
     pub async fn send(self) -> CrabResult<CreatePostResponse> {
         let mut body = serde_json::json!({
-            "parent_tumblelog_uuid": self.id,
+            "parent_tumblelog_uuid": self.parent_tumblelog_uuid,
+            "parent_post_id": self.id,
             "reblog_key": self.reblog_key,
         });
 
@@ -893,12 +897,18 @@ mod tests {
     fn test_reblog_builder_with_comment() {
         let client = Crabrave::builder().consumer_key("test").build().unwrap();
         let blog = BlogIdentifier::from("my-blog");
-        let builder =
-            ReblogBuilder::new(client, blog, "123456".to_string(), "reblogkey".to_string())
-                .comment("Great post!")
-                .tags(vec!["reblog", "interesting"])
-                .state("published");
+        let builder = ReblogBuilder::new(
+            client,
+            blog,
+            "parent-uuid".to_string(),
+            "123456".to_string(),
+            "reblogkey".to_string(),
+        )
+        .comment("Great post!")
+        .tags(vec!["reblog", "interesting"])
+        .state("published");
 
+        assert_eq!(builder.parent_tumblelog_uuid, "parent-uuid");
         assert_eq!(builder.id, "123456");
         assert_eq!(builder.reblog_key, "reblogkey");
         assert_eq!(builder.comment, Some("Great post!".to_string()));
@@ -911,11 +921,17 @@ mod tests {
     fn test_reblog_builder_with_npf_content() {
         let client = Crabrave::builder().consumer_key("test").build().unwrap();
         let blog = BlogIdentifier::from("my-blog");
-        let builder =
-            ReblogBuilder::new(client, blog, "123456".to_string(), "reblogkey".to_string())
-                .add_block(crate::npf::ContentBlock::text("My thoughts on this"))
-                .tags(vec!["reblog"]);
+        let builder = ReblogBuilder::new(
+            client,
+            blog,
+            "parent-uuid".to_string(),
+            "123456".to_string(),
+            "reblogkey".to_string(),
+        )
+        .add_block(crate::npf::ContentBlock::text("My thoughts on this"))
+        .tags(vec!["reblog"]);
 
+        assert_eq!(builder.parent_tumblelog_uuid, "parent-uuid");
         assert_eq!(builder.id, "123456");
         assert!(builder.content.is_some());
         assert_eq!(builder.content.as_ref().unwrap().len(), 1);

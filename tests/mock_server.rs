@@ -2385,7 +2385,7 @@ async fn test_reblog_post_with_comment() {
     let client = test_client(&mock_server).await;
     let result = client
         .blogs(TEST_BLOG_NAME)
-        .reblog("789012", "abc123reblogkey")
+        .reblog("parent-blog-uuid", "789012", "abc123reblogkey")
         .comment("Great post!")
         .tags(vec!["reblog", "interesting"])
         .send()
@@ -2418,7 +2418,7 @@ async fn test_reblog_post_with_npf_content() {
     let client = test_client(&mock_server).await;
     let result = client
         .blogs(TEST_BLOG_NAME)
-        .reblog("original-post-id", "reblogkey123")
+        .reblog("parent-blog-uuid", "original-post-id", "reblogkey123")
         .content(vec![
             crabrave::npf::ContentBlock::heading("My thoughts", 1),
             crabrave::npf::ContentBlock::text("This is a really interesting post!"),
@@ -2455,7 +2455,7 @@ async fn test_reblog_post_simple() {
     let client = test_client(&mock_server).await;
     let result = client
         .blogs(TEST_BLOG_NAME)
-        .reblog("source-post-id", "key123")
+        .reblog("parent-blog-uuid", "source-post-id", "key123")
         .send()
         .await;
 
@@ -2485,7 +2485,7 @@ async fn test_reblog_post_to_draft() {
     let client = test_client(&mock_server).await;
     let result = client
         .blogs(TEST_BLOG_NAME)
-        .reblog("post-to-reblog", "reblogkey")
+        .reblog("parent-blog-uuid", "post-to-reblog", "reblogkey")
         .comment("Saving this for later")
         .state("draft")
         .send()
@@ -2517,7 +2517,7 @@ async fn test_reblog_post_invalid_key() {
     let client = test_client(&mock_server).await;
     let result = client
         .blogs(TEST_BLOG_NAME)
-        .reblog("post-id", "invalid-key")
+        .reblog("parent-blog-uuid", "post-id", "invalid-key")
         .send()
         .await;
 

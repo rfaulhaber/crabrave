@@ -7,5 +7,6 @@ tmp/
 rust_out
 target
 .envrc
+result
 
 tokens.json

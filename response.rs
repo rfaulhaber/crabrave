@@ -51,56 +51,31 @@ impl<T> ApiResponse<T> {
     }
 }
 
-/// Parses a Tumblr API response from JSON
+/// Parses a Tumblr API response from a JSON string
 ///
 /// This function handles the standard response envelope and extracts
 /// the inner response data of type `T`.
 #[allow(dead_code)] // Used in tests
 pub fn parse_response<T: DeserializeOwned>(json: &str) -> CrabResult<T> {
-    // First, parse just the meta to check status
-    let value: serde_json::Value = serde_json::from_str(json)?;
-
-    if let Some(meta) = value.get("meta")
-        && let Some(status) = meta.get("status").and_then(|s| s.as_u64())
-    {
-        let status = status as u16;
-        if !is_success(status) {
-            let message = meta
-                .get("msg")
-                .and_then(|m| m.as_str())
-                .unwrap_or("Unknown error")
-                .to_string();
-            return Err(CrabError::Api { status, message });
-        }
-    }
-
-    // Status is OK, now deserialize the full response
-    let envelope: ApiResponse<T> = serde_json::from_str(json)?;
-    Ok(envelope.into_response())
+    parse_response_bytes(json.as_bytes())
 }
 
 /// Parses a Tumblr API response from bytes
+///
+/// Parses the JSON once into the envelope, checks the status code, then
+/// converts the inner response value into the target type.
 pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> {
-    // First, parse just the meta to check status
-    let value: serde_json::Value = serde_json::from_slice(bytes)?;
+    let envelope: ApiResponse<serde_json::Value> = serde_json::from_slice(bytes)?;
 
-    if let Some(meta) = value.get("meta")
-        && let Some(status) = meta.get("status").and_then(|s| s.as_u64())
-    {
-        let status = status as u16;
-        if !is_success(status) {
-            let message = meta
-                .get("msg")
-                .and_then(|m| m.as_str())
-                .unwrap_or("Unknown error")
-                .to_string();
-            return Err(CrabError::Api { status, message });
-        }
+    if !is_success(envelope.meta.status) {
+        return Err(CrabError::Api {
+            status: envelope.meta.status,
+            message: envelope.meta.msg,
+        });
     }
 
-    // Status is OK, now deserialize the full response
-    let envelope: ApiResponse<T> = serde_json::from_slice(bytes)?;
-    Ok(envelope.into_response())
+    let response: T = serde_json::from_value(envelope.response)?;
+    Ok(response)
 }
 
 fn is_success(code: u16) -> bool {
