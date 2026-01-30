@@ -36,7 +36,11 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         caption: Option<String>,
         /// Optional attribution for the image source
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_attribution"
+        )]
         attribution: Option<Attribution>,
     },
     /// Link content block
@@ -57,7 +61,7 @@ pub enum ContentBlock {
     Audio {
         /// Media objects for this audio (used for Tumblr-hosted audio)
         #[serde(skip_serializing_if = "Option::is_none")]
-        media: Option<Vec<MediaObject>>,
+        media: Option<MediaObject>,
         /// External audio URL (used for external providers like Spotify, Soundcloud)
         #[serde(skip_serializing_if = "Option::is_none")]
         url: Option<String>,
@@ -83,7 +87,11 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         poster: Option<Vec<MediaObject>>,
         /// Optional attribution for the audio source
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_attribution"
+        )]
         attribution: Option<Attribution>,
         /// Optional metadata from the provider
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -117,7 +125,11 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         poster: Option<Vec<MediaObject>>,
         /// Optional attribution for the video source
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_attribution"
+        )]
         attribution: Option<Attribution>,
         /// Whether the video can autoplay on cellular connections
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -575,6 +587,30 @@ impl ContentBlock {
             duration: None,
             metadata: None,
         }
+    }
+}
+
+/// Deserializes an attribution field that may be a JSON object or an empty array.
+///
+/// The Tumblr API sometimes returns `"attribution": []` instead of omitting the field
+/// or using `null`. Since `Attribution` is an internally-tagged enum expecting an object,
+/// an empty array would cause a "missing field `type`" error. This deserializer treats
+/// arrays as `None` and objects as `Some(Attribution)`.
+fn deserialize_attribution<'de, D>(deserializer: D) -> Result<Option<Attribution>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<serde_json::Value> = Option::deserialize(deserializer)?;
+    match value {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Array(_)) => Ok(None),
+        Some(obj @ serde_json::Value::Object(_)) => {
+            serde_json::from_value(obj).map(Some).map_err(serde::de::Error::custom)
+        }
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected object, array, or null for attribution, got {}",
+            crate::kind_of(&other),
+        ))),
     }
 }
 

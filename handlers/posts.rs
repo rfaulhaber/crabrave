@@ -378,7 +378,7 @@ impl CreatePostBuilder {
         let mime_type = source.mime_type().map(|s| s.to_string());
 
         self.content.push(ContentBlock::Audio {
-            media: Some(vec![MediaObject {
+            media: Some(MediaObject {
                 url: String::new(),
                 media_type: mime_type,
                 media_key: None,
@@ -390,7 +390,7 @@ impl CreatePostBuilder {
                 has_original_dimensions: None,
                 colors: None,
                 exif: None,
-            }]),
+            }),
             url: None,
             provider: Some("tumblr".to_string()),
             artist: None,
@@ -641,7 +641,7 @@ impl EditPostBuilder {
         let mime_type = source.mime_type().map(|s| s.to_string());
 
         let audio_block = ContentBlock::Audio {
-            media: Some(vec![MediaObject {
+            media: Some(MediaObject {
                 url: String::new(),
                 media_type: mime_type,
                 media_key: None,
@@ -653,7 +653,7 @@ impl EditPostBuilder {
                 has_original_dimensions: None,
                 colors: None,
                 exif: None,
-            }]),
+            }),
             url: None,
             provider: Some("tumblr".to_string()),
             artist: None,

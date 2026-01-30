@@ -894,7 +894,7 @@ where
 }
 
 /// Returns a human-readable name for a JSON value kind.
-fn kind_of(value: &serde_json::Value) -> &'static str {
+pub(crate) fn kind_of(value: &serde_json::Value) -> &'static str {
     match value {
         serde_json::Value::Null => "null",
         serde_json::Value::Bool(_) => "boolean",
