@@ -4223,3 +4223,45 @@ async fn test_npf_posts() {
     assert!(!posts.posts.is_empty());
     assert_eq!(posts.posts.get(2).unwrap().trail.len(), 1);
 }
+
+#[tokio::test]
+async fn test_posts_with_poll_content_blocks() {
+    let mock_server = MockServer::start().await;
+    let mock_response = include_str!("./fixtures/content_or_string_enum.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client.blogs(TEST_BLOG_NAME).posts().send().await;
+
+    assert!(result.is_ok(), "failed with: {:?}", result);
+    let posts = result.unwrap();
+    assert_eq!(posts.posts.len(), 20);
+
+    // Every post in this fixture has a poll content block
+    let first_post = &posts.posts[0];
+    let poll_block = first_post
+        .content
+        .iter()
+        .find(|b| matches!(b, crabrave::npf::ContentBlock::Poll { .. }));
+    assert!(poll_block.is_some(), "expected a poll block in content");
+
+    match poll_block.unwrap() {
+        crabrave::npf::ContentBlock::Poll {
+            question, answers, ..
+        } => {
+            assert_eq!(question, "Where do you usually exercise?");
+            assert_eq!(answers.len(), 12);
+        }
+        _ => unreachable!(),
+    }
+}

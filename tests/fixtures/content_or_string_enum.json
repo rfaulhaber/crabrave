@@ -1,0 +1,2844 @@
+{
+  "meta": {
+    "status": 200,
+    "msg": "OK"
+  },
+  "response": {
+    "blog": {
+      "ask": true,
+      "ask_anon": true,
+      "ask_page_title": "Questions? ",
+      "asks_allow_media": true,
+      "avatar": [
+        {
+          "width": 512,
+          "height": 512,
+          "url": "https://64.media.tumblr.com/f50dc7268d8089d1cf305fe342399304/99d474733c0803dc-19/s512x512u_c1/36d0fd06b99bfe4756421fbd1542435f328f1228.png",
+          "accessories": []
+        },
+        {
+          "width": 128,
+          "height": 128,
+          "url": "https://64.media.tumblr.com/f50dc7268d8089d1cf305fe342399304/99d474733c0803dc-19/s128x128u_c1/a69e95cd9ecd92f4c400bd97ccca7793bc4d8713.png",
+          "accessories": []
+        },
+        {
+          "width": 96,
+          "height": 96,
+          "url": "https://64.media.tumblr.com/f50dc7268d8089d1cf305fe342399304/99d474733c0803dc-19/s96x96u_c1/4ac2dc57877b7f7f5db7a58b460948b9ff9c70b4.png",
+          "accessories": []
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "url": "https://64.media.tumblr.com/f50dc7268d8089d1cf305fe342399304/99d474733c0803dc-19/s64x64u_c1/c143bb37ed1fe90ebe513728efc6457265e97e05.png",
+          "accessories": []
+        }
+      ],
+      "can_chat": false,
+      "can_send_fan_mail": false,
+      "can_submit": true,
+      "can_subscribe": false,
+      "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+      "followed": false,
+      "is_blocked_from_primary": false,
+      "is_nsfw": false,
+      "name": "incognitopolls",
+      "posts": 5283,
+      "share_likes": false,
+      "submission_page_title": "Submit a poll",
+      "submission_terms": {
+        "accepted_types": [
+          "text",
+          "photo",
+          "quote",
+          "link",
+          "video"
+        ],
+        "tags": [
+          "I have read incognitopolls' submission guidelines"
+        ],
+        "title": "Submit a poll",
+        "guidelines": "Submissions are accepted on the 1st and 15th of the month. If it is not the 1st or 15th, your poll submission will be discarded. <br />\n<br />\nCheck the pinned post for more details on submission guidelines.<br />\n<br />\nInclude (1) a title, and (2) all of the answer choices you want the poll to list, up to a maximum of 12."
+      },
+      "subscribed": false,
+      "theme_id": 0,
+      "theme": {
+        "header_full_width": 2048,
+        "header_full_height": 945,
+        "header_focus_width": 1645,
+        "header_focus_height": 925,
+        "avatar_shape": "circle",
+        "background_color": "#393939",
+        "body_font": "Helvetica Neue",
+        "header_bounds": "6,1844,931,199",
+        "header_image": "https://64.media.tumblr.com/e6001f8b698376632064b218592897c1/99d474733c0803dc-f4/s2048x945/c78c352526a3ab55d9b994fa6d90f4b3cfb8f8c7.png",
+        "header_image_focused": "https://64.media.tumblr.com/e6001f8b698376632064b218592897c1/99d474733c0803dc-f4/s2048x3072_c9717,635,90039,98519/27380c874d4a83aa1c325c08086eea8cff1976ae.png",
+        "header_image_poster": "",
+        "header_image_scaled": "https://64.media.tumblr.com/e6001f8b698376632064b218592897c1/99d474733c0803dc-f4/s2048x3072/8dfe248977003a39dcb7e1fca436573e51fe5d0f.png",
+        "header_stretch": true,
+        "link_color": "#947aff",
+        "show_avatar": true,
+        "show_description": true,
+        "show_header_image": false,
+        "show_title": true,
+        "title_color": "#dadada",
+        "title_font": "Gibson",
+        "title_font_weight": "bold"
+      },
+      "title": "Incognito Polls",
+      "total_posts": 5283,
+      "updated": 1769729914,
+      "url": "https://incognitopolls.tumblr.com/",
+      "uuid": "t:a2FLabfQxsjMiqQPghoIAw"
+    },
+    "posts": [
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 807120314699055104,
+        "id_string": "807120314699055104",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/807120314699055104/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-29 23:38:34 GMT",
+        "timestamp": 1769729914,
+        "state": "published",
+        "reblog_key": "DtGtaG8Y",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about the body",
+          "submitted oct 15",
+          "exercise",
+          "working out"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQipTwPWeu00",
+        "summary": "Where do you usually exercise?\nPrivate membership gym\nPublic gym/rec center\nUniversity/school gym\nWorkout studio/dance...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 167,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "a5722de1-2151-433c-9f2e-1ea040cdbcb8",
+            "question": "Where do you usually exercise?",
+            "answers": [
+              {
+                "client_id": "f7eeba37-7afd-4678-ba41-1bf65dda229b",
+                "answer_text": "Private membership gym"
+              },
+              {
+                "client_id": "a197d6ff-18f8-49ca-90e0-4c3aa7077db5",
+                "answer_text": "Public gym/rec center"
+              },
+              {
+                "client_id": "0743aaaf-4296-4eb7-9474-e64dc4c6079b",
+                "answer_text": "University/school gym"
+              },
+              {
+                "client_id": "018bf45f-f865-4834-b50d-77e19cca7feb",
+                "answer_text": "Workout studio/dance studio"
+              },
+              {
+                "client_id": "6f3f3527-c22e-4011-b816-f54da55cd00f",
+                "answer_text": "Public sports field/court"
+              },
+              {
+                "client_id": "55c1cc1e-2f9e-4581-b719-961136a2375f",
+                "answer_text": "Public park"
+              },
+              {
+                "client_id": "a8a1135b-c36b-4fdf-aca5-5db27f74f588",
+                "answer_text": "On the street/in the neighborhood"
+              },
+              {
+                "client_id": "38e0901c-f92d-4733-8e28-5de60625d228",
+                "answer_text": "Other outdoor space (beach, hiking trails, etc)"
+              },
+              {
+                "client_id": "a4a345e0-52a6-4347-b6b8-27cf6a378b1e",
+                "answer_text": "At home"
+              },
+              {
+                "client_id": "1198b3eb-eb83-4bbf-baa9-2bfed7d8cd97",
+                "answer_text": "At my workplace"
+              },
+              {
+                "client_id": "4cf30799-f073-4074-955e-512ea4da20d2",
+                "answer_text": "Other"
+              },
+              {
+                "client_id": "30af10b2-7460-4b4e-aa9e-3352689e9ed8",
+                "answer_text": "I don’t exercise/show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-29 23:38:34 GMT",
+            "timestamp": 1769729914
+          },
+          {
+            "type": "text",
+            "text": "If you exercise in multiple different places equally, vote for whichever you prefer."
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 807117035561697280,
+        "id_string": "807117035561697280",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/807117035561697280/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-29 22:46:27 GMT",
+        "timestamp": 1769726787,
+        "state": "published",
+        "reblog_key": "8GBGihZX",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about language",
+          "submitted oct 15",
+          "gender",
+          "words"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQipTAhaqa00",
+        "summary": "What's your gender? How do you feel about the word \"bitch\"?\nCis woman; it doesn't bother me\nCis woman; it bothers me\nCis man; it...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 356,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "e78e790f-35d4-428c-88db-47c6ab846d68",
+            "question": "What's your gender? How do you feel about the word \"bitch\"?",
+            "answers": [
+              {
+                "client_id": "844de64a-382e-4dd3-ba1d-f87002560422",
+                "answer_text": "Cis woman; it doesn't bother me"
+              },
+              {
+                "client_id": "6f74846d-60c9-4fa3-b5f8-393508e577d8",
+                "answer_text": "Cis woman; it bothers me"
+              },
+              {
+                "client_id": "8a76deed-e4a8-4996-943e-fd8d989b033c",
+                "answer_text": "Cis man; it doesn't bother me"
+              },
+              {
+                "client_id": "8456eabb-719e-4531-8ca0-0e91f430853f",
+                "answer_text": "Cis man; it bothers me"
+              },
+              {
+                "client_id": "b2053fde-3114-46e3-90b8-32bb5fbfb0db",
+                "answer_text": "Trans man/transmasc; it doesn't bother me"
+              },
+              {
+                "client_id": "0ad71aa6-b9ab-4f14-84a9-8148c04211ea",
+                "answer_text": "Trans man/transmasc; it bothers me"
+              },
+              {
+                "client_id": "a8691232-bfb1-43ba-a247-04828799073a",
+                "answer_text": "Trans woman/transfem; it doesn't bother me"
+              },
+              {
+                "client_id": "efe0f6cb-fc5e-4e18-8a86-517ada6530ab",
+                "answer_text": "Trans woman/transfem; it bothers me"
+              },
+              {
+                "client_id": "b8a932cd-480d-476c-83d8-1c659d6605e0",
+                "answer_text": "Nonbinary/neither transmasc nor transfem; it doesn't bother me"
+              },
+              {
+                "client_id": "641e53d2-cb89-4a77-8f1f-0953013ae6fc",
+                "answer_text": "Nonbinary/neither transmasc nor transfem; it bothers me"
+              },
+              {
+                "client_id": "addd547a-9961-4aa8-9a97-a59ace3f657c",
+                "answer_text": "My gender doesn't fit into any of these categories; it doesn't bother me"
+              },
+              {
+                "client_id": "b53420b0-09df-4702-815e-ff57e2d119be",
+                "answer_text": "My gender doesn't fit into any of these categories; it bothers me"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-29 22:46:27 GMT",
+            "timestamp": 1769726787
+          },
+          {
+            "type": "text",
+            "text": "\"Bothers me\" can be subjective. Vote for what feels most applicable to you, and feel free to elaborate in the tags."
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 807039650752512000,
+        "id_string": "807039650752512000",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/807039650752512000/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-29 02:16:27 GMT",
+        "timestamp": 1769652987,
+        "state": "published",
+        "reblog_key": "uE9BtvHr",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about the home",
+          "submitted oct 15",
+          "houses",
+          "housing",
+          "mansions"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQipBabMma00",
+        "summary": "#1: A house with 3 floors including basement. There's a basement, a floor at ground level, and one floor above ground level.\n#2:...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 239,
+        "content": [
+          {
+            "type": "text",
+            "text": "#1: A house with 3 floors including basement. There's a basement, a floor at ground level, and one floor above ground level."
+          },
+          {
+            "type": "text",
+            "text": "#2: A house with 3 floors and NO basement. There's one floor at ground level, and two floors above ground level. There is nothing below ground level."
+          },
+          {
+            "type": "poll",
+            "client_id": "c363c32d-f378-4ca3-a6f5-e03879bd7a93",
+            "question": "In your opinion, is a house with 3 floors (including a basement) a mansion? What about a house with 3 floors but no basement?",
+            "answers": [
+              {
+                "client_id": "f7ff66ac-a198-4556-81aa-8fed29ff4422",
+                "answer_text": "Both of these are mansions"
+              },
+              {
+                "client_id": "7a1a9a62-c8b6-4784-ad44-68eebc1de177",
+                "answer_text": "The FIRST house (3 floors including basement) is a mansion; the second is not"
+              },
+              {
+                "client_id": "8a435896-8de4-4ea6-8fd9-d3006e8d7105",
+                "answer_text": "The SECOND house (3 floors, no basement) is a mansion; the first is not"
+              },
+              {
+                "client_id": "b12996a4-a311-4022-979b-2cffdf594206",
+                "answer_text": "Neither of these are mansions"
+              },
+              {
+                "client_id": "69c2f555-f29f-4530-9984-7def69c79d0e",
+                "answer_text": "Whether it's a mansion or not depends on something else"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-29 02:16:27 GMT",
+            "timestamp": 1769652987
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 807036382088429568,
+        "id_string": "807036382088429568",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/807036382088429568/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-29 01:24:29 GMT",
+        "timestamp": 1769649869,
+        "state": "published",
+        "reblog_key": "9lTpzlAH",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about the home",
+          "submitted oct 15",
+          "polls about relationships",
+          "neighbors",
+          "emergency services",
+          "emergency",
+          "safety"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQipAr1BCe00",
+        "summary": "If you've ever called emergency services (police, fire department, paramedics, etc.) for a neighbor (not for yourself), what was...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 184,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "e801daaf-cedf-4b35-8596-e97414791e00",
+            "question": "If you've ever called emergency services (police, fire department, paramedics, etc.) for a neighbor (not for yourself), what was the primary reason?",
+            "answers": [
+              {
+                "client_id": "5b3dd27e-b3c9-409d-b71d-fe1cd4a3ef83",
+                "answer_text": "Fire/explosion"
+              },
+              {
+                "client_id": "3040adab-baa0-45a9-8b87-1629cc9dc2e5",
+                "answer_text": "Theft/break-in"
+              },
+              {
+                "client_id": "a7b18583-2b62-4e85-b089-04bf9671ea3a",
+                "answer_text": "Health emergency"
+              },
+              {
+                "client_id": "ce06a410-a454-4b08-a346-cc3b6eb64d58",
+                "answer_text": "Welfare check"
+              },
+              {
+                "client_id": "963d6f50-4e94-4055-91ef-68e67b46e4d0",
+                "answer_text": "Auto accident"
+              },
+              {
+                "client_id": "8452df1e-2f28-4357-8f33-92e3faf136df",
+                "answer_text": "Harassment/stalking/domestic violence"
+              },
+              {
+                "client_id": "76a2f575-4b61-4f97-a762-a177640c3567",
+                "answer_text": "Wild animal control"
+              },
+              {
+                "client_id": "d9278be8-dd4b-422a-9dfd-dec886f7e3be",
+                "answer_text": "Vandalism/destruction of property"
+              },
+              {
+                "client_id": "c5028a07-9c80-4eb1-9c58-3fbdcb360eac",
+                "answer_text": "Illegal drug use/overdose"
+              },
+              {
+                "client_id": "5fe84b44-df90-4c05-a29e-518b0709fd74",
+                "answer_text": "Multiple of these"
+              },
+              {
+                "client_id": "36aeb1e2-7ec3-44f2-a567-2d1811908dc3",
+                "answer_text": "A different reason"
+              },
+              {
+                "client_id": "6ddb052f-02ad-4984-8584-8c5c15313613",
+                "answer_text": "I’ve never called/see results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-29 01:24:29 GMT",
+            "timestamp": 1769649869
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 807032989323231232,
+        "id_string": "807032989323231232",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/807032989323231232/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-29 00:30:34 GMT",
+        "timestamp": 1769646634,
+        "state": "published",
+        "reblog_key": "uceCi6yz",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about the world",
+          "submitted oct 15",
+          "polls about teeth",
+          "dentists",
+          "dental health",
+          "dental care",
+          "laughing gas",
+          "medical procedures",
+          "doctors",
+          "health",
+          "anesthesia",
+          "geography"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQipA3fQeW00",
+        "summary": "Have you ever had a medical or dental procedure involving nitrous oxide (\"laughing gas\")? Where are you from?\nYes, North...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 157,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "a4097f39-db7a-4a74-a4d2-b56637df3ff5",
+            "question": "Have you ever had a medical or dental procedure involving nitrous oxide (\"laughing gas\")? Where are you from?",
+            "answers": [
+              {
+                "client_id": "84d21c3f-8c44-456f-bdf4-ef8c0c88dd9e",
+                "answer_text": "Yes, North America"
+              },
+              {
+                "client_id": "3eb341e2-31f8-40b3-9568-060fa6f97589",
+                "answer_text": "Yes, South America"
+              },
+              {
+                "client_id": "082eed8d-a6c7-4ac0-bb1e-4e32df0ea219",
+                "answer_text": "Yes, Oceania"
+              },
+              {
+                "client_id": "a48aea52-093e-4a38-85ef-368a1b84b766",
+                "answer_text": "Yes, Asia"
+              },
+              {
+                "client_id": "13817b66-3e14-4b65-af88-c7c53306611f",
+                "answer_text": "Yes, Europe"
+              },
+              {
+                "client_id": "24ece708-e3b9-43f0-ac5e-5268b74aaf7c",
+                "answer_text": "Yes, Africa"
+              },
+              {
+                "client_id": "e5937595-d8a4-4580-ba08-694cc5e140e2",
+                "answer_text": "No, North America"
+              },
+              {
+                "client_id": "6f7dbcf3-7c8d-42a3-ab22-b40d2517cc56",
+                "answer_text": "No, South America"
+              },
+              {
+                "client_id": "3f2ec1e4-24a4-4cf1-ab74-dfb01ca309f6",
+                "answer_text": "No, Oceania"
+              },
+              {
+                "client_id": "d80ef68b-2eb4-4a36-a109-905ded3091e3",
+                "answer_text": "No, Asia"
+              },
+              {
+                "client_id": "111b42fb-b087-4c3a-ac01-7703e810a7dc",
+                "answer_text": "No, Europe"
+              },
+              {
+                "client_id": "0c3b45cc-7b51-40a0-ad7d-e020bdfe3da6",
+                "answer_text": "No, Africa"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-29 00:30:34 GMT",
+            "timestamp": 1769646634
+          },
+          {
+            "type": "text",
+            "text": "If the procedure that involved nitrous oxide was in a different part of the world from where you live, vote for where the procedure took place."
+          },
+          {
+            "type": "text",
+            "text": "Because this comes up on every poll involving continents: yes, there are several different ways to delineate the Americas. Yes, there is debate as to whether Central America is part of North America, should be grouped with South America to draw a distinction from the US and Canada, should be considered an entirely separate entity, etc. Tumblr polls only allow for 12 options which means it can't be its own category. If you're from Central America, you may vote for whichever you feel better represents how you would categorize it.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 509,
+                "end": 512
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 807029712095494144,
+        "id_string": "807029712095494144",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/807029712095494144/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-28 23:38:28 GMT",
+        "timestamp": 1769643508,
+        "state": "published",
+        "reblog_key": "LZsqmbRl",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about interests",
+          "submitted oct 1",
+          "polls about sex",
+          "fandom",
+          "fanworks",
+          "fanfic",
+          "fanart",
+          "fanfiction"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQip9JzGeq00",
+        "summary": "If you (1) have a fetish (sexual or not) and (2) make fanworks, do you involve your fetish in those fanworks?\nYes, I make...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 163,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "62d174c7-55bb-428c-8689-20b38d30a325",
+            "question": "If you (1) have a fetish (sexual or not) and (2) make fanworks, do you involve your fetish in those fanworks?",
+            "answers": [
+              {
+                "client_id": "9166c0e7-0411-459c-ae6d-187caa6f0a9b",
+                "answer_text": "Yes, I make fanworks involving my fetish(es) in every fandom I'm in"
+              },
+              {
+                "client_id": "c245ee59-ac54-4167-b838-9c83e220a948",
+                "answer_text": "Yes, but it varies with the source media and/or character's vibes"
+              },
+              {
+                "client_id": "bd68f43e-4d09-487b-b38c-d26e81d68139",
+                "answer_text": "Yes, and I'm only into fandoms that are compatible with my fetish(es)"
+              },
+              {
+                "client_id": "840d1c99-0be1-4553-b63d-93f81ef8f54d",
+                "answer_text": "No, I'm too self-conscious to make anything that involves my fetish"
+              },
+              {
+                "client_id": "c5da1e78-cad6-4e96-bf09-f2c0307d4691",
+                "answer_text": "No, I'm actively against making fanworks that include my fetish"
+              },
+              {
+                "client_id": "ec1aa325-7bcc-4ab2-837d-32d4708f9022",
+                "answer_text": "No, I'm just not interested in combining these things"
+              },
+              {
+                "client_id": "31ec2e99-b3a1-441a-8a2f-c85f827e7230",
+                "answer_text": "Other"
+              },
+              {
+                "client_id": "5504bb53-a35e-4d5b-a7fd-6ad304fe8359",
+                "answer_text": "I make fanworks but don't have a fetish"
+              },
+              {
+                "client_id": "dc026c64-b8bc-4a6e-a48e-1bd583756c28",
+                "answer_text": "I have a fetish but don't make fanworks"
+              },
+              {
+                "client_id": "c7764a53-4f34-4b00-b143-6932d67cf457",
+                "answer_text": "I don't do either off these things/show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-28 23:38:28 GMT",
+            "timestamp": 1769643508
+          },
+          {
+            "type": "text",
+            "text": "For the purpose of this poll, \"making fanworks\" includes if you specifically have someone else make the work for you– e.g. commissioning works with particular themes or noting particular themes that you like in a swap/exchange/etc."
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806945680573743104,
+        "id_string": "806945680573743104",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806945680573743104/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-28 01:22:50 GMT",
+        "timestamp": 1769563370,
+        "state": "published",
+        "reblog_key": "akCBlsDx",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about relationships",
+          "submitted oct 1",
+          "polls about lgbtq stuff",
+          "gender",
+          "trans",
+          "transgender",
+          "deadnames",
+          "deadname",
+          "names"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQiosD8pea00",
+        "summary": "Trans people who have legally changed your name and no longer use your deadname at all: Of the people CURRENTLY in your life,...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 132,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "ea0b72c3-7e49-4bf7-98a1-469783a277d6",
+            "question": "Trans people who have legally changed your name and no longer use your deadname at all: Of the people CURRENTLY in your life, how many know your deadname?",
+            "answers": [
+              {
+                "client_id": "21c60b40-06ca-4014-ab5e-8ae8f252eccd",
+                "answer_text": "Everyone in my life knows my deadname"
+              },
+              {
+                "client_id": "8bf3e04e-e08e-4d42-af78-b4d84e2f916a",
+                "answer_text": "ALMOST everyone in my life knows my deadname, but not all"
+              },
+              {
+                "client_id": "4c6b629d-8db6-4ae3-90fb-285d7c0cc354",
+                "answer_text": "Most people in my life know my deadname"
+              },
+              {
+                "client_id": "bfe1d7c7-b6cd-45f6-9a6f-9a968eef26b6",
+                "answer_text": "About half of the people in my life know my deadname"
+              },
+              {
+                "client_id": "11afdf24-865a-47f2-b2e8-e2ed6a2119a0",
+                "answer_text": "Some people in my life know my deadname"
+              },
+              {
+                "client_id": "2f091977-7f44-4568-ac1a-7aa77389e86c",
+                "answer_text": "Very few people in my life know my deadname"
+              },
+              {
+                "client_id": "1be2a636-76c6-42f7-896e-5a3de9c8d87e",
+                "answer_text": "I can think of exactly one person in my life currently who knows my deadname"
+              },
+              {
+                "client_id": "c41266e3-fd79-4bc1-99b4-44146c1b522c",
+                "answer_text": "Nobody in my life now knows my deadname"
+              },
+              {
+                "client_id": "9cc1dded-5586-466c-b9e3-9b0d2e70111b",
+                "answer_text": "Other/it's complicated"
+              },
+              {
+                "client_id": "e5a5218e-4e67-4404-84d9-066a767fd08e",
+                "answer_text": "I'm trans and still use my given name in some or all contexts, show results"
+              },
+              {
+                "client_id": "31e2711b-b958-4bfa-90b8-43dcf49d6356",
+                "answer_text": "Not trans, show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-28 01:22:50 GMT",
+            "timestamp": 1769563370
+          },
+          {
+            "type": "text",
+            "text": "\"People in your life\" meaning people you interact with regularly and have some sort of relationship with– friends, partners, family, coworkers, classmates, etc. Don't count, for example, strangers on the bus, or the cashier at the grocery store, and don't count people you no longer have a relationship with."
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806942407122911232,
+        "id_string": "806942407122911232",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806942407122911232/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-28 00:30:48 GMT",
+        "timestamp": 1769560248,
+        "state": "published",
+        "reblog_key": "HTTiGXjG",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about interests",
+          "submitted oct 1",
+          "music"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQiorTWAme00",
+        "summary": "Do you consider yourself to have diverse taste in music, when it comes to listening to a wide variety of genres?\nYes\nNo\nI don't...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 470,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "cf3da8fd-5c8e-4fc3-945b-2b4359885a5f",
+            "question": "Do you consider yourself to have diverse taste in music, when it comes to listening to a wide variety of genres?",
+            "answers": [
+              {
+                "client_id": "fbc4d3d3-558b-461d-b6ac-ff5db369caec",
+                "answer_text": "Yes"
+              },
+              {
+                "client_id": "1bf3f119-7e97-40cb-ab09-a2742ec759f5",
+                "answer_text": "No"
+              },
+              {
+                "client_id": "0f4f8772-1c88-4416-a0d5-ba23e63d488f",
+                "answer_text": "I don't listen to much music/show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-28 00:30:48 GMT",
+            "timestamp": 1769560248
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806939144101167104,
+        "id_string": "806939144101167104",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806939144101167104/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-27 23:38:56 GMT",
+        "timestamp": 1769557136,
+        "state": "published",
+        "reblog_key": "4xD8n48I",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about the body",
+          "submitted oct 1",
+          "hair",
+          "body hair"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQioqk1FWW00",
+        "summary": "NOT counting the hair on your head, how do you feel about the ways your body currently grows hair? (How much, where it is,...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 226,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "daba1717-9919-4614-9654-9080f78b78f6",
+            "question": "NOT counting the hair on your head, how do you feel about the ways your body currently grows hair? (How much, where it is, color, texture, etc)",
+            "answers": [
+              {
+                "client_id": "dec826e0-87a4-4f72-87bd-b3b4ff4cdb2d",
+                "answer_text": "I like all elements: how much hair I grow, where it is, color, texture, etc"
+              },
+              {
+                "client_id": "9f87afee-ce8d-40cd-8409-f33b8b5d19a8",
+                "answer_text": "I like some elements, and I'm neutral on others"
+              },
+              {
+                "client_id": "44ce653a-b723-485b-b695-164cdde163e1",
+                "answer_text": "I like some elements, but I dislike others"
+              },
+              {
+                "client_id": "3b658f7f-1280-4d0a-a847-cd6f79d20156",
+                "answer_text": "I'm neutral on all elements"
+              },
+              {
+                "client_id": "55064e22-777c-4c42-af22-83f9b00c58b8",
+                "answer_text": "I'm neutral on some elements but dislike others"
+              },
+              {
+                "client_id": "86965cb3-5014-4c06-a1cc-3898ccdc8d43",
+                "answer_text": "I dislike all elements"
+              },
+              {
+                "client_id": "a4ba30da-52c5-45b1-b3dd-5a6bd4f03cc5",
+                "answer_text": "Other/it varies"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-27 23:38:56 GMT",
+            "timestamp": 1769557136
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806935848244412416,
+        "id_string": "806935848244412416",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806935848244412416/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-27 22:46:33 GMT",
+        "timestamp": 1769553993,
+        "state": "published",
+        "reblog_key": "EWLhSaNE",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about interests",
+          "submitted oct 1",
+          "polls about language",
+          "harry potter",
+          "books",
+          "movies",
+          "fandom",
+          "memes",
+          "pop culture"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQiop_3l8m00",
+        "summary": "This is asking about casual references to Harry Potter being applied to things that aren't about Harry Potter. For example,...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 270,
+        "content": [
+          {
+            "type": "text",
+            "text": "This is asking about casual references to Harry Potter being applied to things that aren't about Harry Potter. For example, calling someone \"he who must not be named,\" using \"patronus\" in the same way as (the slang/non-native use of) \"spirit animal,\" etc. "
+          },
+          {
+            "type": "poll",
+            "client_id": "893811d6-ce25-4f36-b084-4ca093585b6a",
+            "question": "Does it bother you when people reference Harry Potter in casual language/memes/etc, even if the person making the reference doesn't support JKR or engage with Harry Potter otherwise?",
+            "answers": [
+              {
+                "client_id": "232a9976-3d8f-4302-9d55-a1d0648de6fa",
+                "answer_text": "Yes, I hate it. If you \"don't support\" JKR, stop giving HP cultural relevance."
+              },
+              {
+                "client_id": "cbb102aa-7fea-4719-b2db-80cd42362226",
+                "answer_text": "Yes, I dislike it but you can't erase a pop culture touchstone overnight"
+              },
+              {
+                "client_id": "7f71ff68-d09b-4596-959a-2ded793ecf1d",
+                "answer_text": "I dislike JKR but offhand references are harmless/not the same as supporting it"
+              },
+              {
+                "client_id": "ef1c5778-03a5-4d1c-94e8-4706cf9e663e",
+                "answer_text": "I dislike JKR; it's wrong or tone-deaf in some contexts but neutral/fine in some"
+              },
+              {
+                "client_id": "227f6066-db57-489c-8018-8b4d3c6f2d15",
+                "answer_text": "I dislike JKR and HP but I actually think casual references are good"
+              },
+              {
+                "client_id": "91bef591-50b0-49b9-822c-5b7435e8bfd0",
+                "answer_text": "I actively like JKR and/or HP"
+              },
+              {
+                "client_id": "fc13652d-1bfb-442c-9706-272916a768c0",
+                "answer_text": "Other opinion"
+              },
+              {
+                "client_id": "dcf434ae-e01d-4cbb-9f0b-e7c29de2a404",
+                "answer_text": "No opinion/show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-27 22:46:33 GMT",
+            "timestamp": 1769553993
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 109
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806932457817604096,
+        "id_string": "806932457817604096",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806932457817604096/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-27 21:52:40 GMT",
+        "timestamp": 1769550760,
+        "state": "published",
+        "reblog_key": "T6B2oteP",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about school",
+          "submitted oct 1",
+          "polls about brains",
+          "school",
+          "education"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQiopCk9yu00",
+        "summary": "Are you neurodivergent? Did you generally enjoy going to school?\nNeurodivergent; I enjoyed going to school\nNeurodivergent; I was...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 294,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "90edc904-77ed-4c49-913c-f4cfb3e85115",
+            "question": "Are you neurodivergent? Did you generally enjoy going to school?",
+            "answers": [
+              {
+                "client_id": "08243dc5-5920-46f5-97b1-9695adb6517b",
+                "answer_text": "Neurodivergent; I enjoyed going to school"
+              },
+              {
+                "client_id": "d271370e-0450-4504-9376-15c0760f1fb4",
+                "answer_text": "Neurodivergent; I was indifferent to going to school"
+              },
+              {
+                "client_id": "d3f36b89-4a89-4aa4-afdc-bc051ffd70cf",
+                "answer_text": "Neurodivergent; I hated going to school"
+              },
+              {
+                "client_id": "789be2d6-938e-4b14-8501-55425c523e7f",
+                "answer_text": "Neurodivergent; I didn't go to a \"typical\" school"
+              },
+              {
+                "client_id": "bc33b0ac-e534-40b2-a927-18631780497b",
+                "answer_text": "Neurodivergent; other/it's complicated"
+              },
+              {
+                "client_id": "c2a2228e-ae08-4554-9e5b-3f19e72cc13d",
+                "answer_text": "Neurotypical; I enjoyed going to school"
+              },
+              {
+                "client_id": "8d01f15d-7ef9-418a-9aa7-dac1bd8eb182",
+                "answer_text": "Neurotypical; I was indifferent to going to school"
+              },
+              {
+                "client_id": "0e6f9092-1dd5-4868-a530-6fee1bb84a45",
+                "answer_text": "Neurotypical; I hated going to school"
+              },
+              {
+                "client_id": "2ef79a6f-cb6d-4f14-9ee4-e10e83ee3d78",
+                "answer_text": "Neurotypical; I didn't go to a \"typical\" school"
+              },
+              {
+                "client_id": "3c7b1a1f-fd0e-4a5b-aefd-504530c028a1",
+                "answer_text": "Neurotypical; other/it's complicated"
+              },
+              {
+                "client_id": "0fa4e208-a3ff-4f62-be56-acde3a0a8466",
+                "answer_text": "Other/show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-27 21:52:40 GMT",
+            "timestamp": 1769550760
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806858464774193152,
+        "id_string": "806858464774193152",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806858464774193152/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-27 02:16:34 GMT",
+        "timestamp": 1769480194,
+        "state": "published",
+        "reblog_key": "spkg37f9",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about sleep",
+          "submitted oct 1",
+          "polls about the bodies",
+          "sleep",
+          "falling asleep"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQioYN_muW00",
+        "summary": "Do your limbs jerk suddenly and dramatically when you're in the process of falling asleep?\nYes, frequently\nYes,...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 255,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "24c569ae-17ae-433f-a657-3608505c478b",
+            "question": "Do your limbs jerk suddenly and dramatically when you're in the process of falling asleep?",
+            "answers": [
+              {
+                "client_id": "328d4d7b-ffb3-429f-a57b-a18bc76abff6",
+                "answer_text": "Yes, frequently"
+              },
+              {
+                "client_id": "1acd09c3-0645-4ad0-9171-f9f2967feeef",
+                "answer_text": "Yes, occasionally"
+              },
+              {
+                "client_id": "b6a080d4-4e1a-4650-8c20-ba75d3c54925",
+                "answer_text": "This has happened to me before"
+              },
+              {
+                "client_id": "aa8e6078-15f5-4f7c-8ca4-d8208be710af",
+                "answer_text": "No, but I've heard of this"
+              },
+              {
+                "client_id": "17e5438c-3e1d-4bd6-be62-037fe40c0712",
+                "answer_text": "No, and I've never heard of this"
+              },
+              {
+                "client_id": "ffe33de4-70f0-4e25-b599-2d3779e89336",
+                "answer_text": "Other"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-27 02:16:34 GMT",
+            "timestamp": 1769480194
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806855085486456832,
+        "id_string": "806855085486456832",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806855085486456832/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-27 01:22:52 GMT",
+        "timestamp": 1769476972,
+        "state": "published",
+        "reblog_key": "PglJF087",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about sleep",
+          "submitted oct 1",
+          "polls about brains",
+          "sleep",
+          "falling asleep",
+          "hallucinations",
+          "auditory hallucinations"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQioXcpZeq00",
+        "summary": "Do you experience auditory hallucinations in the half-awake state before you fall asleep?\nYes, frequently\nYes, occasionally\nThis...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 203,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "61c3e01a-0b28-41b7-b913-05533955d11e",
+            "question": "Do you experience auditory hallucinations in the half-awake state before you fall asleep?",
+            "answers": [
+              {
+                "client_id": "e63042ee-e849-4339-9518-b49a94b155fe",
+                "answer_text": "Yes, frequently"
+              },
+              {
+                "client_id": "b37a0cbb-c447-4995-af28-3fbdd0ab0840",
+                "answer_text": "Yes, occasionally"
+              },
+              {
+                "client_id": "b5c15d58-15d4-4cf7-a8ee-7e31bc79c22f",
+                "answer_text": "This has happened to me at least once"
+              },
+              {
+                "client_id": "6d4ca578-1d4e-4e74-8a16-5f4aa6d9a24f",
+                "answer_text": "No, but I've heard of this"
+              },
+              {
+                "client_id": "ca85a508-7098-4091-8395-ea8bf559f7f0",
+                "answer_text": "No, and I've never heard of this"
+              },
+              {
+                "client_id": "a94b3303-da50-4a2a-9057-3002d2722a6c",
+                "answer_text": "Not sure/other"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-27 01:22:52 GMT",
+            "timestamp": 1769476972
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806851810869608448,
+        "id_string": "806851810869608448",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806851810869608448/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-27 00:30:49 GMT",
+        "timestamp": 1769473849,
+        "state": "published",
+        "reblog_key": "XdHARGIH",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "existential polls",
+          "submitted oct 1",
+          "faith",
+          "belief",
+          "beliefs",
+          "religion",
+          "theology"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQioWt9rGu00",
+        "summary": "This is asking about your GENERAL category of belief– theist (regardless of specific religion), atheist, or agnostic. \nThink of...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 388,
+        "content": [
+          {
+            "type": "text",
+            "text": "This is asking about your GENERAL category of belief– theist (regardless of specific religion), atheist, or agnostic. "
+          },
+          {
+            "type": "poll",
+            "client_id": "0bdf4244-d5e1-4ad9-8ed8-0eea99cf93d5",
+            "question": "Think of your view on the existence of god(s)– would you say your current view falls into the same broad category as what you were raised to believe?",
+            "answers": [
+              {
+                "client_id": "338bc955-fea0-40cb-9bfe-70f5651b2acf",
+                "answer_text": "Raised atheist, still atheist"
+              },
+              {
+                "client_id": "a5d23070-bc65-4ddb-8884-4d41597d6fdf",
+                "answer_text": "Raised agnostic, still agnostic"
+              },
+              {
+                "client_id": "dd4ebf20-bb5d-459a-acaf-95682b1515e4",
+                "answer_text": "Raised theist, still theist (even if specific beliefs have changed)"
+              },
+              {
+                "client_id": "73ea0001-ff7d-4485-a89a-801377bdd83a",
+                "answer_text": "Raised atheist, now agnostic"
+              },
+              {
+                "client_id": "e8c83b2e-0b6e-40d5-8d4a-d5e507aacda2",
+                "answer_text": "Raised atheist, now theist"
+              },
+              {
+                "client_id": "1b40f9e1-ca26-4038-850f-cafa3f868b56",
+                "answer_text": "Raised agnostic, now atheist"
+              },
+              {
+                "client_id": "46abcefd-c2c7-4315-bc52-4520801d0fa5",
+                "answer_text": "Raised agnostic, now theist"
+              },
+              {
+                "client_id": "d9ef0dd6-750d-4c3d-bfd5-d5047b5ed488",
+                "answer_text": "Raised theist, now atheist"
+              },
+              {
+                "client_id": "c5be1254-65ea-4ab4-a4fb-0e675e263407",
+                "answer_text": "Raised theist, now agnostic"
+              },
+              {
+                "client_id": "f2515778-acbb-4ab2-abe9-c77165a7aaa5",
+                "answer_text": "Other/it's more complicated than this"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-27 00:30:49 GMT",
+            "timestamp": 1769473849
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806841975678631936,
+        "id_string": "806841975678631936",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806841975678631936/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-26 21:54:29 GMT",
+        "timestamp": 1769464469,
+        "state": "published",
+        "reblog_key": "2UzRMVk3",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about school",
+          "submitted oct 1",
+          "polls about interests",
+          "shakespeare",
+          "polls about language",
+          "english",
+          "reading"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQioUe26Cm00",
+        "summary": "Do you find it difficult to read Shakespeare? Is English your first language?\nNo, Shakespeare isn't hard to read; English is my...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 343,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "0eb3d422-630c-4e68-8653-3169fb81c028",
+            "question": "Do you find it difficult to read Shakespeare? Is English your first language?",
+            "answers": [
+              {
+                "client_id": "0a73e7c2-e0fa-44dc-ad6b-b0646ae78c9c",
+                "answer_text": "No, Shakespeare isn't hard to read; English is my first language"
+              },
+              {
+                "client_id": "b61db679-3b03-4cb2-aaff-c2e49b3cbb31",
+                "answer_text": "No, Shakespeare isn't hard to read; English is NOT my first language"
+              },
+              {
+                "client_id": "e2686853-70ca-4b26-9d18-d6f0d2b6d021",
+                "answer_text": "Yes, Shakespeare is hard to read; English is my first language"
+              },
+              {
+                "client_id": "a7b51327-9920-4933-ae2c-dcff524cbef1",
+                "answer_text": "Yes, Shakespeare is hard to read; English is NOT my first language"
+              },
+              {
+                "client_id": "68e804c6-5f92-4c5b-974b-8f40077c0b14",
+                "answer_text": "I haven't read any Shakespeare; English is my first language"
+              },
+              {
+                "client_id": "df73bdde-2f63-401e-959c-fc39065b07f8",
+                "answer_text": "I haven't read any Shakespeare; English is NOT my first language"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-26 21:54:29 GMT",
+            "timestamp": 1769464469
+          },
+          {
+            "type": "text",
+            "text": "Define \"difficult/hard to read\" for yourself, whether that be difficult on the surface to comprehend the words and sentences, difficult to understand deeper themes, etc."
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806680550967508992,
+        "id_string": "806680550967508992",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806680550967508992/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-25 03:08:42 GMT",
+        "timestamp": 1769310522,
+        "state": "published",
+        "reblog_key": "R7ypPftz",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about the body",
+          "submitted oct 1",
+          "connective tissue disorder",
+          "health"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQinvw-dee00",
+        "summary": "Do you have any type of connective tissue disorder?\nYes, I'm certain I do\nNot sure, but I think I probably do\nMaybe/I have...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 193,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "324333f2-b5c0-4ad3-954b-e7db19a2977b",
+            "question": "Do you have any type of connective tissue disorder?",
+            "answers": [
+              {
+                "client_id": "ab099665-cfa2-49bf-a2d3-4265fe0fc72f",
+                "answer_text": "Yes, I'm certain I do"
+              },
+              {
+                "client_id": "d3688ba7-fc58-4a3f-acd7-429bf892f663",
+                "answer_text": "Not sure, but I think I probably do"
+              },
+              {
+                "client_id": "e7dcb158-f2c1-4b07-80bf-e8392bdfd7ed",
+                "answer_text": "Maybe/I have something going on but not sure what it is or if it counts"
+              },
+              {
+                "client_id": "7ecd297b-db51-4d0a-a98d-b9305b703221",
+                "answer_text": "Not sure, but I think I probably don't"
+              },
+              {
+                "client_id": "e0209e2d-3883-4ad0-8405-4df9c32841cd",
+                "answer_text": "No, I'm certain I don't"
+              },
+              {
+                "client_id": "580bc68e-48b5-4e14-a6dc-d8c6528eef83",
+                "answer_text": "Other"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-25 03:08:42 GMT",
+            "timestamp": 1769310522
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806677262510505984,
+        "id_string": "806677262510505984",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806677262510505984/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-25 02:16:26 GMT",
+        "timestamp": 1769307386,
+        "state": "published",
+        "reblog_key": "oIgLCKmx",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about food",
+          "submitted oct 1",
+          "polls about the home",
+          "polls about money",
+          "groceries",
+          "chores",
+          "grocery shopping",
+          "brands",
+          "name brand",
+          "store brand"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQinvB90Ki00",
+        "summary": "\"Store brand\" means a product that is produced for and sold by a specific grocery store. \"Name brand\" products are sold at...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 281,
+        "content": [
+          {
+            "type": "text",
+            "text": "\"Store brand\" means a product that is produced for and sold by a specific grocery store. \"Name brand\" products are sold at multiple retailers under a recognizable brand name. For example, Coca-Cola is a name brand; Big K Cola is Kroger's store brand. "
+          },
+          {
+            "type": "text",
+            "text": "This is asking specifically about groceries, not other goods."
+          },
+          {
+            "type": "poll",
+            "client_id": "90520b55-d305-475c-bbc3-85870c61ffb2",
+            "question": "How many of the groceries used in your household are store brand, as opposed to name brand?",
+            "answers": [
+              {
+                "client_id": "8574b790-201b-4402-80db-9fb9d0fef154",
+                "answer_text": "Exclusively store brand, I/we NEVER buy name brand"
+              },
+              {
+                "client_id": "5a7cb1b1-e988-4f52-b133-ce01e590e3c1",
+                "answer_text": "Mostly store brand, some/sometimes name brand"
+              },
+              {
+                "client_id": "ee298134-2a57-4b61-9ae4-9d2f96ecfcbd",
+                "answer_text": "About 50/50"
+              },
+              {
+                "client_id": "99ec7a34-af69-4ef2-ad17-b2f80100f25f",
+                "answer_text": "Mostly name brand, some/sometimes store brand"
+              },
+              {
+                "client_id": "20994a2b-4b76-4ae0-8bac-6d4ba3f4c938",
+                "answer_text": "Exclusively name brand, I/we NEVER buy store brand"
+              },
+              {
+                "client_id": "b55c0c24-36ce-497a-ae77-6bc7eac13e6a",
+                "answer_text": "I'm not sure"
+              },
+              {
+                "client_id": "f4775686-25e3-43d1-a635-13db8ed4f313",
+                "answer_text": "This question doesn't apply to my life"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-25 02:16:26 GMT",
+            "timestamp": 1769307386
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806674004585988096,
+        "id_string": "806674004585988096",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806674004585988096/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-25 01:24:39 GMT",
+        "timestamp": 1769304279,
+        "state": "published",
+        "reblog_key": "DNDdUz0j",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about relationships",
+          "submitted oct 1",
+          "polls about language",
+          "bromance",
+          "relationships"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQinuRkquy00",
+        "summary": "If someone calls a relationship a \"bromance,\" do you interpret that as a platonic or romantic...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 180,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "68582d2f-0a88-48de-bb35-0792bd1a2024",
+            "question": "If someone calls a relationship a \"bromance,\" do you interpret that as a platonic or romantic relationship?",
+            "answers": [
+              {
+                "client_id": "5d7f536f-1e65-443a-b1c3-2eb194c5b873",
+                "answer_text": "Platonic"
+              },
+              {
+                "client_id": "f98e3bc5-651b-425e-8ae8-fb9e8396efa9",
+                "answer_text": "Romantic"
+              },
+              {
+                "client_id": "4f5d8e4b-b615-463a-9f9d-fc8ef0da438c",
+                "answer_text": "Secret third thing"
+              },
+              {
+                "client_id": "e9224318-7803-4d7c-99e2-25cf1bc234af",
+                "answer_text": "I've never heard this/I don't know"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-25 01:24:39 GMT",
+            "timestamp": 1769304279
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806670630438256640,
+        "id_string": "806670630438256640",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806670630438256640/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-25 00:31:02 GMT",
+        "timestamp": 1769301062,
+        "state": "published",
+        "reblog_key": "EXV7rXd9",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about showers",
+          "submitted oct 1",
+          "polls about relationships",
+          "siblings",
+          "family",
+          "baths",
+          "growing up",
+          "memories"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQintgeQ0q00",
+        "summary": "\"Other young relatives\" means non-sibling relatives around your age that you grew up with; for example, cousins that lived...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 651,
+        "content": [
+          {
+            "type": "text",
+            "text": "\"Other young relatives\" means non-sibling relatives around your age that you grew up with; for example, cousins that lived nearby and you spent a lot of time with. Don't count (for example) cousins that live in another state that you saw once a year."
+          },
+          {
+            "type": "poll",
+            "client_id": "b79903ad-5f06-4134-a023-9d03070f27ff",
+            "question": "Do you have siblings? Did you take baths together as young children? Do you think it's normal/fine for young children to take baths together?",
+            "answers": [
+              {
+                "client_id": "995408d5-438c-4b85-b3bd-295030a153d1",
+                "answer_text": "I have siblings; we took baths together; I think this is normal"
+              },
+              {
+                "client_id": "096e121c-cb5a-4bb1-ba8e-21f5be9be84a",
+                "answer_text": "I have siblings; we took baths together, but I DON'T think this is normal"
+              },
+              {
+                "client_id": "93afba00-8604-43a2-881d-c125e31a0586",
+                "answer_text": "I have siblings; we did NOT take baths together, but I think doing so is normal"
+              },
+              {
+                "client_id": "a7dcd1c3-be0f-4149-8447-468124ae5d65",
+                "answer_text": "I have siblings; we did NOT take baths together; I DON'T think it's normal"
+              },
+              {
+                "client_id": "8718339e-cb96-4416-9871-50c800f0267a",
+                "answer_text": "No siblings, but other young relatives; we took baths together; normal"
+              },
+              {
+                "client_id": "deed2ae2-789a-4841-b247-3522c1a4e492",
+                "answer_text": "No siblings, but other young relatives; we took baths together, but NOT normal"
+              },
+              {
+                "client_id": "d02ac69f-d136-42a6-98c3-a17806068e49",
+                "answer_text": "No siblings, but other young relatives; DIDN'T take baths together; normal"
+              },
+              {
+                "client_id": "cff61a4a-e556-467a-a03a-6c8ea1efca63",
+                "answer_text": "No siblings, but other young relatives; DIDN'T take baths together; NOT normal"
+              },
+              {
+                "client_id": "dbab6e80-5365-47ec-a147-95eeeb9be5b6",
+                "answer_text": "I don't have anyone with whom this would apply, but I think it's normal"
+              },
+              {
+                "client_id": "28ac26b1-fae0-45fc-a7e4-c3fbf63b414f",
+                "answer_text": "I don't have anyone w/ whom this would apply, but I think it's NOT normal"
+              },
+              {
+                "client_id": "dc352169-1310-4dd0-99cb-3bc5228f727f",
+                "answer_text": "Other"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-25 00:31:02 GMT",
+            "timestamp": 1769301062
+          },
+          {
+            "type": "text",
+            "text": "Anon grew up in a large, poor family and there were often up to 4 kids in the bath at the same time when they were little. Anon wonders if this is a common experience or if their perspective is skewed because of their particular background."
+          },
+          {
+            "type": "text",
+            "text": "Define \"young children\" in whatever way makes sense to you."
+          },
+          {
+            "type": "text",
+            "text": "–"
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      },
+      {
+        "type": "blocks",
+        "original_type": "regular",
+        "is_blocks_post_format": true,
+        "blog_name": "incognitopolls",
+        "blog": {
+          "name": "incognitopolls",
+          "title": "Incognito Polls",
+          "description": "<p><b>Submissions are open on the 1st and 15th of the month.</b></p><p>For when you want answers but don’t want to ask it yourself. </p><p>Polls sometimes include adult and/or sensitive topics. While we make an effort to tag common triggers appropriately, some polls may be heavy or NSFW.</p>",
+          "url": "https://incognitopolls.tumblr.com/",
+          "uuid": "t:a2FLabfQxsjMiqQPghoIAw",
+          "updated": 1769729914,
+          "tumblrmart_accessories": {},
+          "can_show_badges": true
+        },
+        "id": 806667329980301312,
+        "id_string": "806667329980301312",
+        "is_blazed": false,
+        "is_blaze_pending": false,
+        "can_ignite": false,
+        "can_blaze": false,
+        "post_url": "https://incognitopolls.tumblr.com/post/806667329980301312/we-ask-your-questions-anonymously-so-you-dont",
+        "slug": "we-ask-your-questions-anonymously-so-you-dont",
+        "date": "2026-01-24 23:38:34 GMT",
+        "timestamp": 1769297914,
+        "state": "published",
+        "reblog_key": "aVsZz0XR",
+        "tags": [
+          "polls",
+          "incognito polls",
+          "anonymous",
+          "tumblr polls",
+          "tumblr users",
+          "questions",
+          "polls about critters",
+          "submitted oct 1",
+          "polls about the world",
+          "geography",
+          "brazil",
+          "wandering spider",
+          "spiders",
+          "bugs"
+        ],
+        "short_url": "https://tmblr.co/ZshTVQinswcdOu00",
+        "summary": "If you live in Brazil OR have visited there, have you ever encountered an armadeira/wandering spider? What region of...",
+        "should_open_in_legacy": false,
+        "recommended_source": null,
+        "recommended_color": null,
+        "followed": false,
+        "header_cta": {
+          "label": "Follow",
+          "action": {
+            "type": "client_action",
+            "action": "follow",
+            "meta": {
+              "follow_tumblelog_name": "incognitopolls"
+            }
+          }
+        },
+        "liked": false,
+        "note_count": 57,
+        "content": [
+          {
+            "type": "poll",
+            "client_id": "81560907-6166-4e7e-ae73-6613e9bcbb91",
+            "question": "If you live in Brazil OR have visited there, have you ever encountered an armadeira/wandering spider? What region of Brazil?",
+            "answers": [
+              {
+                "client_id": "28d9d4b1-47b3-4299-8bcf-f99d210da312",
+                "answer_text": "Yes, North"
+              },
+              {
+                "client_id": "bbeb876e-b942-4e2a-8199-c317cd2c818d",
+                "answer_text": "Yes, Northeast"
+              },
+              {
+                "client_id": "8b03b657-2a7e-4f45-941b-baf5ea95a8af",
+                "answer_text": "Yes, Central-West"
+              },
+              {
+                "client_id": "f1f52172-0058-4358-a9a7-da4700e1f0e7",
+                "answer_text": "Yes, Southeast"
+              },
+              {
+                "client_id": "e1b545aa-2930-410e-a570-7fbc7b580a8e",
+                "answer_text": "Yes, South"
+              },
+              {
+                "client_id": "ad5afa22-0710-4aeb-b60e-53522953055b",
+                "answer_text": "No; I live in or visited North Brazil"
+              },
+              {
+                "client_id": "d00d5126-ff95-47d0-8fce-105e703ecc44",
+                "answer_text": "No; I live in or visited Northeast Brazil"
+              },
+              {
+                "client_id": "01a9d614-5f2e-496e-8567-c5f5ca781fc5",
+                "answer_text": "No; I live in or visited Central-West Brazil"
+              },
+              {
+                "client_id": "9e1155b0-d384-41eb-8468-ede871d7edfe",
+                "answer_text": "No; I live in or visited Southeast Brazil"
+              },
+              {
+                "client_id": "97aa1607-6dc6-49a3-bfde-a242ff5860e2",
+                "answer_text": "No; I live in or visited South Brazil"
+              },
+              {
+                "client_id": "59ceb1cf-bfa7-4208-8202-805c6307fa3a",
+                "answer_text": "I've encountered a wandering spider somewhere outside of Brazil"
+              },
+              {
+                "client_id": "f521d9f4-f258-460b-8e95-67e4197c64b8",
+                "answer_text": "Show results"
+              }
+            ],
+            "settings": {
+              "multiple_choice": false,
+              "close_status": "closed-after",
+              "expire_after": 604800,
+              "source": "tumblr"
+            },
+            "created_at": "2026-01-24 23:38:34 GMT",
+            "timestamp": 1769297914
+          },
+          {
+            "type": "text",
+            "text": "We ask your questions anonymously so you don’t have to! Submissions are open on the 1st and 15th of the month.",
+            "formatting": [
+              {
+                "type": "italic",
+                "start": 0,
+                "end": 110
+              }
+            ]
+          }
+        ],
+        "layout": [],
+        "trail": [],
+        "can_like": true,
+        "interactability_reblog": "everyone",
+        "interactability_blaze": "everyone",
+        "can_reblog": true,
+        "can_send_in_message": true,
+        "can_reply": true,
+        "display_avatar": true
+      }
+    ],
+    "total_posts": 5283,
+    "_links": {
+      "next": {
+        "href": "/v2/blog/incognitopolls/posts?npf=true&tumblelog=incognitopolls&page_number=VA-j27L56ZPTrnKFItmNR_UhqjwGZyPMzVCleSe9lUDrK3lkSDQ3WWppSjNydTJxSmZESUI3Rzc1a01XU0tYbVI5bUpUYW4reFc3TE1hNW1ZeER2VW93SzZkbVZqbkhwZUNBalpDMnlEaU5xYVJ6cTV6bUJ5MXo4Z21uenhoWWZJbURuQ0RwYmp4Q29GdjFuNFRRcjdjdEYra0xwNXNld2JYdVdVYVpGbHB5ZW81S1Y5aU15S0gyNEFQL3JkVnNFUnRHWitpNkhldS9Da2I1dFRRNXVLUkhtZkJ6OEVwcWdYRFh2bm9sRmNTOS9JUEVDbGlINGVsTGVmdkhTUWhkU1gxdm4zQWF4enBaTkFnR0tTaXowQWNrR1M0cjQ0a0tzNGtaRFY1eitERW5xcHFXRDBtU0VYOXZHV0U2eE50QWx3V1h1cVRNMEdycjF2R253YUVGcUZUaWNkU3l1cnI5U01jbldseGZYN0JXZUJXQ0lDK0tqQ0paQXRiZVpHMktUeS91ODA4NlJ6OFprWWRCSW5wT0s5blpCb1R0MUpPM2lIWDFCNjVNbGFYY0dEdWdjcldSOWk5UT09",
+        "method": "GET",
+        "query_params": {
+          "npf": "true",
+          "tumblelog": "incognitopolls",
+          "page_number": "VA-j27L56ZPTrnKFItmNR_UhqjwGZyPMzVCleSe9lUDrK3lkSDQ3WWppSjNydTJxSmZESUI3Rzc1a01XU0tYbVI5bUpUYW4reFc3TE1hNW1ZeER2VW93SzZkbVZqbkhwZUNBalpDMnlEaU5xYVJ6cTV6bUJ5MXo4Z21uenhoWWZJbURuQ0RwYmp4Q29GdjFuNFRRcjdjdEYra0xwNXNld2JYdVdVYVpGbHB5ZW81S1Y5aU15S0gyNEFQL3JkVnNFUnRHWitpNkhldS9Da2I1dFRRNXVLUkhtZkJ6OEVwcWdYRFh2bm9sRmNTOS9JUEVDbGlINGVsTGVmdkhTUWhkU1gxdm4zQWF4enBaTkFnR0tTaXowQWNrR1M0cjQ0a0tzNGtaRFY1eitERW5xcHFXRDBtU0VYOXZHV0U2eE50QWx3V1h1cVRNMEdycjF2R253YUVGcUZUaWNkU3l1cnI5U01jbldseGZYN0JXZUJXQ0lDK0tqQ0paQXRiZVpHMktUeS91ODA4NlJ6OFprWWRCSW5wT0s5blpCb1R0MUpPM2lIWDFCNjVNbGFYY0dEdWdjcldSOWk5UT09"
+        }
+      }
+    }
+  }
+}

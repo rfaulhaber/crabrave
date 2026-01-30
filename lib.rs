@@ -857,24 +857,51 @@ where
 /// Custom deserializer for content blocks that handles both NPF arrays and legacy HTML strings.
 /// Legacy posts have `content` as an HTML string, while NPF posts have it as an array of ContentBlock.
 /// This deserializer returns the array for NPF posts and an empty Vec for legacy posts.
+///
+/// Uses explicit Value-based dispatch instead of an untagged enum so that
+/// deserialization errors include the block index and type for easier debugging.
 pub(crate) fn deserialize_content_blocks<'de, D>(
     deserializer: D,
 ) -> Result<Vec<npf::ContentBlock>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum ContentOrString {
-        Blocks(Vec<npf::ContentBlock>),
-        // String variant needed for serde to match legacy HTML content
-        #[allow(dead_code)]
-        Html(String),
-    }
+    let value = serde_json::Value::deserialize(deserializer)?;
 
-    match ContentOrString::deserialize(deserializer)? {
-        ContentOrString::Blocks(blocks) => Ok(blocks),
-        ContentOrString::Html(_) => Ok(Vec::new()), // Legacy HTML content - return empty Vec
+    match value {
+        serde_json::Value::String(_) => Ok(Vec::new()), // Legacy HTML content
+        serde_json::Value::Array(arr) => arr
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| {
+                let block_type = v
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("unknown")
+                    .to_owned();
+                serde_json::from_value(v).map_err(|e| {
+                    serde::de::Error::custom(format!(
+                        "content block index {i} (type: {block_type}): {e}"
+                    ))
+                })
+            })
+            .collect(),
+        other => Err(serde::de::Error::custom(format!(
+            "expected array or string for content, got {}",
+            kind_of(&other),
+        ))),
+    }
+}
+
+/// Returns a human-readable name for a JSON value kind.
+fn kind_of(value: &serde_json::Value) -> &'static str {
+    match value {
+        serde_json::Value::Null => "null",
+        serde_json::Value::Bool(_) => "boolean",
+        serde_json::Value::Number(_) => "number",
+        serde_json::Value::String(_) => "string",
+        serde_json::Value::Array(_) => "array",
+        serde_json::Value::Object(_) => "object",
     }
 }
 

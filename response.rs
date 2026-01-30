@@ -64,6 +64,9 @@ pub fn parse_response<T: DeserializeOwned>(json: &str) -> CrabResult<T> {
 ///
 /// Parses the JSON once into the envelope, checks the status code, then
 /// converts the inner response value into the target type.
+///
+/// When deserialization fails on a response containing a `posts` array,
+/// each post is tried individually to identify which one caused the error.
 pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> {
     let envelope: ApiResponse<serde_json::Value> = serde_json::from_slice(bytes)?;
 
@@ -74,8 +77,24 @@ pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> 
         });
     }
 
-    let response: T = serde_json::from_value(envelope.response)?;
-    Ok(response)
+    serde_json::from_value(envelope.response.clone()).map_err(|original_err| {
+        // If the response has a "posts" array, try each post individually
+        // to produce a more useful error pointing at the specific failing post.
+        if let Some(posts) = envelope.response.get("posts").and_then(|p| p.as_array()) {
+            for (i, post) in posts.iter().enumerate() {
+                let post_id = post.get("id_string").and_then(|v| v.as_str());
+                if let Err(e) = serde_json::from_value::<crate::handlers::blog::Post>(
+                    post.clone(),
+                ) {
+                    let id_info = post_id.map_or(String::new(), |id| format!(" (id: {id})"));
+                    return CrabError::InvalidResponse(format!(
+                        "failed to parse post at index {i}{id_info}: {e}"
+                    ));
+                }
+            }
+        }
+        CrabError::Serialization(original_err)
+    })
 }
 
 fn is_success(code: u16) -> bool {
@@ -163,5 +182,73 @@ mod tests {
         };
 
         assert!(!response.is_success());
+    }
+
+    /// Helper: build a minimal valid post JSON object.
+    fn minimal_post(id: &str) -> serde_json::Value {
+        json!({
+            "type": "blocks",
+            "id_string": id,
+            "blog_name": "testblog",
+            "post_url": "https://testblog.tumblr.com/post/1",
+            "timestamp": 1700000000,
+            "reblog_key": "abc",
+            "content": [],
+            "layout": [],
+            "trail": []
+        })
+    }
+
+    #[test]
+    fn test_parse_response_post_error_includes_index_and_id() {
+        use crate::handlers::blog::PostsResponse;
+
+        // Second post has an invalid content block that will fail parsing
+        let mut bad_post = minimal_post("999");
+        bad_post["content"] = json!([
+            { "type": "text" }
+        ]);
+
+        let envelope = json!({
+            "meta": { "status": 200, "msg": "OK" },
+            "response": {
+                "posts": [
+                    minimal_post("100"),
+                    bad_post,
+                ],
+                "total_posts": 2
+            }
+        });
+
+        let result: CrabResult<PostsResponse> = parse_response(&envelope.to_string());
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        // Should point at post index 1 with its id
+        assert!(
+            msg.contains("index 1") && msg.contains("999"),
+            "expected error to contain post index and id, got: {msg}",
+        );
+    }
+
+    #[test]
+    fn test_parse_response_valid_posts_succeed() {
+        use crate::handlers::blog::PostsResponse;
+
+        let envelope = json!({
+            "meta": { "status": 200, "msg": "OK" },
+            "response": {
+                "posts": [
+                    minimal_post("100"),
+                    minimal_post("200"),
+                ],
+                "total_posts": 2
+            }
+        });
+
+        let result: CrabResult<PostsResponse> = parse_response(&envelope.to_string());
+        assert!(result.is_ok(), "unexpected error: {:?}", result);
+        assert_eq!(result.unwrap().posts.len(), 2);
     }
 }

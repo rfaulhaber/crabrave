@@ -12,6 +12,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// Content blocks are the building pieces of NPF posts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum ContentBlock {
     /// Text content block
     Text {
@@ -143,6 +144,28 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         is_visible: Option<bool>,
     },
+    /// Poll content block
+    Poll {
+        /// Unique client-side identifier for this poll
+        client_id: String,
+        /// The poll question
+        question: String,
+        /// Available answers
+        answers: Vec<PollAnswer>,
+        /// Poll settings (voting rules, expiration, etc.)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        settings: Option<PollSettings>,
+        /// When the poll was created (human-readable)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        created_at: Option<String>,
+        /// When the poll was created (Unix timestamp)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timestamp: Option<i64>,
+    },
+    /// Catch-all for unrecognized content block types.
+    /// Prevents deserialization failures when the API introduces new types.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Inline formatting for text blocks
@@ -270,6 +293,7 @@ pub struct MediaExif {
 /// Attribution for content sources
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum Attribution {
     /// Attribution to another post
     Post {
@@ -307,6 +331,10 @@ pub enum Attribution {
         #[serde(skip_serializing_if = "Option::is_none")]
         logo: Option<Box<MediaObject>>,
     },
+    /// Catch-all for unrecognized attribution types.
+    /// Prevents deserialization failures when the API introduces new types.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Post data for attribution
@@ -372,11 +400,38 @@ pub enum PaywallSubtype {
     Disabled,
 }
 
+/// A single answer option in a poll
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PollAnswer {
+    /// Unique client-side identifier for this answer
+    pub client_id: String,
+    /// Display text for this answer
+    pub answer_text: String,
+}
+
+/// Settings controlling poll behavior
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PollSettings {
+    /// Whether voters can select multiple answers
+    #[serde(default)]
+    pub multiple_choice: bool,
+    /// Close status (e.g., "closed-after", "open")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub close_status: Option<String>,
+    /// Seconds after creation when the poll expires
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expire_after: Option<u64>,
+    /// Source platform (e.g., "tumblr")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
 /// Layout information for NPF posts
 ///
 /// Layouts control how content blocks are arranged visually.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum LayoutBlock {
     /// Rows layout - arrange blocks in rows
     Rows {
@@ -394,6 +449,10 @@ pub enum LayoutBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         attribution: Option<AskAttribution>,
     },
+    /// Catch-all for unrecognized layout types.
+    /// Prevents deserialization failures when the API introduces new types.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Display block within a layout
@@ -641,5 +700,126 @@ mod tests {
         };
         let json = serde_json::to_string(&mode).unwrap();
         assert!(json.contains("\"type\":\"weighted\""));
+    }
+
+    #[test]
+    fn test_poll_block_deserialization() {
+        let json = serde_json::json!({
+            "type": "poll",
+            "client_id": "abc-123",
+            "question": "Favorite color?",
+            "answers": [
+                { "client_id": "a1", "answer_text": "Red" },
+                { "client_id": "a2", "answer_text": "Blue" }
+            ],
+            "settings": {
+                "multiple_choice": true,
+                "close_status": "open",
+                "expire_after": 86400,
+                "source": "tumblr"
+            },
+            "created_at": "2026-01-01 00:00:00 GMT",
+            "timestamp": 1767225600
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Poll {
+                client_id,
+                question,
+                answers,
+                settings,
+                created_at,
+                timestamp,
+            } => {
+                assert_eq!(client_id, "abc-123");
+                assert_eq!(question, "Favorite color?");
+                assert_eq!(answers.len(), 2);
+                assert_eq!(answers[0].answer_text, "Red");
+                assert_eq!(answers[1].answer_text, "Blue");
+                let settings = settings.unwrap();
+                assert!(settings.multiple_choice);
+                assert_eq!(settings.close_status.as_deref(), Some("open"));
+                assert_eq!(settings.expire_after, Some(86400));
+                assert_eq!(created_at.as_deref(), Some("2026-01-01 00:00:00 GMT"));
+                assert_eq!(timestamp, Some(1767225600));
+            }
+            _ => panic!("Expected Poll block"),
+        }
+    }
+
+    #[test]
+    fn test_poll_block_minimal() {
+        let json = serde_json::json!({
+            "type": "poll",
+            "client_id": "abc",
+            "question": "Yes or no?",
+            "answers": [
+                { "client_id": "a1", "answer_text": "Yes" }
+            ]
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Poll {
+                settings,
+                created_at,
+                timestamp,
+                ..
+            } => {
+                assert!(settings.is_none());
+                assert!(created_at.is_none());
+                assert!(timestamp.is_none());
+            }
+            _ => panic!("Expected Poll block"),
+        }
+    }
+
+    #[test]
+    fn test_unknown_content_block_type() {
+        let json = serde_json::json!({
+            "type": "hologram",
+            "data": "something new"
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        assert!(matches!(block, ContentBlock::Unknown));
+    }
+
+    #[test]
+    fn test_unknown_attribution_type() {
+        let json = serde_json::json!({
+            "type": "ai_generated",
+            "model": "test"
+        });
+
+        let attr: Attribution = serde_json::from_value(json).unwrap();
+        assert!(matches!(attr, Attribution::Unknown));
+    }
+
+    #[test]
+    fn test_unknown_layout_type() {
+        let json = serde_json::json!({
+            "type": "carousel",
+            "speed": 5
+        });
+
+        let layout: LayoutBlock = serde_json::from_value(json).unwrap();
+        assert!(matches!(layout, LayoutBlock::Unknown));
+    }
+
+    #[test]
+    fn test_content_block_array_with_unknown_types() {
+        let json = serde_json::json!([
+            { "type": "text", "text": "hello" },
+            { "type": "hologram", "data": "future" },
+            { "type": "text", "text": "world" }
+        ]);
+
+        let blocks: Vec<ContentBlock> = serde_json::from_value(json).unwrap();
+        assert_eq!(blocks.len(), 3);
+        assert!(matches!(&blocks[0], ContentBlock::Text { text, .. } if text == "hello"));
+        assert!(matches!(blocks[1], ContentBlock::Unknown));
+        assert!(matches!(&blocks[2], ContentBlock::Text { text, .. } if text == "world"));
     }
 }
