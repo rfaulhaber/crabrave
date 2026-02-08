@@ -375,7 +375,10 @@ pub struct AttributionBlog {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioMetadata {
     /// Track ID from the provider
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_metadata_id"
+    )]
     pub id: Option<String>,
 }
 
@@ -604,9 +607,9 @@ where
     match value {
         None | Some(serde_json::Value::Null) => Ok(None),
         Some(serde_json::Value::Array(_)) => Ok(None),
-        Some(obj @ serde_json::Value::Object(_)) => {
-            serde_json::from_value(obj).map(Some).map_err(serde::de::Error::custom)
-        }
+        Some(obj @ serde_json::Value::Object(_)) => serde_json::from_value(obj)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
         Some(other) => Err(serde::de::Error::custom(format!(
             "expected object, array, or null for attribution, got {}",
             crate::kind_of(&other),
@@ -636,6 +639,29 @@ where
         MediaOneOrMany::One(obj) => vec![*obj],
         MediaOneOrMany::Many(vec) => vec,
     }))
+}
+
+/// Deserializes a metadata field's `id` value as a string.
+///
+/// This section of the NPF specification is largely undocumented, and the
+/// Tumblr API is not clear on what sort of fields will be returned in a
+/// `metadata` object. Usually, this looks like `{ "id": "some-id" }`, however
+/// sometimes the Tumblr API will also return a nubmer instead of a string. This
+/// function ensures it always gets written to a string.
+fn deserialize_metadata_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<serde_json::Value> = Option::deserialize(deserializer)?;
+    match value {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::String(s)) => Ok(Some(s)),
+        Some(serde_json::Value::Number(n)) => Ok(Some(n.to_string())),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expeted either a string or number, got {}",
+            crate::kind_of(&other)
+        ))),
+    }
 }
 
 #[cfg(test)]

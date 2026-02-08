@@ -11,11 +11,24 @@ use oauth2::{
 };
 use std::collections::HashMap;
 
+/// An OAuth scope that this client will use.
+/// See [Tumblr's documentation around OAuth authorization](https://www.tumblr.com/docs/en/api/v2#oauth2-authorization) for more information.
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum OAuthScope {
+    /// "basic" scope
+    Basic,
+    /// "write" scope
+    Write,
+    /// "offline_access" scope
+    Offline,
+}
+
 /// OAuth2 configuration for Tumblr
 pub struct OAuth2Config {
     client_id: String,
     client_secret: String,
     redirect_uri: String,
+    scopes: Vec<OAuthScope>,
 }
 
 impl OAuth2Config {
@@ -26,6 +39,7 @@ impl OAuth2Config {
     /// * `client_id` - Your application's consumer key
     /// * `client_secret` - Your application's consumer secret
     /// * `redirect_uri` - The redirect URI registered with your app
+    /// * `scopes` - OAuth scopes to use. See `OAuthScope` for possible values
     ///
     /// # Errors
     ///
@@ -34,19 +48,21 @@ impl OAuth2Config {
     /// # Example
     ///
     /// ```
-    /// use crabrave::oauth::OAuth2Config;
+    /// use crabrave::oauth::{OAuth2Config, OAuthScope};
     ///
     /// let config = OAuth2Config::new(
     ///     "your_consumer_key",
     ///     "your_consumer_secret",
-    ///     "http://localhost:8080/callback"
+    ///     "http://localhost:8080/callback",
+    ///     vec![OAuthScope::Basic],
     /// )?;
     /// # Ok::<(), crabrave::CrabError>(())
     /// ```
-    pub fn new(
+    pub fn new<S: IntoIterator<Item = OAuthScope>>(
         client_id: impl Into<String>,
         client_secret: impl Into<String>,
         redirect_uri: impl Into<String>,
+        scopes: S,
     ) -> CrabResult<Self> {
         let redirect_uri = redirect_uri.into();
         // Validate redirect URI eagerly so callers get a clear error at construction time
@@ -56,6 +72,7 @@ impl OAuth2Config {
             client_id: client_id.into(),
             client_secret: client_secret.into(),
             redirect_uri,
+            scopes: scopes.into_iter().collect(),
         })
     }
 
@@ -71,9 +88,9 @@ impl OAuth2Config {
     /// # Example
     ///
     /// ```
-    /// use crabrave::oauth::OAuth2Config;
+    /// use crabrave::oauth::{OAuth2Config, OAuthScope};
     ///
-    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback")?;
+    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback", vec![OAuthScope::Basic])?;
     /// let (auth_url, csrf_token) = config.authorize_url();
     ///
     /// println!("Visit this URL to authorize: {}", auth_url);
@@ -81,14 +98,19 @@ impl OAuth2Config {
     /// # Ok::<(), crabrave::CrabError>(())
     /// ```
     pub fn authorize_url(&self) -> (String, CsrfToken) {
+        fn map_scope(scope: &OAuthScope) -> Scope {
+            match scope {
+                OAuthScope::Basic => Scope::new("basic".to_string()),
+                OAuthScope::Write => Scope::new("write".to_string()),
+                OAuthScope::Offline => Scope::new("offline_access".to_string()),
+            }
+        }
+
         // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
-        #[allow(clippy::expect_used)]
         let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
             .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
-        #[allow(clippy::expect_used)]
         let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
             .expect("hardcoded OAUTH_TOKEN_URL is always valid");
-        #[allow(clippy::expect_used)]
         let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
             .expect("redirect_uri was validated in new()");
 
@@ -98,9 +120,11 @@ impl OAuth2Config {
             .set_token_uri(token_url)
             .set_redirect_uri(redirect_url);
 
+        let scopes: Vec<Scope> = self.scopes.iter().map(map_scope).collect();
+
         let (auth_url, csrf_token) = client
             .authorize_url(CsrfToken::new_random)
-            .add_scope(Scope::new("write".to_string()))
+            .add_scopes(scopes)
             .url();
 
         (auth_url.to_string(), csrf_token)
@@ -122,10 +146,10 @@ impl OAuth2Config {
     /// # Example
     ///
     /// ```no_run
-    /// use crabrave::oauth::OAuth2Config;
+    /// use crabrave::oauth::{OAuth2Config, OAuthScope};
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback")?;
+    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback", vec![OAuthScope::Basic])?;
     ///
     /// // After user authorizes and you receive the code in the callback:
     /// let code = "authorization_code_from_callback";
@@ -179,10 +203,10 @@ impl OAuth2Config {
     /// # Example
     ///
     /// ```no_run
-    /// use crabrave::oauth::OAuth2Config;
+    /// use crabrave::oauth::{OAuth2Config, OAuthScope};
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback")?;
+    /// let config = OAuth2Config::new("key", "secret", "http://localhost/callback", vec![OAuthScope::Basic])?;
     ///
     /// // Use the refresh token from a previous exchange:
     /// let refresh_token = "your_refresh_token";
@@ -300,7 +324,13 @@ mod tests {
 
     #[test]
     fn test_oauth_config_creation() {
-        let config = OAuth2Config::new("key", "secret", "http://localhost/callback").unwrap();
+        let config = OAuth2Config::new(
+            "key",
+            "secret",
+            "http://localhost/callback",
+            vec![OAuthScope::Basic],
+        )
+        .unwrap();
         assert_eq!(config.client_id, "key");
         assert_eq!(config.client_secret, "secret");
         assert_eq!(config.redirect_uri, "http://localhost/callback");
@@ -308,13 +338,19 @@ mod tests {
 
     #[test]
     fn test_oauth_config_invalid_redirect_uri() {
-        let result = OAuth2Config::new("key", "secret", "not a valid url");
+        let result = OAuth2Config::new("key", "secret", "not a valid url", vec![OAuthScope::Basic]);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_authorize_url_generation() {
-        let config = OAuth2Config::new("key", "secret", "http://localhost/callback").unwrap();
+        let config = OAuth2Config::new(
+            "key",
+            "secret",
+            "http://localhost/callback",
+            vec![OAuthScope::Basic],
+        )
+        .unwrap();
         let (auth_url, csrf_token) = config.authorize_url();
 
         assert!(auth_url.contains("https://www.tumblr.com/oauth2/authorize"));

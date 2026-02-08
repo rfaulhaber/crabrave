@@ -27,7 +27,7 @@
 //! ### OAuth2 Flow (Getting Tokens)
 //!
 //! ```no_run
-//! use crabrave::oauth::OAuth2Config;
+//! use crabrave::oauth::{OAuth2Config, OAuthScope};
 //! use crabrave::Crabrave;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,7 +35,9 @@
 //! let config = OAuth2Config::new(
 //!     "your_consumer_key",
 //!     "your_consumer_secret",
-//!     "http://localhost:8080/callback"
+//!     "http://localhost:8080/callback",
+//!     vec![OAuthScope::Basic],
+//!     
 //! )?;
 //!
 //! // 2. Generate authorization URL
@@ -79,11 +81,12 @@ use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
 use sha1::Sha1;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::handlers::blog::{AvatarResponse, AvatarResponseUrl};
+use crate::oauth::OAuthScope;
 
 /// Base URL for the Tumblr API v2
 pub const BASE_API_URL: &str = "https://api.tumblr.com/v2";
@@ -704,11 +707,15 @@ pub struct CrabraveBuilder {
     access_token_secret: Option<String>,
     user_agent: Option<String>,
     base_url: Option<String>,
+    scopes: HashSet<OAuthScope>,
 }
 
 impl CrabraveBuilder {
     /// Creates a new builder with default settings
     fn new() -> Self {
+        let mut scopes = HashSet::new();
+        scopes.insert(OAuthScope::Basic);
+
         Self {
             consumer_key: None,
             consumer_secret: None,
@@ -716,6 +723,7 @@ impl CrabraveBuilder {
             access_token_secret: None,
             user_agent: None,
             base_url: None,
+            scopes,
         }
     }
 
@@ -766,6 +774,23 @@ impl CrabraveBuilder {
     /// This is primarily useful for testing. The default is the official Tumblr API URL.
     pub fn base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = Some(url.into());
+        self
+    }
+
+    /// Adds a new OAuth scope to this client.
+    /// Note that by default, using the builder, the "basic" scope is added by default.
+    pub fn add_scope(mut self, scope: OAuthScope) -> Self {
+        self.scopes.insert(scope);
+        self
+    }
+
+    /// Adds new OAuth scopes to this client.
+    /// Note that by default, using the builder, the "basic" scope is added by default.
+    pub fn add_scopes<S: IntoIterator<Item = OAuthScope>>(mut self, scope: S) -> Self {
+        for scope in scope.into_iter() {
+            self.scopes.insert(scope);
+        }
+
         self
     }
 

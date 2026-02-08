@@ -4320,3 +4320,26 @@ async fn missing_type_field_bug() {
     assert_eq!(post.content.len(), 0);
     assert!(post.trail.len() > 0);
 }
+
+#[tokio::test]
+async fn invalid_id_bug() {
+    let mock_server = MockServer::start().await;
+    let mock_response = include_str!("./fixtures/invalid_id.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts/12345")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    // NPF is now always used by default
+    let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
+
+    assert!(result.is_ok());
+}

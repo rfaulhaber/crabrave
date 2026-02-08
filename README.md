@@ -16,7 +16,7 @@ An ergonomic Rust client for the Tumblr API, inspired by [Octocrab](https://gith
 
 ```toml
 [dependencies]
-crabrave = "0.5"
+crabrave = "0.6"
 ```
 
 ## Quick Start
@@ -49,13 +49,14 @@ async fn main() -> Result<(), crabrave::CrabError> {
 ## OAuth2 Flow
 
 ```rust
-use crabrave::oauth::OAuth2Config;
+use crabrave::oauth::{OAuth2Config, OAuthScope};
 
 // 1. Generate authorization URL
 let config = OAuth2Config::new(
     "consumer_key",
     "consumer_secret",
-    "http://localhost:8080/callback"
+    "http://localhost:8080/callback",
+    vec![OAuthScope::Basic],
 );
 let (auth_url, csrf_token) = config.authorize_url();
 
