@@ -50,7 +50,7 @@
         packages = {
           ${projectName} = pkgs.rustPlatform.buildRustPackage {
             pname = projectName;
-            version = "0.7.0";
+            version = "0.7.1";
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
           };

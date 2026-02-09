@@ -285,12 +285,29 @@ impl Crabrave {
 
     /// Checks if the response indicates rate limiting and returns an error if so.
     fn check_rate_limit(response: &reqwest::Response) -> CrabResult<()> {
-        if response.status().as_u16() == 429 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
+        fn get_header_number_value(header_name: &str, headers: &HeaderMap) -> Option<u64> {
+            headers
+                .get(header_name)
                 .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse().ok());
+                .and_then(|v| v.parse().ok())
+        }
+
+        if response.status().as_u16() == 429 {
+            let headers = response.headers();
+
+            let per_hour_remaining =
+                get_header_number_value("x-ratelimit-perhour-remaining", headers);
+
+            let per_day_remaining =
+                get_header_number_value("x-ratelimit-perday-remaining", headers);
+
+            // the API should return a 0 value for one of these headers if we hit the limit
+            let retry_after = match (per_hour_remaining, per_day_remaining) {
+                (_, Some(0)) => get_header_number_value("x-ratelimit-perday-reset", headers),
+                (Some(0), _) => get_header_number_value("x-ratelimit-perhour-reset", headers),
+                _ => None,
+            };
+
             return Err(CrabError::RateLimit { retry_after });
         }
         Ok(())

@@ -87,14 +87,17 @@ async fn test_blog_not_found() {
 }
 
 #[tokio::test]
-async fn test_rate_limit_error() {
+async fn test_rate_limit_error_per_hour() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
         .and(path("/blog/staff/info"))
         .respond_with(
             ResponseTemplate::new(429)
-                .insert_header("retry-after", "60")
+                .insert_header("x-ratelimit-perhour-remaining", "0")
+                .insert_header("x-ratelimit-perhour-reset", "60")
+                .insert_header("x-ratelimit-perday-remaining", "500")
+                .insert_header("x-ratelimit-perday-reset", "3600")
                 .set_body_json(serde_json::json!({
                     "meta": {
                         "status": 429,
@@ -113,6 +116,144 @@ async fn test_rate_limit_error() {
     match result.unwrap_err() {
         CrabError::RateLimit { retry_after } => {
             assert_eq!(retry_after, Some(60));
+        }
+        _ => panic!("Expected rate limit error"),
+    }
+}
+
+#[tokio::test]
+async fn test_rate_limit_error_per_day() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/staff/info"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .insert_header("x-ratelimit-perhour-remaining", "100")
+                .insert_header("x-ratelimit-perhour-reset", "60")
+                .insert_header("x-ratelimit-perday-remaining", "0")
+                .insert_header("x-ratelimit-perday-reset", "3600")
+                .set_body_json(serde_json::json!({
+                    "meta": {
+                        "status": 429,
+                        "msg": "Rate Limit Exceeded"
+                    },
+                    "response": []
+                })),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("staff").info().await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CrabError::RateLimit { retry_after } => {
+            assert_eq!(retry_after, Some(3600));
+        }
+        _ => panic!("Expected rate limit error"),
+    }
+}
+
+#[tokio::test]
+async fn test_rate_limit_both_exhausted_prefers_daily() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/staff/info"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .insert_header("x-ratelimit-perhour-remaining", "0")
+                .insert_header("x-ratelimit-perhour-reset", "60")
+                .insert_header("x-ratelimit-perday-remaining", "0")
+                .insert_header("x-ratelimit-perday-reset", "7200")
+                .set_body_json(serde_json::json!({
+                    "meta": {
+                        "status": 429,
+                        "msg": "Rate Limit Exceeded"
+                    },
+                    "response": []
+                })),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("staff").info().await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CrabError::RateLimit { retry_after } => {
+            // When both limits are exhausted, the daily reset is used because
+            // it's the longer wait and the hourly reset alone wouldn't help.
+            assert_eq!(retry_after, Some(7200));
+        }
+        _ => panic!("Expected rate limit error"),
+    }
+}
+
+#[tokio::test]
+async fn test_rate_limit_no_headers() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/staff/info"))
+        .respond_with(
+            ResponseTemplate::new(429).set_body_json(serde_json::json!({
+                "meta": {
+                    "status": 429,
+                    "msg": "Rate Limit Exceeded"
+                },
+                "response": []
+            })),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("staff").info().await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CrabError::RateLimit { retry_after } => {
+            // Without Tumblr rate limit headers, retry_after is unknown
+            assert_eq!(retry_after, None);
+        }
+        _ => panic!("Expected rate limit error"),
+    }
+}
+
+#[tokio::test]
+async fn test_rate_limit_nonzero_remaining() {
+    let mock_server = MockServer::start().await;
+
+    // 429 but remaining counts are both nonzero (e.g., proxy-level throttle)
+    Mock::given(method("GET"))
+        .and(path("/blog/staff/info"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .insert_header("x-ratelimit-perhour-remaining", "50")
+                .insert_header("x-ratelimit-perday-remaining", "200")
+                .set_body_json(serde_json::json!({
+                    "meta": {
+                        "status": 429,
+                        "msg": "Rate Limit Exceeded"
+                    },
+                    "response": []
+                })),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("staff").info().await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CrabError::RateLimit { retry_after } => {
+            // Neither limit is at 0, so we can't determine a meaningful retry time
+            assert_eq!(retry_after, None);
         }
         _ => panic!("Expected rate limit error"),
     }
