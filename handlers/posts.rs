@@ -876,7 +876,12 @@ mod tests {
 
     #[test]
     fn test_edit_post_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
         let builder = EditPostBuilder::new(client, blog, "123456".to_string())
             .add_block(crate::npf::ContentBlock::text("Updated content"))
@@ -895,7 +900,12 @@ mod tests {
 
     #[test]
     fn test_reblog_builder_with_comment() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
         let builder = ReblogBuilder::new(
             client,
@@ -919,7 +929,12 @@ mod tests {
 
     #[test]
     fn test_reblog_builder_with_npf_content() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
         let builder = ReblogBuilder::new(
             client,
@@ -940,7 +955,12 @@ mod tests {
 
     #[test]
     fn test_create_npf_post_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
         let builder = CreatePostBuilder::new(client, blog)
             .add_block(crate::npf::ContentBlock::text("Hello"))
@@ -955,7 +975,12 @@ mod tests {
 
     #[test]
     fn test_create_post_with_image_upload() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
 
         let media_source = MediaSource::from_bytes("image.jpg", vec![1, 2, 3, 4]);
@@ -971,7 +996,12 @@ mod tests {
 
     #[test]
     fn test_create_post_with_multiple_media() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
 
         let img1 = MediaSource::from_bytes("image1.jpg", vec![1, 2, 3]);
@@ -989,7 +1019,12 @@ mod tests {
 
     #[test]
     fn test_create_post_with_explicit_media_source() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
 
         let media_source = MediaSource::from_bytes("custom.jpg", vec![1, 2, 3]);
@@ -1021,7 +1056,12 @@ mod tests {
 
     #[test]
     fn test_edit_post_with_image() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
 
         let media_source = MediaSource::from_bytes("updated.jpg", vec![1, 2, 3]);
@@ -1057,7 +1097,12 @@ mod tests {
 
     #[test]
     fn test_create_post_with_audio() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
 
         let media_source = MediaSource::from_bytes("song.mp3", vec![1, 2, 3, 4]);
@@ -1073,7 +1118,12 @@ mod tests {
 
     #[test]
     fn test_edit_post_with_audio() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let blog = BlogIdentifier::from("my-blog");
 
         let media_source = MediaSource::from_bytes("updated.mp3", vec![1, 2, 3]);

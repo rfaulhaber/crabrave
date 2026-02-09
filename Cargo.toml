@@ -1,6 +1,6 @@
 [package]
 name = "crabrave"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 description = "A Tumblr API client for Rust."
 license = "AGPL-3.0-or-later"
@@ -17,17 +17,13 @@ path = "lib.rs"
 workspace = true
 
 [dependencies]
-base64 = "0.22"
 camino = "1.2"
 fs-err = "3.2"
-hmac = "0.12"
 oauth2 = { version = "5", features = ["reqwest"] }
-rand = "0.9"
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls", "charset", "system-proxy"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_urlencoded = "0.7"
-sha1 = "0.10"
 thiserror = "2"
 url = "2.5"
 urlencoding = "2.1"
@@ -35,9 +31,7 @@ urlencoding = "2.1"
 [dev-dependencies]
 wiremock = "0.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-dirs = "5.0"
 proptest = "1.9"
-arbitrary = { version = "1.4", features = ["derive"] }
 
 [workspace.lints.clippy]
 await_holding_invalid_type = "deny"

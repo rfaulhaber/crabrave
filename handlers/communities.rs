@@ -953,7 +953,12 @@ mod tests {
 
     #[test]
     fn test_timeline_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = TimelineBuilder::new(client, "rust-community".to_string())
             .limit(10)
             .offset(20)
@@ -967,7 +972,12 @@ mod tests {
 
     #[test]
     fn test_timeline_builder_defaults() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = TimelineBuilder::new(client, "rust".to_string());
 
         assert_eq!(builder.handle, "rust");
@@ -978,7 +988,12 @@ mod tests {
 
     #[test]
     fn test_communities_struct() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let communities = Communities::new(client, "rust-community".to_string());
 
         assert_eq!(communities.handle, "rust-community");
@@ -986,7 +1001,12 @@ mod tests {
 
     #[test]
     fn test_members_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = MembersBuilder::new(client, "rust-community".to_string())
             .limit(50)
             .offset(100);

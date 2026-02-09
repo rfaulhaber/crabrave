@@ -2183,7 +2183,12 @@ mod tests {
 
     #[test]
     fn test_posts_builder_path_no_params() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let identifier = BlogIdentifier::from("staff");
         let builder = PostsBuilder::new(client, identifier);
 
@@ -2194,7 +2199,12 @@ mod tests {
 
     #[test]
     fn test_posts_builder_with_params() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let identifier = BlogIdentifier::from("staff");
         let builder = PostsBuilder::new(client, identifier)
             .limit(10)

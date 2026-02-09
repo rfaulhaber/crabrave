@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`crabrave` is a Rust HTTP client library for the Tumblr API. The project implements both OAuth1 and OAuth2 authentication and provides a comprehensive client interface for interacting with Tumblr's API endpoints.
+`crabrave` is a Rust HTTP client library for the Tumblr API. The project implements OAuth2 authentication and provides a comprehensive client interface for interacting with Tumblr's API endpoints.
 
 **Design Philosophy:** This client is modeled after [Octocrab](https://github.com/XAMPPRocky/octocrab) - designed to be very ergonomic to use within Rust. The API should feel natural and idiomatic, with a focus on developer experience similar to how Octocrab provides an elegant interface for GitHub's API.
 
@@ -76,11 +76,10 @@ The project uses a modular structure with the main library in `lib.rs` and speci
 
 **`Crabrave` Client** (`lib.rs`)
 - Main entry point with builder pattern initialization
-- Supports OAuth1, OAuth2, and API-key-only authentication
+- Supports only OAuth2 authentication
 - Runtime-agnostic async implementation (no tokio dependency in library)
 - Automatic User-Agent header configuration
 - Built-in rate limit detection (429 status handling)
-- OAuth1 signature generation with HMAC-SHA1
 
 **Error Handling** (`error.rs`)
 - `CrabError` enum with comprehensive error types
@@ -319,12 +318,6 @@ All complex queries use type-safe builders:
 - `url`: URL parsing
 - `oauth2`: OAuth2 flow implementation
 
-**Cryptography (for OAuth1):**
-- `base64`: Base64 encoding for signatures
-- `hmac`: HMAC implementation
-- `sha1`: SHA-1 hashing for OAuth1 signatures
-- `urlencoding`: URL encoding for OAuth1 parameters
-
 **Other:**
 - `anyhow`: Error handling utilities
 
@@ -338,7 +331,7 @@ All complex queries use type-safe builders:
 **Current Status:** All major API modules are implemented and functional
 
 ✅ **Complete:**
-- Core client with OAuth1/OAuth2/API-key authentication
+- Core client with OAuth2 authentication
 - Error handling and response parsing
 - Models and type system
 - NPF (Neue Post Format) support
@@ -362,6 +355,4 @@ All complex queries use type-safe builders:
 - User-Agent header is **required** by Tumblr API (apps may be suspended without it)
 - The library has no runtime dependencies - users bring their own async runtime (tokio, async-std, etc.)
 - Strict clippy configuration enforces no unwrap/expect/panic/todo/print in production code
-- OAuth1 generates HMAC-SHA1 signatures for legacy app support
-- The `/blog/avatar` endpoint returns binary data for non-OAuth1 requests, JSON for OAuth1
 - Tagged endpoint returns posts directly, not wrapped in `response.posts` like other endpoints

@@ -75,15 +75,10 @@ pub use handlers::{Blogs, Communities, Tagged, Users};
 pub use models::{Blog, BlogIdentifier, Page, User};
 pub use response::{ApiResponse, EmptyResponse, Meta};
 
-use base64::Engine;
-use hmac::{Hmac, Mac};
-use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
-use sha1::Sha1;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::handlers::blog::{AvatarResponse, AvatarResponseUrl};
 use crate::oauth::OAuthScope;
@@ -106,24 +101,12 @@ const DEFAULT_USER_AGENT: &str = concat!(
 
 /// Authentication credentials for the Tumblr API
 #[derive(Clone)]
-enum Auth {
-    /// OAuth2 authentication with access token
-    OAuth2 {
-        #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
-        consumer_key: String,
-        #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
-        consumer_secret: String,
-        access_token: String,
-    },
-    /// OAuth1 authentication (legacy)
-    OAuth1 {
-        consumer_key: String,
-        consumer_secret: String,
-        access_token: String,
-        access_token_secret: String,
-    },
-    /// API key only (read-only access)
-    ApiKey { consumer_key: String },
+struct Auth {
+    #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
+    consumer_key: String,
+    #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
+    consumer_secret: String,
+    access_token: String,
 }
 
 /// The main client for interacting with the Tumblr API
@@ -300,132 +283,6 @@ impl Crabrave {
         format!("{}/{}", self.base_url, path)
     }
 
-    /// Generates an OAuth1 signature for a request
-    fn generate_oauth1_signature(
-        &self,
-        method: &str,
-        url: &str,
-        consumer_key: &str,
-        consumer_secret: &str,
-        access_token: &str,
-        access_token_secret: &str,
-    ) -> String {
-        // Generate timestamp and nonce
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_secs().to_string())
-            .unwrap_or_else(|_| "0".to_string());
-
-        // Generate cryptographically random nonce (32 alphanumeric characters)
-        let nonce: String = rand::rng()
-            .sample_iter(&rand::distr::Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect();
-
-        // Collect OAuth parameters (using String keys and values to avoid lifetime issues)
-        let mut params: BTreeMap<String, String> = BTreeMap::new();
-        params.insert("oauth_consumer_key".to_string(), consumer_key.to_string());
-        params.insert("oauth_nonce".to_string(), nonce.clone());
-        params.insert(
-            "oauth_signature_method".to_string(),
-            "HMAC-SHA1".to_string(),
-        );
-        params.insert("oauth_timestamp".to_string(), timestamp.clone());
-        params.insert("oauth_token".to_string(), access_token.to_string());
-        params.insert("oauth_version".to_string(), "1.0".to_string());
-
-        // Parse URL to extract query parameters
-        if let Ok(parsed_url) = url::Url::parse(url) {
-            for (key, value) in parsed_url.query_pairs() {
-                params.insert(key.to_string(), value.to_string());
-            }
-        }
-
-        // Build parameter string
-        let param_string: String = params
-            .iter()
-            .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
-            .collect::<Vec<_>>()
-            .join("&");
-
-        // Build signature base string
-        let base_url = url.split('?').next().unwrap_or(url);
-        let signature_base = format!(
-            "{}&{}&{}",
-            urlencoding::encode(method),
-            urlencoding::encode(base_url),
-            urlencoding::encode(&param_string)
-        );
-
-        // Build signing key
-        let signing_key = format!(
-            "{}&{}",
-            urlencoding::encode(consumer_secret),
-            urlencoding::encode(access_token_secret)
-        );
-
-        // Generate HMAC-SHA1 signature
-        type HmacSha1 = Hmac<Sha1>;
-        // HMAC-SHA1 accepts keys of any size per specification
-        #[allow(clippy::expect_used)]
-        let mut mac = HmacSha1::new_from_slice(signing_key.as_bytes())
-            .expect("HMAC-SHA1 accepts keys of any size");
-        mac.update(signature_base.as_bytes());
-        let result = mac.finalize();
-        let signature = base64::engine::general_purpose::STANDARD.encode(result.into_bytes());
-
-        // Build Authorization header
-        format!(
-            r#"OAuth oauth_consumer_key="{}", oauth_nonce="{}", oauth_signature="{}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{}", oauth_token="{}", oauth_version="1.0""#,
-            urlencoding::encode(consumer_key),
-            urlencoding::encode(&nonce),
-            urlencoding::encode(&signature),
-            timestamp,
-            urlencoding::encode(access_token)
-        )
-    }
-
-    /// Applies authentication to a request builder based on the auth type
-    fn apply_auth(
-        &self,
-        mut request: reqwest::RequestBuilder,
-        method: &str,
-        url: &str,
-    ) -> reqwest::RequestBuilder {
-        match self.auth.as_ref() {
-            Auth::OAuth2 { access_token, .. } => {
-                // Add Bearer token to Authorization header
-                request = request.header(
-                    reqwest::header::AUTHORIZATION,
-                    format!("Bearer {}", access_token),
-                );
-            }
-            Auth::OAuth1 {
-                consumer_key,
-                consumer_secret,
-                access_token,
-                access_token_secret,
-            } => {
-                // Generate OAuth1 signature and add Authorization header
-                let auth_header = self.generate_oauth1_signature(
-                    method,
-                    url,
-                    consumer_key,
-                    consumer_secret,
-                    access_token,
-                    access_token_secret,
-                );
-                request = request.header(reqwest::header::AUTHORIZATION, auth_header);
-            }
-            Auth::ApiKey { consumer_key } => {
-                // Add API key as query parameter
-                request = request.query(&[("api_key", consumer_key)]);
-            }
-        }
-        request
-    }
-
     /// Checks if the response indicates rate limiting and returns an error if so.
     fn check_rate_limit(response: &reqwest::Response) -> CrabResult<()> {
         if response.status().as_u16() == 429 {
@@ -448,8 +305,10 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
     {
         let url = self.url(path);
-        let request = self.client.get(&url);
-        let request = self.apply_auth(request, "GET", &url);
+        let request = self.client.get(&url).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -470,20 +329,13 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
         Q: serde::Serialize,
     {
-        // Serialize query params to build the full URL for OAuth1 signature
-        let query_string = serde_urlencoded::to_string(query).map_err(|e| {
-            CrabError::InvalidResponse(format!("Failed to serialize query params: {}", e))
-        })?;
-
         let base_url = self.url(path);
-        let full_url = if query_string.is_empty() {
-            base_url.clone()
-        } else {
-            format!("{}?{}", base_url, query_string)
-        };
 
-        let request = self.client.get(&base_url).query(query);
-        let request = self.apply_auth(request, "GET", &full_url);
+        let request = self.client.get(&base_url).query(query).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
+
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -498,20 +350,13 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
         Q: serde::Serialize,
     {
-        // Serialize query params to build the full URL for OAuth1 signature
-        let query_string = serde_urlencoded::to_string(query).map_err(|e| {
-            CrabError::InvalidResponse(format!("Failed to serialize query params: {}", e))
-        })?;
-
         let base_url = self.url(path);
-        let full_url = if query_string.is_empty() {
-            base_url.clone()
-        } else {
-            format!("{}?{}", base_url, query_string)
-        };
 
-        let request = self.client.delete(&base_url).query(query);
-        let request = self.apply_auth(request, "DELETE", &full_url);
+        let request = self.client.delete(&base_url).query(query).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
+
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -521,12 +366,13 @@ impl Crabrave {
         response::parse_response_bytes(&bytes)
     }
 
-    /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically.
-    /// The endpoint will return binary data if the request sent to it is not OAuth1, so we have to handle the response as a special case.
+    /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically
     pub(crate) async fn get_avatar(&self, path: &str) -> CrabResult<AvatarResponse> {
         let url = self.url(path);
-        let request = self.client.get(&url);
-        let request = self.apply_auth(request, "GET", &url);
+        let request = self.client.get(&url).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -561,8 +407,10 @@ impl Crabrave {
         B: serde::Serialize,
     {
         let url = self.url(path);
-        let request = self.client.post(&url).json(body);
-        let request = self.apply_auth(request, "POST", &url);
+        let request = self.client.post(&url).json(body).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -581,8 +429,10 @@ impl Crabrave {
         B: serde::Serialize,
     {
         let url = self.url(path);
-        let request = self.client.put(&url).json(body);
-        let request = self.apply_auth(request, "PUT", &url);
+        let request = self.client.put(&url).json(body).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -636,8 +486,14 @@ impl Crabrave {
             form = form.part(identifier, part);
         }
 
-        let request = self.client.request(method.clone(), &url).multipart(form);
-        let request = self.apply_auth(request, method.as_str(), &url);
+        let request = self
+            .client
+            .request(method.clone(), &url)
+            .multipart(form)
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {}", self.auth.access_token),
+            );
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -685,8 +541,10 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
     {
         let url = self.url(path);
-        let request = self.client.delete(&url);
-        let request = self.apply_auth(request, "DELETE", &url);
+        let request = self.client.delete(&url).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -704,7 +562,6 @@ pub struct CrabraveBuilder {
     consumer_key: Option<String>,
     consumer_secret: Option<String>,
     access_token: Option<String>,
-    access_token_secret: Option<String>,
     user_agent: Option<String>,
     base_url: Option<String>,
     scopes: HashSet<OAuthScope>,
@@ -720,7 +577,6 @@ impl CrabraveBuilder {
             consumer_key: None,
             consumer_secret: None,
             access_token: None,
-            access_token_secret: None,
             user_agent: None,
             base_url: None,
             scopes,
@@ -748,15 +604,6 @@ impl CrabraveBuilder {
     /// This is the token obtained after completing the OAuth flow.
     pub fn access_token(mut self, token: impl Into<String>) -> Self {
         self.access_token = Some(token.into());
-        self
-    }
-
-    /// Sets the OAuth1 access token secret
-    ///
-    /// This is only required for OAuth1 authentication (legacy).
-    /// If provided, OAuth1 will be used instead of OAuth2.
-    pub fn access_token_secret(mut self, secret: impl Into<String>) -> Self {
-        self.access_token_secret = Some(secret.into());
         self
     }
 
@@ -804,38 +651,17 @@ impl CrabraveBuilder {
     pub fn build(self) -> CrabResult<Crabrave> {
         // Validate required credentials
         let consumer_key = self.consumer_key.ok_or(CrabError::MissingConsumerKey)?;
+        let consumer_secret = self
+            .consumer_secret
+            .ok_or(CrabError::MissingConsumerSecret)?;
+        let access_token = self.access_token.ok_or(CrabError::MissingAccessToken)?;
 
-        // Determine authentication method based on provided credentials
-        let auth = if let Some(access_token_secret) = self.access_token_secret {
-            // OAuth1 authentication
-            let consumer_secret = self
-                .consumer_secret
-                .ok_or(CrabError::MissingConsumerSecret)?;
-            let access_token = self.access_token.ok_or(CrabError::MissingAccessToken)?;
-
-            Auth::OAuth1 {
-                consumer_key,
-                consumer_secret,
-                access_token,
-                access_token_secret,
-            }
-        } else if let Some(access_token) = self.access_token {
-            // OAuth2 authentication
-            let consumer_secret = self
-                .consumer_secret
-                .ok_or(CrabError::MissingConsumerSecret)?;
-
-            Auth::OAuth2 {
-                consumer_key,
-                consumer_secret,
-                access_token,
-            }
-        } else {
-            // API key only (read-only)
-            Auth::ApiKey { consumer_key }
+        let auth = Auth {
+            consumer_key,
+            consumer_secret,
+            access_token,
         };
 
-        // Build headers
         let mut headers = HeaderMap::new();
         let user_agent = self
             .user_agent
@@ -845,7 +671,6 @@ impl CrabraveBuilder {
             HeaderValue::from_str(&user_agent).map_err(|_| CrabError::InvalidUserAgent)?,
         );
 
-        // Build reqwest client
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()
@@ -948,25 +773,6 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_oauth1() {
-        let result = Crabrave::builder()
-            .consumer_key("test_key")
-            .consumer_secret("test_secret")
-            .access_token("test_token")
-            .access_token_secret("test_token_secret")
-            .build();
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_builder_api_key_only() {
-        let result = Crabrave::builder().consumer_key("test_key").build();
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_builder_missing_consumer_key() {
         let result = Crabrave::builder()
             .consumer_secret("test_secret")
@@ -977,21 +783,11 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_custom_base_url() {
-        let custom_url = "https://test.example.com/api";
-        let crab = Crabrave::builder()
-            .consumer_key("test_key")
-            .base_url(custom_url)
-            .build()
-            .unwrap();
-
-        assert_eq!(crab.base_url(), custom_url);
-    }
-
-    #[test]
     fn test_builder_custom_user_agent() {
         let result = Crabrave::builder()
             .consumer_key("test_key")
+            .consumer_secret("test_secret")
+            .access_token("test_access_token")
             .user_agent("CustomAgent/1.0")
             .build();
 

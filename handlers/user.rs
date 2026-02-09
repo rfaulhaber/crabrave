@@ -860,7 +860,12 @@ mod tests {
 
     #[test]
     fn test_dashboard_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = DashboardBuilder::new(client)
             .limit(10)
             .offset(20)
@@ -877,7 +882,12 @@ mod tests {
 
     #[test]
     fn test_likes_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = LikesBuilder::user(client)
             .limit(15)
             .offset(30)

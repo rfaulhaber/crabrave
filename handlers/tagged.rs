@@ -219,7 +219,12 @@ mod tests {
 
     #[test]
     fn test_tagged_builder() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = TaggedBuilder::new(client, "photography".to_string())
             .limit(10)
             .before(1234567890)
@@ -233,7 +238,12 @@ mod tests {
 
     #[test]
     fn test_tagged_builder_defaults() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let builder = TaggedBuilder::new(client, "art".to_string());
 
         assert_eq!(builder.query.tag, "art");
@@ -244,7 +254,12 @@ mod tests {
 
     #[test]
     fn test_tagged_struct() {
-        let client = Crabrave::builder().consumer_key("test").build().unwrap();
+        let client = Crabrave::builder()
+            .consumer_key("test")
+            .consumer_secret("test")
+            .access_token("test")
+            .build()
+            .unwrap();
         let tagged = Tagged::new(client, "rust".to_string());
 
         assert_eq!(tagged.tag, "rust");

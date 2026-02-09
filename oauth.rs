@@ -27,7 +27,7 @@ pub enum OAuthScope {
 pub struct OAuth2Config {
     client_id: String,
     client_secret: String,
-    redirect_uri: String,
+    redirect_uri: oauth2::RedirectUrl,
     scopes: Vec<OAuthScope>,
 }
 
@@ -66,7 +66,7 @@ impl OAuth2Config {
     ) -> CrabResult<Self> {
         let redirect_uri = redirect_uri.into();
         // Validate redirect URI eagerly so callers get a clear error at construction time
-        let _ = RedirectUrl::new(redirect_uri.clone())
+        let redirect_uri = RedirectUrl::new(redirect_uri.clone())
             .map_err(|e| CrabError::Auth(format!("Invalid redirect URI: {e}")))?;
         Ok(Self {
             client_id: client_id.into(),
@@ -74,6 +74,11 @@ impl OAuth2Config {
             redirect_uri,
             scopes: scopes.into_iter().collect(),
         })
+    }
+
+    /// Returns this OAuth config's redirect URI.
+    pub fn redirect_uri(&self) -> &str {
+        self.redirect_uri.url().as_str()
     }
 
     /// Generates the authorization URL and CSRF token
@@ -106,19 +111,17 @@ impl OAuth2Config {
             }
         }
 
-        // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
-        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
-            .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
-        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
-            .expect("hardcoded OAUTH_TOKEN_URL is always valid");
-        let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
-            .expect("redirect_uri was validated in new()");
+        // unwrapping because we know the constant url values are valid
+        #[allow(clippy::expect_used)]
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
+        #[allow(clippy::expect_used)]
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
 
         let client = BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
             .set_auth_uri(auth_url)
             .set_token_uri(token_url)
-            .set_redirect_uri(redirect_url);
+            .set_redirect_uri(self.redirect_uri.clone());
 
         let scopes: Vec<Scope> = self.scopes.iter().map(map_scope).collect();
 
@@ -160,22 +163,14 @@ impl OAuth2Config {
     /// # }
     /// ```
     pub async fn exchange_code(&self, code: impl Into<String>) -> CrabResult<OAuth2Token> {
-        // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
-        #[allow(clippy::expect_used)]
-        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
-            .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
-        #[allow(clippy::expect_used)]
-        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
-            .expect("hardcoded OAUTH_TOKEN_URL is always valid");
-        #[allow(clippy::expect_used)]
-        let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
-            .expect("redirect_uri was validated in new()");
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())?;
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())?;
 
         let client = BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
             .set_auth_uri(auth_url)
             .set_token_uri(token_url)
-            .set_redirect_uri(redirect_url);
+            .set_redirect_uri(self.redirect_uri.clone());
 
         let http_client = reqwest::Client::new();
         let token_result = client
@@ -220,22 +215,17 @@ impl OAuth2Config {
         &self,
         refresh_token: impl Into<String>,
     ) -> CrabResult<OAuth2Token> {
-        // Hardcoded URLs are compile-time constants; redirect_uri was validated in new()
+        // we know our hard-coded URLs are valid
         #[allow(clippy::expect_used)]
-        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
-            .expect("hardcoded OAUTH_AUTHORIZE_URL is always valid");
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
         #[allow(clippy::expect_used)]
-        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
-            .expect("hardcoded OAUTH_TOKEN_URL is always valid");
-        #[allow(clippy::expect_used)]
-        let redirect_url = RedirectUrl::new(self.redirect_uri.clone())
-            .expect("redirect_uri was validated in new()");
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
 
         let client = BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
             .set_auth_uri(auth_url)
             .set_token_uri(token_url)
-            .set_redirect_uri(redirect_url);
+            .set_redirect_uri(self.redirect_uri.clone());
 
         let http_client = reqwest::Client::new();
         let token_result = client
@@ -333,7 +323,7 @@ mod tests {
         .unwrap();
         assert_eq!(config.client_id, "key");
         assert_eq!(config.client_secret, "secret");
-        assert_eq!(config.redirect_uri, "http://localhost/callback");
+        assert_eq!(config.redirect_uri(), "http://localhost/callback");
     }
 
     #[test]

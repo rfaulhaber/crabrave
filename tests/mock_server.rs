@@ -1850,6 +1850,8 @@ async fn test_network_error() {
     // Create client with invalid URL to trigger network error
     let client = Crabrave::builder()
         .consumer_key("test")
+        .consumer_secret("test")
+        .access_token("test")
         .base_url("http://invalid-domain-that-does-not-exist-12345.com")
         .build()
         .expect("Failed to build client");
