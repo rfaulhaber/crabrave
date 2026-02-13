@@ -61,7 +61,7 @@ pub enum ContentBlock {
     Audio {
         /// Media objects for this audio (used for Tumblr-hosted audio)
         #[serde(skip_serializing_if = "Option::is_none")]
-        media: Option<MediaObject>,
+        media: Option<Box<MediaObject>>,
         /// External audio URL (used for external providers like Spotify, Soundcloud)
         #[serde(skip_serializing_if = "Option::is_none")]
         url: Option<String>,

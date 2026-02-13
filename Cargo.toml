@@ -1,6 +1,6 @@
 [package]
 name = "crabrave"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2024"
 description = "A Tumblr API client for Rust."
 license = "AGPL-3.0-or-later"
@@ -10,11 +10,11 @@ keywords = ["tumblr", "api", "client", "social-media"]
 categories = ["api-bindings", "web-programming::http-client"]
 readme = "README.md"
 
+[features]
+cookies = ["reqwest/cookies"]
+
 [lib]
 path = "lib.rs"
-
-[lints]
-workspace = true
 
 [dependencies]
 camino = "1.2"
@@ -33,7 +33,7 @@ wiremock = "0.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 proptest = "1.9"
 
-[workspace.lints.clippy]
+[lints.clippy]
 await_holding_invalid_type = "deny"
 await_holding_lock = "deny"
 await_holding_refcell_ref = "deny"

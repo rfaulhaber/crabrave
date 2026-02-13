@@ -74,6 +74,8 @@ pub use error::{CrabError, CrabResult};
 pub use handlers::{Blogs, Communities, Tagged, Users};
 pub use models::{Blog, BlogIdentifier, Page, User};
 pub use response::{ApiResponse, EmptyResponse, Meta};
+#[cfg(feature = "cookies")]
+pub use reqwest::cookie::Jar as CookieJar;
 
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
@@ -582,6 +584,8 @@ pub struct CrabraveBuilder {
     user_agent: Option<String>,
     base_url: Option<String>,
     scopes: HashSet<OAuthScope>,
+    #[cfg(feature = "cookies")]
+    cookie_jar: Option<Arc<reqwest::cookie::Jar>>,
 }
 
 impl CrabraveBuilder {
@@ -597,6 +601,8 @@ impl CrabraveBuilder {
             user_agent: None,
             base_url: None,
             scopes,
+            #[cfg(feature = "cookies")]
+            cookie_jar: None,
         }
     }
 
@@ -658,6 +664,70 @@ impl CrabraveBuilder {
         self
     }
 
+    /// Sets a pre-built cookie jar on the client.
+    ///
+    /// This allows you to provide browser cookies that will be sent with every request.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use crabrave::{Crabrave, CookieJar};
+    /// use std::sync::Arc;
+    ///
+    /// let jar = CookieJar::default();
+    /// jar.add_cookie_str(
+    ///     "session_id=abc123",
+    ///     &"https://www.tumblr.com".parse().unwrap(),
+    /// );
+    ///
+    /// let crab = Crabrave::builder()
+    ///     .consumer_key("key")
+    ///     .consumer_secret("secret")
+    ///     .access_token("token")
+    ///     .cookie_jar(Arc::new(jar))
+    ///     .build()?;
+    /// # Ok::<(), crabrave::CrabError>(())
+    /// ```
+    #[cfg(feature = "cookies")]
+    pub fn cookie_jar(mut self, jar: Arc<reqwest::cookie::Jar>) -> Self {
+        self.cookie_jar = Some(jar);
+        self
+    }
+
+    /// Adds a cookie string to the client's cookie jar.
+    ///
+    /// If no cookie jar has been set, one will be created automatically.
+    /// The cookie will be associated with the given URL for domain matching.
+    ///
+    /// # Arguments
+    ///
+    /// * `cookie` - A cookie string in the format `"name=value"` (additional attributes like
+    ///   `Path`, `Domain`, etc. may also be included)
+    /// * `url` - The URL to associate the cookie with (used for domain matching)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use crabrave::Crabrave;
+    ///
+    /// let crab = Crabrave::builder()
+    ///     .consumer_key("key")
+    ///     .consumer_secret("secret")
+    ///     .access_token("token")
+    ///     .add_cookie("session_id=abc123", &"https://www.tumblr.com".parse().unwrap())
+    ///     .add_cookie("pfp=xyz789", &"https://www.tumblr.com".parse().unwrap())
+    ///     .build()?;
+    /// # Ok::<(), crabrave::CrabError>(())
+    /// ```
+    #[cfg(feature = "cookies")]
+    pub fn add_cookie(mut self, cookie: &str, url: &url::Url) -> Self {
+        let jar = self
+            .cookie_jar
+            .get_or_insert_with(|| Arc::new(reqwest::cookie::Jar::default()));
+        jar.add_cookie_str(cookie, url);
+        self
+    }
+
     /// Builds the `Crabrave` client
     ///
     /// # Errors
@@ -688,10 +758,15 @@ impl CrabraveBuilder {
             HeaderValue::from_str(&user_agent).map_err(|_| CrabError::InvalidUserAgent)?,
         );
 
-        let client = reqwest::Client::builder()
-            .default_headers(headers)
-            .build()
-            .map_err(CrabError::HttpClient)?;
+        #[allow(unused_mut)]
+        let mut client_builder = reqwest::Client::builder().default_headers(headers);
+
+        #[cfg(feature = "cookies")]
+        if let Some(jar) = self.cookie_jar {
+            client_builder = client_builder.cookie_provider(jar);
+        }
+
+        let client = client_builder.build().map_err(CrabError::HttpClient)?;
 
         let base_url = self.base_url.unwrap_or_else(|| BASE_API_URL.to_string());
 

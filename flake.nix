@@ -40,17 +40,13 @@
           overlays = [
             self.overlays.rustOverlay
           ];
-          config.allowUnfreePredicate = pkg:
-            builtins.elem (pkgs.lib.getName pkg) [
-              "claude-code"
-            ];
         };
 
         formatter = pkgs.alejandra;
         packages = {
           ${projectName} = pkgs.rustPlatform.buildRustPackage {
             pname = projectName;
-            version = "0.7.1";
+            version = "0.8.0";
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
           };
@@ -63,7 +59,6 @@
             clippy
             rust-analyzer
             cargo-nextest
-            claude-code
           ];
         };
       };
