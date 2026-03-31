@@ -199,15 +199,13 @@ async fn test_rate_limit_no_headers() {
 
     Mock::given(method("GET"))
         .and(path("/blog/staff/info"))
-        .respond_with(
-            ResponseTemplate::new(429).set_body_json(serde_json::json!({
-                "meta": {
-                    "status": 429,
-                    "msg": "Rate Limit Exceeded"
-                },
-                "response": []
-            })),
-        )
+        .respond_with(ResponseTemplate::new(429).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 429,
+                "msg": "Rate Limit Exceeded"
+            },
+            "response": []
+        })))
         .mount(&mock_server)
         .await;
 
@@ -4485,4 +4483,48 @@ async fn invalid_id_bug() {
     let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
 
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn bandcamp_embed_bug() {
+    let mock_server = MockServer::start().await;
+    let mock_response = include_str!("./fixtures/bandcamp_embed.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts/12345")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn audio_post_bug() {
+    let mock_server = MockServer::start().await;
+    let mock_response = include_str!("./fixtures/audio_error.json");
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts/12345")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(mock_response)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
+
+    assert!(result.is_ok(), "failed with {:?}", result);
 }

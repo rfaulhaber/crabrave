@@ -78,7 +78,11 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         title: Option<String>,
         /// Optional embed HTML for external providers
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_string_or_false"
+        )]
         embed_html: Option<String>,
         /// Optional embed URL for external providers
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -113,7 +117,11 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         provider: Option<String>,
         /// Optional embed HTML for external providers
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_string_or_false"
+        )]
         embed_html: Option<String>,
         /// Optional embed iframe for external providers
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -643,6 +651,25 @@ where
 
 /// Deserializes a metadata field's `id` value as a string.
 ///
+/// Deserializes a string field that may be `false` instead of a string.
+///
+/// The Tumblr API sometimes returns `false` for string fields (like `embed_html`)
+/// when an embed is unavailable. This deserializer coerces `false` → `None`.
+fn deserialize_string_or_false<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<serde_json::Value> = Option::deserialize(deserializer)?;
+    match value {
+        None | Some(serde_json::Value::Null) | Some(serde_json::Value::Bool(false)) => Ok(None),
+        Some(serde_json::Value::String(s)) => Ok(Some(s)),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected a string or false, got {}",
+            crate::kind_of(&other)
+        ))),
+    }
+}
+
 /// This section of the NPF specification is largely undocumented, and the
 /// Tumblr API is not clear on what sort of fields will be returned in a
 /// `metadata` object. Usually, this looks like `{ "id": "some-id" }`, however
