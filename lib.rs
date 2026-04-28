@@ -79,11 +79,9 @@ pub use reqwest::cookie::Jar as CookieJar;
 
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::handlers::blog::{AvatarResponse, AvatarResponseUrl};
-use crate::oauth::OAuthScope;
 
 /// Base URL for the Tumblr API v2
 pub const BASE_API_URL: &str = "https://api.tumblr.com/v2";
@@ -583,7 +581,6 @@ pub struct CrabraveBuilder {
     access_token: Option<String>,
     user_agent: Option<String>,
     base_url: Option<String>,
-    scopes: HashSet<OAuthScope>,
     #[cfg(feature = "cookies")]
     cookie_jar: Option<Arc<reqwest::cookie::Jar>>,
 }
@@ -591,16 +588,12 @@ pub struct CrabraveBuilder {
 impl CrabraveBuilder {
     /// Creates a new builder with default settings
     fn new() -> Self {
-        let mut scopes = HashSet::new();
-        scopes.insert(OAuthScope::Basic);
-
         Self {
             consumer_key: None,
             consumer_secret: None,
             access_token: None,
             user_agent: None,
             base_url: None,
-            scopes,
             #[cfg(feature = "cookies")]
             cookie_jar: None,
         }
@@ -644,23 +637,6 @@ impl CrabraveBuilder {
     /// This is primarily useful for testing. The default is the official Tumblr API URL.
     pub fn base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = Some(url.into());
-        self
-    }
-
-    /// Adds a new OAuth scope to this client.
-    /// Note that by default, using the builder, the "basic" scope is added by default.
-    pub fn add_scope(mut self, scope: OAuthScope) -> Self {
-        self.scopes.insert(scope);
-        self
-    }
-
-    /// Adds new OAuth scopes to this client.
-    /// Note that by default, using the builder, the "basic" scope is added by default.
-    pub fn add_scopes<S: IntoIterator<Item = OAuthScope>>(mut self, scope: S) -> Self {
-        for scope in scope.into_iter() {
-            self.scopes.insert(scope);
-        }
-
         self
     }
 
