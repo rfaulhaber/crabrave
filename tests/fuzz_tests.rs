@@ -3,6 +3,8 @@
 //! These tests use proptest to generate random inputs and verify that
 //! the library handles them gracefully without panicking.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use proptest::prelude::*;
 
 // ============================================================================

@@ -848,6 +848,7 @@ pub(crate) fn kind_of(value: &serde_json::Value) -> &'static str {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 

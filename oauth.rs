@@ -309,6 +309,7 @@ pub fn parse_callback(callback_url: &str) -> CrabResult<HashMap<String, String>>
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 

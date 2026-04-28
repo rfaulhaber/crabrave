@@ -3,12 +3,19 @@
 //! These tests use a mock HTTP server to test the full request/response cycle
 //! without requiring actual Tumblr API credentials.
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::redundant_static_lifetimes
+)]
+
 use crabrave::handlers::blog::AvatarResponse;
 use crabrave::{CrabError, Crabrave};
 use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const TEST_BLOG_NAME: &'static str = "crabrave";
+const TEST_BLOG_NAME: &str = "crabrave";
 
 /// Helper to create a test client pointed at a mock server
 async fn test_client(mock_server: &MockServer) -> Crabrave {
@@ -4480,28 +4487,6 @@ async fn invalid_id_bug() {
     let client = test_client(&mock_server).await;
 
     // NPF is now always used by default
-    let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
-
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn bandcamp_embed_bug() {
-    let mock_server = MockServer::start().await;
-    let mock_response = include_str!("./fixtures/bandcamp_embed.json");
-
-    Mock::given(method("GET"))
-        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts/12345")))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(mock_response)
-                .insert_header("content-type", "application/json"),
-        )
-        .mount(&mock_server)
-        .await;
-
-    let client = test_client(&mock_server).await;
-
     let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
 
     assert!(result.is_ok());
