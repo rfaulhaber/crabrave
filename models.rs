@@ -251,12 +251,13 @@ pub struct User {
 
 /// Pagination wrapper for API responses
 ///
-/// Many Tumblr API endpoints return paginated results. This struct
-/// contains the items for the current page and optional links for navigation.
+/// A generic container for paginated results with optional total count and
+/// next-page link. This type is provided for callers who want to build their
+/// own pagination utilities; Tumblr's API does not return data shaped exactly
+/// like this on any single endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Page<T> {
     /// Items in the current page
-    #[serde(flatten)]
     pub items: Vec<T>,
     /// Total number of items (if available)
     #[serde(skip_serializing_if = "Option::is_none")]
