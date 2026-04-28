@@ -46,7 +46,7 @@
         packages = {
           ${projectName} = pkgs.rustPlatform.buildRustPackage {
             pname = projectName;
-            version = "0.8.1";
+            version = let file = builtins.fromTOML (builtins.readFile ./Cargo.toml); in file.package.version;
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
           };
@@ -59,6 +59,7 @@
             clippy
             rust-analyzer
             cargo-nextest
+            cargo-release
           ];
         };
       };
