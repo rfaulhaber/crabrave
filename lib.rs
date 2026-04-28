@@ -93,7 +93,7 @@ pub const OAUTH_AUTHORIZE_URL: &str = "https://www.tumblr.com/oauth2/authorize";
 pub const OAUTH_TOKEN_URL: &str = "https://api.tumblr.com/v2/oauth2/token";
 
 /// Default User-Agent header value
-const DEFAULT_USER_AGENT: &str = concat!(
+pub(crate) const DEFAULT_USER_AGENT: &str = concat!(
     "crabrave/",
     env!("CARGO_PKG_VERSION"),
     " (Rust HTTP Client for Tumblr)"

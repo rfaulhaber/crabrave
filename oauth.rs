@@ -3,13 +3,17 @@
 //! This module provides utilities to complete the OAuth2 authorization flow
 //! with Tumblr's API.
 
-use crate::{CrabError, CrabResult, OAUTH_AUTHORIZE_URL, OAUTH_TOKEN_URL};
+use crate::{CrabError, CrabResult, DEFAULT_USER_AGENT, OAUTH_AUTHORIZE_URL, OAUTH_TOKEN_URL};
 use oauth2::basic::BasicClient;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope,
-    TokenResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EndpointNotSet, EndpointSet,
+    RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use std::collections::HashMap;
+
+/// `BasicClient` after this module configures auth + token URLs (typestate alias).
+type ConfiguredBasicClient =
+    BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>;
 
 /// An OAuth scope that this client will use.
 /// See [Tumblr's documentation around OAuth authorization](https://www.tumblr.com/docs/en/api/v2#oauth2-authorization) for more information.
@@ -29,6 +33,7 @@ pub struct OAuth2Config {
     client_secret: String,
     redirect_uri: oauth2::RedirectUrl,
     scopes: Vec<OAuthScope>,
+    http_client: reqwest::Client,
 }
 
 impl OAuth2Config {
@@ -68,17 +73,51 @@ impl OAuth2Config {
         // Validate redirect URI eagerly so callers get a clear error at construction time
         let redirect_uri = RedirectUrl::new(redirect_uri.clone())
             .map_err(|e| CrabError::Auth(format!("Invalid redirect URI: {e}")))?;
+        let http_client = reqwest::Client::builder()
+            .user_agent(DEFAULT_USER_AGENT)
+            .build()
+            .map_err(|e| CrabError::Auth(format!("Failed to build HTTP client: {e}")))?;
         Ok(Self {
             client_id: client_id.into(),
             client_secret: client_secret.into(),
             redirect_uri,
             scopes: scopes.into_iter().collect(),
+            http_client,
         })
     }
 
     /// Returns this OAuth config's redirect URI.
     pub fn redirect_uri(&self) -> &str {
         self.redirect_uri.url().as_str()
+    }
+
+    /// Overrides the HTTP client used for token exchange and refresh.
+    ///
+    /// By default, `OAuth2Config` builds a `reqwest::Client` with crabrave's User-Agent.
+    /// Use this to inject a pre-configured client (e.g., with a custom User-Agent or proxy).
+    #[must_use]
+    pub fn with_http_client(mut self, http_client: reqwest::Client) -> Self {
+        self.http_client = http_client;
+        self
+    }
+
+    /// Builds a fully configured `BasicClient` from this config.
+    ///
+    /// The hard-coded auth/token URLs are constants verified at compile time, so URL parsing
+    /// failures here would indicate a bug in this crate, not user error.
+    fn basic_client(&self) -> ConfiguredBasicClient {
+        #[allow(clippy::expect_used)]
+        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
+            .expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
+        #[allow(clippy::expect_used)]
+        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
+            .expect("Token URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
+
+        BasicClient::new(ClientId::new(self.client_id.clone()))
+            .set_client_secret(ClientSecret::new(self.client_secret.clone()))
+            .set_auth_uri(auth_url)
+            .set_token_uri(token_url)
+            .set_redirect_uri(self.redirect_uri.clone())
     }
 
     /// Generates the authorization URL and CSRF token
@@ -111,21 +150,10 @@ impl OAuth2Config {
             }
         }
 
-        // unwrapping because we know the constant url values are valid
-        #[allow(clippy::expect_used)]
-        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
-        #[allow(clippy::expect_used)]
-        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
-
-        let client = BasicClient::new(ClientId::new(self.client_id.clone()))
-            .set_client_secret(ClientSecret::new(self.client_secret.clone()))
-            .set_auth_uri(auth_url)
-            .set_token_uri(token_url)
-            .set_redirect_uri(self.redirect_uri.clone());
-
         let scopes: Vec<Scope> = self.scopes.iter().map(map_scope).collect();
 
-        let (auth_url, csrf_token) = client
+        let (auth_url, csrf_token) = self
+            .basic_client()
             .authorize_url(CsrfToken::new_random)
             .add_scopes(scopes)
             .url();
@@ -163,19 +191,10 @@ impl OAuth2Config {
     /// # }
     /// ```
     pub async fn exchange_code(&self, code: impl Into<String>) -> CrabResult<OAuth2Token> {
-        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())?;
-        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())?;
-
-        let client = BasicClient::new(ClientId::new(self.client_id.clone()))
-            .set_client_secret(ClientSecret::new(self.client_secret.clone()))
-            .set_auth_uri(auth_url)
-            .set_token_uri(token_url)
-            .set_redirect_uri(self.redirect_uri.clone());
-
-        let http_client = reqwest::Client::new();
-        let token_result = client
+        let token_result = self
+            .basic_client()
             .exchange_code(AuthorizationCode::new(code.into()))
-            .request_async(&http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|e| CrabError::Auth(format!("Token exchange failed: {}", e)))?;
 
@@ -215,22 +234,10 @@ impl OAuth2Config {
         &self,
         refresh_token: impl Into<String>,
     ) -> CrabResult<OAuth2Token> {
-        // we know our hard-coded URLs are valid
-        #[allow(clippy::expect_used)]
-        let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
-        #[allow(clippy::expect_used)]
-        let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string()).expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
-
-        let client = BasicClient::new(ClientId::new(self.client_id.clone()))
-            .set_client_secret(ClientSecret::new(self.client_secret.clone()))
-            .set_auth_uri(auth_url)
-            .set_token_uri(token_url)
-            .set_redirect_uri(self.redirect_uri.clone());
-
-        let http_client = reqwest::Client::new();
-        let token_result = client
+        let token_result = self
+            .basic_client()
             .exchange_refresh_token(&oauth2::RefreshToken::new(refresh_token.into()))
-            .request_async(&http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|e| CrabError::Auth(format!("Token refresh failed: {}", e)))?;
 
