@@ -1688,7 +1688,7 @@ async fn test_delete_post() {
 
     Mock::given(method("POST"))
         .and(path("/blog/myblog/post/delete"))
-        .and(query_param("id", "123456"))
+        .and(body_json(serde_json::json!({ "id": "123456" })))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,

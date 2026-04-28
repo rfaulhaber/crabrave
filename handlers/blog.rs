@@ -233,8 +233,11 @@ impl Blogs {
             followed_by: bool,
         }
 
-        let path = format!("blog/{}/followed_by?query={}", self.identifier, blog_name);
-        let resp: FollowedByResponse = self.client.get(&path).await?;
+        let path = format!("blog/{}/followed_by", self.identifier.as_str());
+        let resp: FollowedByResponse = self
+            .client
+            .get_with_query(&path, &[("query", blog_name.to_string())])
+            .await?;
         Ok(resp.followed_by)
     }
 
@@ -2118,8 +2121,10 @@ impl BlogPost {
     /// # }
     /// ```
     pub async fn delete(self) -> CrabResult<crate::handlers::posts::DeleteResponse> {
-        let path = format!("blog/{}/post/delete?id={}", self.blog.as_str(), self.id);
-        self.client.post(&path, &serde_json::json!({})).await
+        let path = format!("blog/{}/post/delete", self.blog.as_str());
+        self.client
+            .post(&path, &serde_json::json!({ "id": self.id }))
+            .await
     }
 
     /// Edits this post
