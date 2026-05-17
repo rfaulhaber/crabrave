@@ -9,6 +9,16 @@ authors = ["Ryan Faulhaber"]
 keywords = ["tumblr", "api", "client", "social-media"]
 categories = ["api-bindings", "web-programming::http-client"]
 readme = "README.md"
+exclude = [
+    "/.github/",
+    "/.envrc",
+    "/.gitignore",
+    "/CLAUDE.md",
+    "/clippy.toml",
+    "/flake.lock",
+    "/flake.nix",
+    "/rust-toolchain.toml"
+]
 
 [features]
 cookies = ["reqwest/cookies"]
