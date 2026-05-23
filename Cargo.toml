@@ -23,9 +23,6 @@ exclude = [
 [features]
 cookies = ["reqwest/cookies"]
 
-[lib]
-path = "lib.rs"
-
 [dependencies]
 camino = "1.2"
 fs-err = "3.2"
