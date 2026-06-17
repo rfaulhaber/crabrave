@@ -737,23 +737,42 @@ pub struct MembershipResponse {
 /// Response from the members endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MembersResponse {
-    /// Total number of members in the community
+    /// Total number of members in the community (the API returns this as `count`)
+    #[serde(rename = "count")]
     pub total_members: u64,
     /// List of community members
     pub members: Vec<CommunityMember>,
 }
 
 /// A member of a community
+///
+/// The members endpoint returns each member as a blog object with the
+/// community-specific fields inlined alongside it, so the blog fields are
+/// flattened rather than nested under a `blog` key. Roles are expressed as the
+/// `is_admin`/`is_moderator` flags rather than a single role field.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunityMember {
     /// Member's blog information
+    #[serde(flatten)]
     pub blog: Blog,
-    /// Member's role in the community
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub role: Option<MemberRole>,
-    /// When the member joined
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub joined_at: Option<i64>,
+    /// Whether this member is a community administrator
+    #[serde(default)]
+    pub is_admin: bool,
+    /// Whether this member is a community moderator
+    #[serde(default)]
+    pub is_moderator: bool,
+    /// Whether this member follows the authenticated user
+    #[serde(default)]
+    pub is_following_you: bool,
+    /// Whether this member is currently online
+    #[serde(default)]
+    pub is_online: bool,
+    /// Whether the authenticated user and this member follow each other
+    #[serde(default)]
+    pub is_mutual: bool,
+    /// Unix timestamp of when the member joined the community
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub joined_ts: Option<i64>,
 }
 
 /// Response from the invitations endpoint

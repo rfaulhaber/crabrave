@@ -554,7 +554,11 @@ pub struct UserLimitsResponse {
 }
 
 /// Response from the joined communities endpoint
+///
+/// The endpoint returns a bare JSON array of communities, so this wrapper is
+/// `transparent`: it deserializes directly from that array into `communities`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct JoinedCommunitiesResponse {
     /// List of communities the user has joined
     pub communities: Vec<crate::handlers::communities::Community>,

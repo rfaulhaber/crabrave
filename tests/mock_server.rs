@@ -2744,35 +2744,31 @@ async fn test_community_members() {
                 "msg": "OK"
             },
             "response": {
-                "total_members": 150,
+                "count": 150,
                 "members": [
                     {
-                        "blog": {
-                            "name": "rustdev",
-                            "title": "Rust Developer",
-                            "description": "Learning Rust",
-                            "url": "https://rustdev.tumblr.com/",
-                            "uuid": "t:abc123",
-                            "updated": 1234567890,
-                            "posts": 50,
-                            "is_nsfw": false,
-                            "is_adult": false
-                        },
-                        "role": "member"
+                        "name": "rustdev",
+                        "title": "Rust Developer",
+                        "description": "Learning Rust",
+                        "url": "https://rustdev.tumblr.com/",
+                        "uuid": "t:abc123",
+                        "updated": 1234567890,
+                        "avatar": [],
+                        "is_admin": false,
+                        "is_moderator": false,
+                        "joined_ts": 1234567000
                     },
                     {
-                        "blog": {
-                            "name": "crabfan",
-                            "title": "Crab Fan",
-                            "description": "I love crabs",
-                            "url": "https://crabfan.tumblr.com/",
-                            "uuid": "t:def456",
-                            "updated": 1234567891,
-                            "posts": 25,
-                            "is_nsfw": false,
-                            "is_adult": false
-                        },
-                        "role": "moderator"
+                        "name": "crabfan",
+                        "title": "Crab Fan",
+                        "description": "I love crabs",
+                        "url": "https://crabfan.tumblr.com/",
+                        "uuid": "t:def456",
+                        "updated": 1234567891,
+                        "avatar": [],
+                        "is_admin": false,
+                        "is_moderator": true,
+                        "joined_ts": 1234567100
                     }
                 ]
             }
@@ -2793,6 +2789,9 @@ async fn test_community_members() {
     assert_eq!(response.total_members, 150);
     assert_eq!(response.members.len(), 2);
     assert_eq!(response.members[0].blog.name, "rustdev");
+    assert!(!response.members[0].is_moderator);
+    assert!(response.members[1].is_moderator);
+    assert_eq!(response.members[1].joined_ts, Some(1234567100));
 }
 
 // =============================================================================
