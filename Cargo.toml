@@ -62,3 +62,6 @@ push-remote = "origin"
 tag-prefix = "v"
 tag-name = "{{prefix}}{{version}}"
 publish = true
+pre-release-replacements = [
+    { file = "README.md", search = "crabrave = \"[^\"]+\"", replace = "crabrave = \"{{version}}\"", min = 1 },
+]

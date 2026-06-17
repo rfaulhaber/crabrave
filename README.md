@@ -16,7 +16,7 @@ An ergonomic Rust client for the Tumblr API, inspired by [Octocrab](https://gith
 
 ```toml
 [dependencies]
-crabrave = "0.8"
+crabrave = "1.1"
 ```
 
 ## Quick Start
