@@ -2096,7 +2096,7 @@ async fn test_block_blog() {
         .await
         .expect("callout failed");
 
-    assert_eq!(result.already_blocked, false);
+    assert!(!result.already_blocked);
 }
 
 #[tokio::test]
@@ -2128,7 +2128,7 @@ async fn test_block_with_post_id() {
         .await
         .expect("callout failed");
 
-    assert_eq!(result.already_blocked, false);
+    assert!(!result.already_blocked);
 }
 
 #[tokio::test]
@@ -2277,7 +2277,7 @@ async fn test_user_following() {
     let mock_response = include_str!("./fixtures/get_user_following.json");
 
     Mock::given(method("GET"))
-        .and(path(format!("/user/following")))
+        .and(path("/user/following"))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_string(mock_response)
@@ -2353,7 +2353,7 @@ async fn test_followed_by() {
         .await
         .expect("Callout to get blog likes failed");
 
-    assert_eq!(result, true);
+    assert!(result);
 }
 
 // =============================================================================
@@ -4465,7 +4465,7 @@ async fn missing_type_field_bug() {
     let post = result.unwrap();
 
     assert_eq!(post.content.len(), 0);
-    assert!(post.trail.len() > 0);
+    assert!(!post.trail.is_empty());
 }
 
 #[tokio::test]
