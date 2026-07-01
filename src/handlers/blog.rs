@@ -1098,14 +1098,48 @@ pub struct SubmissionResponse {
 }
 
 /// Types of notifications that can be filtered
+///
+/// Used to build the `types` query parameter for [`NotificationsBuilder::types`].
+///
+/// Tumblr's *published* type set (in its API docs) and what its live feed actually
+/// emits diverge — see the mention variants below. The `notification_type` on a
+/// returned [`Notification`] is a plain string, and not every emitted type has a
+/// variant here (the live feed also produces `milestone_post` and a bare `reblog`, for
+/// example), so match on the string when you need exhaustive handling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum NotificationType {
     Like,
     Reply,
     Follow,
-    MentionInReply,
+    /// A mention of the blog in a post body (`user_mention`).
+    ///
+    /// Undocumented, but this is the string Tumblr's live activity feed actually emits
+    /// for an in-post mention (verified empirically 2026-07-01) — not the documented
+    /// [`MentionInPost`](Self::MentionInPost). Here `from_tumblelog_name` (the mentioning
+    /// blog) and `target_tumblelog_name` (the post owner) are the same.
+    UserMention,
+    /// A mention of the blog in a reply/note on a post (`note_mention`).
+    ///
+    /// Undocumented, but this is what the live feed emits for a reply/note mention
+    /// (verified empirically 2026-07-01) — not the documented
+    /// [`MentionInReply`](Self::MentionInReply). The mentioned post belongs to
+    /// `target_tumblelog_name`, which differs from the actor in `from_tumblelog_name`
+    /// when the mention is in a reply on *another* blog's post.
+    NoteMention,
+    /// In-post mention as named in Tumblr's published API docs (`mention_in_post`).
+    ///
+    /// Kept because it is the documented name, but the live feed emits the undocumented
+    /// [`UserMention`](Self::UserMention) instead; this string was not observed on any
+    /// notification (2026-07-01).
     MentionInPost,
+    /// In-reply mention as named in Tumblr's published API docs (`mention_in_reply`).
+    ///
+    /// Kept because it is the documented name, but the live feed emits the undocumented
+    /// [`NoteMention`](Self::NoteMention) instead; this string was not observed on any
+    /// notification (2026-07-01).
+    MentionInReply,
     ReblogNaked,
     ReblogWithContent,
     Ask,
@@ -1126,8 +1160,10 @@ impl NotificationType {
             NotificationType::Like => "like",
             NotificationType::Reply => "reply",
             NotificationType::Follow => "follow",
-            NotificationType::MentionInReply => "mention_in_reply",
+            NotificationType::UserMention => "user_mention",
+            NotificationType::NoteMention => "note_mention",
             NotificationType::MentionInPost => "mention_in_post",
+            NotificationType::MentionInReply => "mention_in_reply",
             NotificationType::ReblogNaked => "reblog_naked",
             NotificationType::ReblogWithContent => "reblog_with_content",
             NotificationType::Ask => "ask",
@@ -1312,7 +1348,14 @@ impl NotificationsBuilder {
 
     /// Filter notifications by type
     ///
-    /// Only return notifications of the specified types.
+    /// Sets the `types` query parameter to request only the given types.
+    ///
+    /// # Note
+    ///
+    /// Tumblr has been observed to **ignore** this server-side filter and return the
+    /// full activity feed regardless of the value sent (verified empirically
+    /// 2026-07-01). Treat it as a hint only; when correctness matters, filter
+    /// client-side on [`Notification::notification_type`].
     pub fn types(mut self, types: Vec<NotificationType>) -> Self {
         self.query.types = Some(types.iter().map(|t| t.to_string()).collect());
         self
@@ -1322,6 +1365,9 @@ impl NotificationsBuilder {
     ///
     /// Only return notifications of the specified types.
     /// Use this if you need to specify types not covered by NotificationType enum.
+    ///
+    /// The same server-side caveat as [`types`](Self::types) applies: Tumblr may ignore
+    /// this filter, so filter client-side when correctness matters.
     pub fn types_str(mut self, types: Vec<impl Into<String>>) -> Self {
         self.query.types = Some(types.into_iter().map(|t| t.into()).collect());
         self
@@ -2313,5 +2359,54 @@ mod tests {
         let post: Post = serde_json::from_str(&json).unwrap();
         let out = serde_json::to_string(&post).unwrap();
         assert!(!out.contains("community_labels"));
+    }
+
+    #[test]
+    fn notification_type_uses_live_mention_strings() {
+        // Tumblr's live activity feed emits `user_mention` / `note_mention` for mentions;
+        // the `mention_in_*` strings were not observed on any notification (2026-07-01).
+        assert_eq!(NotificationType::UserMention.as_str(), "user_mention");
+        assert_eq!(NotificationType::NoteMention.as_str(), "note_mention");
+
+        assert_eq!(
+            serde_json::from_str::<NotificationType>(r#""user_mention""#).unwrap(),
+            NotificationType::UserMention
+        );
+        assert_eq!(
+            serde_json::from_str::<NotificationType>(r#""note_mention""#).unwrap(),
+            NotificationType::NoteMention
+        );
+    }
+
+    #[test]
+    fn notification_type_as_str_matches_serde_for_all_variants() {
+        // `as_str` (used to build the `types` query) and the serde representation must
+        // agree, or a filter built from the enum would disagree with a deserialized value.
+        use NotificationType::*;
+        let all = [
+            Like,
+            Reply,
+            Follow,
+            UserMention,
+            NoteMention,
+            MentionInPost,
+            MentionInReply,
+            ReblogNaked,
+            ReblogWithContent,
+            Ask,
+            AnsweredAsk,
+            NewGroupBlogMember,
+            PostAttribution,
+            PostFlagged,
+            PostAppealAccepted,
+            PostAppealRejected,
+            WhatYouMissed,
+            ConversationalNote,
+        ];
+        for t in all {
+            let json = serde_json::to_string(&t).unwrap();
+            let serde_str = json.trim_matches('"');
+            assert_eq!(t.as_str(), serde_str, "as_str and serde disagree for {t:?}");
+        }
     }
 }
