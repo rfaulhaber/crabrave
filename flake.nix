@@ -15,14 +15,14 @@
     flake-parts,
     ...
   }: let
-    projectName = "crabrave";
+    cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+    projectName = cargoToml.package.name;
   in
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [];
       flake.overlays.rustOverlay = inputs.rust-overlay.overlays.default;
       systems = [
         "x86_64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
         "aarch64-linux"
       ];
@@ -46,7 +46,7 @@
         packages = {
           ${projectName} = pkgs.rustPlatform.buildRustPackage {
             pname = projectName;
-            version = let file = builtins.fromTOML (builtins.readFile ./Cargo.toml); in file.package.version;
+            version = cargoToml.package.version;
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
           };
@@ -54,9 +54,8 @@
         };
 
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            rust-bin.stable.latest.default
-            clippy
+          packages = with pkgs; [
+            (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
             rust-analyzer
             cargo-nextest
             cargo-release
