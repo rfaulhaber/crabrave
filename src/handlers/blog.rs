@@ -1796,6 +1796,12 @@ pub struct Post {
     /// Whether this post uses NPF (blocks) format
     #[serde(default)]
     pub is_blocks_post_format: bool,
+    /// Community Labels (mature-content advisory) applied to this post, if any.
+    ///
+    /// Typically `None`: Tumblr only returns this object to first-party clients,
+    /// so third-party API credentials receive posts without it. See [`CommunityLabels`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub community_labels: Option<CommunityLabels>,
 
     // === Blog info ===
     /// Embedded blog information
@@ -1897,6 +1903,30 @@ pub struct Post {
     /// Email of anonymous submitter
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anonymous_email: Option<String>,
+}
+
+/// Tumblr Community Labels applied to a post — the mature-content advisory system
+/// introduced in December 2022 (`mature` umbrella plus `sexual_themes`, `violence`,
+/// and `drug_use` subcategories).
+///
+/// Undocumented in the public API reference. The object was observed live only in
+/// Tumblr's first-party web frontend, where it is camelCased; the snake_case keys used
+/// here are inferred from Tumblr's otherwise-uniform API naming. Tumblr returns this
+/// object only to first-party clients, so posts fetched with third-party API credentials
+/// arrive without it and [`Post::community_labels`] deserializes to `None`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CommunityLabels {
+    /// Whether the post carries any community label. When `true` with an empty
+    /// `categories`, the post is flagged under the generic `mature` label.
+    #[serde(default)]
+    pub has_community_label: bool,
+    /// Advisory subcategories, e.g. `sexual_themes`, `violence`, `drug_use`. Kept as
+    /// strings so categories Tumblr may add later cannot break deserialization.
+    #[serde(default)]
+    pub categories: Vec<String>,
+    /// What applied the label: `author` (self-flagged) or `classifier` (automated).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_reporter: Option<String>,
 }
 
 /// Item in a reblog trail
@@ -2222,5 +2252,66 @@ mod tests {
         assert_eq!(builder.query.offset, Some(20));
         assert_eq!(builder.query.post_type, Some("photo".to_string()));
         assert_eq!(builder.query.tag, Some("art".to_string()));
+    }
+
+    // The minimal set of non-defaulted `Post` fields; community labels are layered on top.
+    const BASE_POST_FIELDS: &str = r#"
+        "id_string": "820735101718626304",
+        "blog_name": "rydengg",
+        "post_url": "https://rydengg.tumblr.com/post/820735101718626304",
+        "type": "blocks",
+        "timestamp": 1782713987
+    "#;
+
+    #[test]
+    fn test_post_deserializes_community_labels_with_categories() {
+        let json = format!(
+            r#"{{ {BASE_POST_FIELDS}, "community_labels": {{
+                "has_community_label": true,
+                "categories": ["sexual_themes", "drug_use"],
+                "last_reporter": "author"
+            }} }}"#
+        );
+        let post: Post = serde_json::from_str(&json).unwrap();
+        let labels = post
+            .community_labels
+            .expect("labeled post should carry community_labels");
+        assert!(labels.has_community_label);
+        assert_eq!(labels.categories, ["sexual_themes", "drug_use"]);
+        assert_eq!(labels.last_reporter.as_deref(), Some("author"));
+    }
+
+    #[test]
+    fn test_post_deserializes_mature_umbrella_label() {
+        // The shape observed on live posts: flagged mature with no explicit subcategory.
+        let json = format!(
+            r#"{{ {BASE_POST_FIELDS}, "community_labels": {{
+                "has_community_label": true,
+                "categories": [],
+                "last_reporter": "classifier"
+            }} }}"#
+        );
+        let post: Post = serde_json::from_str(&json).unwrap();
+        let labels = post.community_labels.unwrap();
+        assert!(labels.has_community_label);
+        assert!(labels.categories.is_empty());
+    }
+
+    #[test]
+    fn test_post_without_community_labels_is_none() {
+        // Regression guard: the field is absent from third-party API responses, so
+        // `#[serde(default)]` must yield `None` rather than fail to deserialize.
+        let json = format!(r#"{{ {BASE_POST_FIELDS} }}"#);
+        let post: Post = serde_json::from_str(&json).unwrap();
+        assert!(post.community_labels.is_none());
+    }
+
+    #[test]
+    fn test_post_without_labels_omits_field_when_serialized() {
+        // `skip_serializing_if` keeps the envelope clean for the common unlabeled case.
+        let json = format!(r#"{{ {BASE_POST_FIELDS} }}"#);
+        let post: Post = serde_json::from_str(&json).unwrap();
+        let out = serde_json::to_string(&post).unwrap();
+        assert!(!out.contains("community_labels"));
     }
 }

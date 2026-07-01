@@ -356,3 +356,4 @@ All complex queries use type-safe builders:
 - The library has no runtime dependencies - users bring their own async runtime (tokio, async-std, etc.)
 - Strict clippy configuration enforces no unwrap/expect/panic/todo/print in production code
 - Tagged endpoint returns posts directly, not wrapped in `response.posts` like other endpoints
+- `Post.community_labels` (`CommunityLabels`) models Tumblr's mature-content advisory, but the field is **first-party gated**: the third-party API returns it on no endpoint (verified empirically), so it deserializes to `None` for library consumers. The type exists for correctness/forward-compatibility; the shape (`community_labels`/`has_community_label`/`categories`/`last_reporter`) was recovered from the camelCased web-frontend bootstrap and the snake_case keys are inferred from Tumblr's uniform API naming.
