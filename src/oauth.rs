@@ -108,10 +108,10 @@ impl OAuth2Config {
     fn basic_client(&self) -> ConfiguredBasicClient {
         #[allow(clippy::expect_used)]
         let auth_url = AuthUrl::new(OAUTH_AUTHORIZE_URL.to_string())
-            .expect("Authorize URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
+            .expect("Authorize URL is invalid. Please report this as a bug to github.com/rfaulhaber/crabrave/issues along with the code that produced this issue.");
         #[allow(clippy::expect_used)]
         let token_url = TokenUrl::new(OAUTH_TOKEN_URL.to_string())
-            .expect("Token URL is invalid. Please report this as a bug to codeberg.org/ryf/crabrave/issues along with the code that produced this issue.");
+            .expect("Token URL is invalid. Please report this as a bug to github.com/rfaulhaber/crabrave/issues along with the code that produced this issue.");
 
         BasicClient::new(ClientId::new(self.client_id.clone()))
             .set_client_secret(ClientSecret::new(self.client_secret.clone()))
