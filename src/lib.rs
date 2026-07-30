@@ -70,12 +70,12 @@ pub mod npf;
 pub mod oauth;
 mod response;
 
-pub use error::{CrabError, CrabResult};
+pub use error::{ApiErrorDetail, CrabError, CrabResult};
 pub use handlers::{Blogs, Communities, Tagged, Users};
 pub use models::{Blog, BlogIdentifier, Page, User};
-pub use response::{ApiResponse, EmptyResponse, Meta};
 #[cfg(feature = "cookies")]
 pub use reqwest::cookie::Jar as CookieJar;
+pub use response::{ApiResponse, EmptyResponse, Meta};
 
 use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
@@ -313,6 +313,23 @@ impl Crabrave {
         Ok(())
     }
 
+    /// Turns a raw `reqwest::Response` into a parsed API result.
+    ///
+    /// Rate limiting is checked before anything else so a 429 always surfaces
+    /// as `CrabError::RateLimit` rather than being swallowed into a generic
+    /// `Api` error; the HTTP status is then carried alongside the body so a
+    /// non-JSON error page (e.g. from a CDN) can still report its status.
+    async fn handle_response<T: serde::de::DeserializeOwned>(
+        response: reqwest::Response,
+    ) -> CrabResult<T> {
+        Self::check_rate_limit(&response)?;
+
+        let status = response.status().as_u16();
+        let bytes = response.bytes().await?;
+
+        response::parse_response_bytes_with_status(&bytes, status)
+    }
+
     /// Makes a GET request to the API
     ///
     /// This is an internal helper method used by handlers.
@@ -328,11 +345,7 @@ impl Crabrave {
         );
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     /// Makes a GET request with query parameters to the API
@@ -355,11 +368,7 @@ impl Crabrave {
 
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     pub(crate) async fn delete_with_query<T, Q>(&self, path: &str, query: &Q) -> CrabResult<T>
@@ -376,11 +385,7 @@ impl Crabrave {
 
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically
@@ -394,23 +399,38 @@ impl Crabrave {
 
         Self::check_rate_limit(&response)?;
 
+        let status = response.status().as_u16();
         let content_type = response
             .headers()
             .get(reqwest::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .unwrap_or("")
             .to_string();
+        // Strip any "; charset=..." parameter before comparing.
+        let content_type = content_type
+            .split(';')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_ascii_lowercase();
 
         let bytes = response.bytes().await?;
 
-        // tumblr always returns PNGs
-        if &content_type == "image/png" {
+        // The endpoint 302-redirects to the blog's stored avatar file, so the
+        // final content type reflects whatever image format that blog uses
+        // (PNG, JPEG, GIF, ...) rather than always being PNG.
+        if content_type.starts_with("image/") {
             Ok(AvatarResponse::ImageData(bytes.to_vec()))
-        } else {
-            let response: AvatarResponseUrl = response::parse_response_bytes(&bytes)?;
+        } else if content_type == "application/json" || content_type.is_empty() {
+            let response: AvatarResponseUrl =
+                response::parse_response_bytes_with_status(&bytes, status)?;
             Ok(AvatarResponse::ImageUrl {
                 avatar_url: response.avatar_url,
             })
+        } else {
+            Err(CrabError::InvalidResponse(format!(
+                "unexpected content type for avatar response: {content_type}"
+            )))
         }
     }
 
@@ -430,10 +450,7 @@ impl Crabrave {
         );
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     /// Makes a PUT request to the API
@@ -452,10 +469,7 @@ impl Crabrave {
         );
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     /// Makes a multipart/form-data request to the API using the given HTTP method.
@@ -513,10 +527,7 @@ impl Crabrave {
             );
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     /// Makes a POST request with multipart/form-data to the API
@@ -564,10 +575,7 @@ impl Crabrave {
         );
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 
     /// Makes a DELETE request with a JSON body to the API
@@ -585,10 +593,7 @@ impl Crabrave {
         );
         let response = request.send().await?;
 
-        Self::check_rate_limit(&response)?;
-
-        let bytes = response.bytes().await?;
-        response::parse_response_bytes(&bytes)
+        Self::handle_response(response).await
     }
 }
 
@@ -775,21 +780,29 @@ impl CrabraveBuilder {
     }
 }
 
+/// Deserializes a field that the API represents as "no value" via `null`, `{}`,
+/// or `[]`, and as an actual value otherwise.
+///
+/// An untagged `enum { Value(T), Empty {} }` doesn't work here: variant order
+/// means `Value(T)` is tried first, and since target types like
+/// `TumblrmartAccessories` have `#[serde(default)]` on every field, `{}`
+/// always matches `Value(T)` before `Empty` gets a chance, so the `Empty` arm
+/// is unreachable and an explicit `null` fails both arms. Dispatching on the
+/// raw `Value` directly avoids that ordering trap.
 pub(crate) fn empty_object_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: Deserializer<'de>,
-    T: Deserialize<'de>,
+    T: serde::de::DeserializeOwned,
 {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum EmptyOrValue<T> {
-        Value(T),
-        Empty {},
-    }
+    let value: Option<serde_json::Value> = Option::deserialize(deserializer)?;
 
-    match EmptyOrValue::deserialize(deserializer)? {
-        EmptyOrValue::Value(v) => Ok(Some(v)),
-        EmptyOrValue::Empty {} => Ok(None),
+    match value {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Object(map)) if map.is_empty() => Ok(None),
+        Some(serde_json::Value::Array(arr)) if arr.is_empty() => Ok(None),
+        Some(v) => serde_json::from_value(v)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
     }
 }
 

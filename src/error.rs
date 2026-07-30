@@ -39,6 +39,8 @@ pub enum CrabError {
         status: u16,
         /// Error message from the API
         message: String,
+        /// Detailed error objects from the response body's `errors` array
+        errors: Vec<ApiErrorDetail>,
     },
 
     /// Rate limit exceeded
@@ -77,6 +79,19 @@ pub enum CrabError {
     InvalidParameter(String),
 }
 
+/// A single detailed error object from a Tumblr API error response's `errors` array
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ApiErrorDetail {
+    /// Short human-readable summary of the error
+    pub title: Option<String>,
+    /// Tumblr-specific numeric error code
+    pub code: Option<i64>,
+    /// Longer human-readable explanation of the error
+    pub detail: Option<String>,
+    /// Finer-grained error code, sometimes present alongside `code`
+    pub subcode: Option<String>,
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -98,6 +113,7 @@ mod tests {
         let err = CrabError::Api {
             status: 404,
             message: "Blog not found".to_string(),
+            errors: Vec::new(),
         };
         assert_eq!(err.to_string(), "API error (status 404): Blog not found");
     }

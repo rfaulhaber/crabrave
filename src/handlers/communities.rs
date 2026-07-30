@@ -3,7 +3,7 @@
 //! Provides access to Tumblr community features including membership management,
 //! timelines, invitations, moderation, and reactions.
 
-use crate::{Blog, BlogIdentifier, CrabResult, Crabrave, EmptyResponse};
+use crate::{Blog, BlogIdentifier, CrabError, CrabResult, Crabrave, EmptyResponse};
 use serde::{Deserialize, Serialize};
 
 /// API for community-related operations
@@ -379,7 +379,7 @@ impl Communities {
     /// #     .build()?;
     /// let invitations = crab.communities("rust-community").invitations().await?;
     /// for invite in invitations.invitations {
-    ///     println!("Pending invite for: {}", invite.blog.name);
+    ///     println!("Pending invite for: {}", invite.recipient.name);
     /// }
     /// # Ok(())
     /// # }
@@ -505,6 +505,9 @@ impl Communities {
 
     /// Checks the invitation status for a blog
     ///
+    /// Returns `None` if there is no pending invitation for the blog (the API
+    /// responds 404 in that case), or `Some` with the sender otherwise.
+    ///
     /// # Arguments
     ///
     /// * `blog` - The blog identifier to check
@@ -522,21 +525,29 @@ impl Communities {
     /// let status = crab.communities("rust-community")
     ///     .invitation_status("friend-blog")
     ///     .await?;
-    /// println!("Invitation pending: {}", status.pending);
+    /// if let Some(status) = status {
+    ///     println!("invited by {}", status.sender.name);
+    /// } else {
+    ///     println!("no pending invitation");
+    /// }
     /// # Ok(())
     /// # }
     /// ```
     pub async fn invitation_status(
         &self,
         blog: impl Into<BlogIdentifier>,
-    ) -> CrabResult<InvitationStatusResponse> {
+    ) -> CrabResult<Option<InvitationStatus>> {
         let blog_id: BlogIdentifier = blog.into();
         let path = format!(
             "communities/{}/invitations/{}",
             self.handle,
             blog_id.as_str()
         );
-        self.client.get(&path).await
+        match self.client.get(&path).await {
+            Ok(status) => Ok(Some(status)),
+            Err(CrabError::Api { status: 404, .. }) => Ok(None),
+            Err(err) => Err(err),
+        }
     }
 
     /// Regenerates the community invite URL
@@ -812,6 +823,7 @@ pub struct Community {
 /// Member role in a community
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum MemberRole {
     /// Regular member
     Member,
@@ -819,6 +831,10 @@ pub enum MemberRole {
     Moderator,
     /// Community administrator
     Admin,
+    /// Catch-all for unrecognized roles.
+    /// Prevents deserialization failures when the API introduces new roles.
+    #[serde(other)]
+    Unknown,
 }
 
 /// A reaction to add to a community post
@@ -948,22 +964,36 @@ pub struct InvitationsResponse {
 /// A pending community invitation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Invitation {
+    /// Blog that sent the invitation
+    pub sender: InvitationBlog,
     /// Blog that was invited
-    pub blog: Blog,
-    /// When the invitation was sent
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub invited_at: Option<i64>,
-    /// Who sent the invitation
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub invited_by: Option<Blog>,
+    pub recipient: InvitationBlog,
+    /// Unix timestamp of when the invitation was sent
+    pub sent_on: i64,
 }
 
-/// Response from checking invitation status
+/// Condensed blog object in community invitation responses.
+/// Only `name` is guaranteed by the docs; common blog fields are captured when present.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InvitationStatusResponse {
-    /// Whether there is a pending invitation
-    #[serde(default)]
-    pub pending: bool,
+pub struct InvitationBlog {
+    /// Blog name
+    pub name: String,
+    /// Blog title
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Blog URL
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Blog UUID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
+}
+
+/// A pending community invitation, as reported by the invitation-status endpoint
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InvitationStatus {
+    /// Blog that sent the invitation
+    pub sender: InvitationBlog,
 }
 
 /// Response from regenerating invite URL
@@ -1213,6 +1243,10 @@ mod tests {
             serde_json::to_string(&MemberRole::Admin).unwrap(),
             "\"admin\""
         );
+        assert_eq!(
+            serde_json::to_string(&MemberRole::Unknown).unwrap(),
+            "\"unknown\""
+        );
     }
 
     #[test]
@@ -1228,6 +1262,10 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<MemberRole>("\"admin\"").unwrap(),
             MemberRole::Admin
+        );
+        assert_eq!(
+            serde_json::from_str::<MemberRole>("\"owner\"").unwrap(),
+            MemberRole::Unknown
         );
     }
 }

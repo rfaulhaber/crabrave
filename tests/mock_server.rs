@@ -1947,7 +1947,9 @@ async fn test_npf_post_creation_unauthorized() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -2502,7 +2504,9 @@ async fn test_edit_post_npf_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -2869,7 +2873,9 @@ async fn test_community_add_reaction_slug() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("PUT"))
-        .and(path("/communities/rust-community/posts/123456789/reactions"))
+        .and(path(
+            "/communities/rust-community/posts/123456789/reactions",
+        ))
         .and(body_json(serde_json::json!({
             "slug": ":heart:"
         })))
@@ -2899,7 +2905,9 @@ async fn test_community_add_reaction_grapheme() {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("PUT"))
-        .and(path("/communities/rust-community/posts/123456789/reactions"))
+        .and(path(
+            "/communities/rust-community/posts/123456789/reactions",
+        ))
         .and(body_json(serde_json::json!({
             "grapheme": "👍"
         })))
@@ -3299,7 +3307,9 @@ async fn test_unauthorized_error() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -3329,7 +3339,9 @@ async fn test_forbidden_error() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 403);
             assert_eq!(message, "Forbidden");
         }
@@ -3359,7 +3371,9 @@ async fn test_post_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -3592,7 +3606,9 @@ async fn test_blog_pages_unauthorized() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -3622,7 +3638,9 @@ async fn test_blog_pages_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -3725,7 +3743,9 @@ async fn test_blog_page_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -3755,7 +3775,9 @@ async fn test_blog_page_unauthorized() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -3858,7 +3880,9 @@ async fn test_post_mute_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -3891,7 +3915,9 @@ async fn test_post_mute_unauthorized() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -3924,7 +3950,9 @@ async fn test_post_mute_forbidden() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 403);
             assert_eq!(message, "Forbidden");
         }
@@ -4091,7 +4119,9 @@ async fn test_user_limits_unauthorized() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -4151,7 +4181,9 @@ async fn test_user_like_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -4207,7 +4239,9 @@ async fn test_user_unlike_not_found() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 404);
             assert_eq!(message, "Not Found");
         }
@@ -4237,7 +4271,9 @@ async fn test_user_like_unauthorized() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 401);
             assert_eq!(message, "Unauthorized");
         }
@@ -4407,7 +4443,9 @@ async fn test_user_filtered_tags_add_limit_exceeded() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 403);
             assert_eq!(message, "Forbidden");
         }
@@ -4561,7 +4599,9 @@ async fn test_user_filtered_content_add_limit_exceeded() {
 
     assert!(result.is_err());
     match result {
-        Err(CrabError::Api { status, message }) => {
+        Err(CrabError::Api {
+            status, message, ..
+        }) => {
             assert_eq!(status, 403);
             assert_eq!(message, "Forbidden");
         }
@@ -4736,4 +4776,304 @@ async fn audio_post_bug() {
     let result = client.blogs(TEST_BLOG_NAME).post("12345").get().await;
 
     assert!(result.is_ok(), "failed with {:?}", result);
+}
+
+// =============================================================================
+// Hardening tests: non-envelope errors, error detail, avatar formats,
+// invitations, legacy content, and lenient empty-shape parsing
+// =============================================================================
+
+#[tokio::test]
+async fn test_gateway_error_non_envelope_body() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/info")))
+        .respond_with(
+            ResponseTemplate::new(502)
+                .set_body_string("<html>Bad Gateway</html>")
+                .insert_header("content-type", "text/html"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs(TEST_BLOG_NAME).info().await;
+
+    match result {
+        Err(CrabError::Api { status, .. }) => assert_eq!(status, 502),
+        other => panic!("Expected Api error, got: {:?}", other),
+    }
+}
+
+#[tokio::test]
+async fn test_envelope_error_detail() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/info")))
+        .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 400,
+                "msg": "Bad Request"
+            },
+            "response": {},
+            "errors": [
+                {
+                    "title": "Bad Request",
+                    "code": 8001,
+                    "detail": "NPF JSON parameter is invalid",
+                    "subcode": "8001.1"
+                }
+            ]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs(TEST_BLOG_NAME).info().await;
+
+    match result {
+        Err(CrabError::Api { status, errors, .. }) => {
+            assert_eq!(status, 400);
+            assert_eq!(errors.len(), 1);
+            assert_eq!(
+                errors[0].detail.as_deref(),
+                Some("NPF JSON parameter is invalid")
+            );
+        }
+        other => panic!("Expected Api error, got: {:?}", other),
+    }
+
+    // Re-issue to check the error's Display separately, since `result` was consumed above.
+    let err = client
+        .blogs(TEST_BLOG_NAME)
+        .info()
+        .await
+        .expect_err("expected error");
+    let message = err.to_string();
+    assert!(
+        message.contains("NPF JSON parameter is invalid"),
+        "message: {message}"
+    );
+    assert!(message.contains("8001.1"), "message: {message}");
+}
+
+#[tokio::test]
+async fn test_avatar_endpoint_jpeg() {
+    let avatar = include_bytes!("./fixtures/demo_avatar.png");
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/demo/avatar/64"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_bytes(avatar)
+                .insert_header("Content-Type", "image/jpeg"),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs("demo")
+        .avatar(Some(64))
+        .await
+        .expect("Callout failed");
+
+    assert!(matches!(result, AvatarResponse::ImageData(_)));
+}
+
+#[tokio::test]
+async fn test_community_invitation_status_pending() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/invitations/friend-blog"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "sender": { "name": "admin-blog" }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .invitation_status("friend-blog")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let status = result.unwrap().expect("expected a pending invitation");
+    assert_eq!(status.sender.name, "admin-blog");
+}
+
+#[tokio::test]
+async fn test_community_invitation_status_none() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/invitations/friend-blog"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 404,
+                "msg": "Not Found"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .invitation_status("friend-blog")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    assert!(result.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn test_community_invitations() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/invitations"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "invitations": [
+                    {
+                        "sender": { "name": "admin-blog" },
+                        "recipient": { "name": "friend-blog" },
+                        "sent_on": 1234567890
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.communities("rust-community").invitations().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let invitations = result.unwrap().invitations;
+    assert_eq!(invitations.len(), 1);
+    assert_eq!(invitations[0].sender.name, "admin-blog");
+    assert_eq!(invitations[0].recipient.name, "friend-blog");
+    assert_eq!(invitations[0].sent_on, 1234567890);
+}
+
+#[tokio::test]
+async fn test_post_with_legacy_html_content() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "posts": [
+                    {
+                        "id_string": "123456",
+                        "blog_name": TEST_BLOG_NAME,
+                        "post_url": format!("https://{}.tumblr.com/post/123456", TEST_BLOG_NAME),
+                        "type": "text",
+                        "timestamp": 1234567890,
+                        "tags": [],
+                        "note_count": 0,
+                        "content": "<p>legacy html</p>"
+                    }
+                ],
+                "total_posts": 1
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs(TEST_BLOG_NAME).posts().send().await;
+
+    assert!(result.is_ok(), "failed with: {:?}", result);
+    let posts = result.unwrap();
+    assert_eq!(posts.posts.len(), 1);
+    assert!(posts.posts[0].content.is_empty());
+}
+
+#[tokio::test]
+async fn test_blocks_entry_missing_tumblrmart_accessories() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "blocked_tumblelogs": [
+                    {
+                        "name": "some-blog",
+                        "title": "Some Blog",
+                        "description": "",
+                        "url": "https://some-blog.tumblr.com/",
+                        "uuid": "t:abc123",
+                        "updated": 0,
+                        "blocked_timestamp": 0,
+                        "can_show_badges": true
+                    }
+                ]
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs(TEST_BLOG_NAME).blocks().send().await;
+
+    assert!(result.is_ok(), "failed with: {:?}", result);
+    let blocks = result.unwrap();
+    assert_eq!(blocks.blocked_tumblelogs.len(), 1);
+    assert!(
+        blocks.blocked_tumblelogs[0]
+            .tumblrmart_accessories
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn test_empty_response_accepts_object_shape() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/user/filtered_tags"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {}
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.users().add_filtered_tags(vec!["spoilers"]).await;
+
+    assert!(result.is_ok(), "failed with: {:?}", result);
 }

@@ -10,7 +10,13 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// A content block in the NPF format
 ///
 /// Content blocks are the building pieces of NPF posts.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// `Deserialize` is implemented by hand rather than derived: serde's
+/// per-variant `#[serde(untagged)]` (needed so `Unknown` can capture the raw
+/// JSON) treats a deserialization failure inside a *recognized* variant the
+/// same as an unrecognized tag and silently falls back to `Unknown`, which
+/// would mask malformed payloads for known block types instead of erroring.
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum ContentBlock {
@@ -182,10 +188,11 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         timestamp: Option<i64>,
     },
-    /// Catch-all for unrecognized content block types.
-    /// Prevents deserialization failures when the API introduces new types.
-    #[serde(other)]
-    Unknown,
+    /// Catch-all preserving the original JSON of unrecognized content block types.
+    /// Prevents deserialization failures when the API introduces new types and
+    /// round-trips the captured value unchanged on serialization.
+    #[serde(untagged)]
+    Unknown(serde_json::Value),
 }
 
 /// Inline formatting for text blocks
@@ -311,7 +318,10 @@ pub struct MediaExif {
 }
 
 /// Attribution for content sources
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// `Deserialize` is implemented by hand; see the note on [`ContentBlock`] for why
+/// the `Unknown` catch-all can't be a plain derived `#[serde(untagged)]` variant.
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum Attribution {
@@ -351,10 +361,11 @@ pub enum Attribution {
         #[serde(skip_serializing_if = "Option::is_none")]
         logo: Option<Box<MediaObject>>,
     },
-    /// Catch-all for unrecognized attribution types.
-    /// Prevents deserialization failures when the API introduces new types.
-    #[serde(other)]
-    Unknown,
+    /// Catch-all preserving the original JSON of unrecognized attribution types.
+    /// Prevents deserialization failures when the API introduces new types and
+    /// round-trips the captured value unchanged on serialization.
+    #[serde(untagged)]
+    Unknown(serde_json::Value),
 }
 
 /// Post data for attribution
@@ -384,6 +395,7 @@ pub struct AttributionBlog {
 pub struct AudioMetadata {
     /// Track ID from the provider
     #[serde(
+        default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_metadata_id"
     )]
@@ -394,7 +406,11 @@ pub struct AudioMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoMetadata {
     /// Video ID from the provider
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_metadata_id"
+    )]
     pub id: Option<String>,
 }
 
@@ -414,6 +430,7 @@ pub struct EmbedIframe {
 /// Paywall subtype for premium content blocks
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum PaywallSubtype {
     /// Call-to-action paywall
     Cta,
@@ -421,6 +438,10 @@ pub enum PaywallSubtype {
     Divider,
     /// Disabled paywall
     Disabled,
+    /// Catch-all for unrecognized paywall subtypes.
+    /// Prevents deserialization failures when the API introduces new types.
+    #[serde(other)]
+    Unknown,
 }
 
 /// A single answer option in a poll
@@ -452,7 +473,10 @@ pub struct PollSettings {
 /// Layout information for NPF posts
 ///
 /// Layouts control how content blocks are arranged visually.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// `Deserialize` is implemented by hand; see the note on [`ContentBlock`] for why
+/// the `Unknown` catch-all can't be a plain derived `#[serde(untagged)]` variant.
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum LayoutBlock {
@@ -460,9 +484,12 @@ pub enum LayoutBlock {
     Rows {
         /// Display configuration
         display: Vec<DisplayBlock>,
-        /// Index after which to truncate (for "read more" functionality)
+        /// Index after which to truncate (for "read more" functionality).
+        ///
+        /// Per the NPF spec this may be `-1` when the read-more should come
+        /// before all blocks, so it is signed rather than `usize`.
         #[serde(skip_serializing_if = "Option::is_none")]
-        truncate_after: Option<usize>,
+        truncate_after: Option<i64>,
     },
     /// Ask layout - for ask/answer posts
     Ask {
@@ -472,10 +499,11 @@ pub enum LayoutBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         attribution: Option<AskAttribution>,
     },
-    /// Catch-all for unrecognized layout types.
-    /// Prevents deserialization failures when the API introduces new types.
-    #[serde(other)]
-    Unknown,
+    /// Catch-all preserving the original JSON of unrecognized layout types.
+    /// Prevents deserialization failures when the API introduces new types and
+    /// round-trips the captured value unchanged on serialization.
+    #[serde(untagged)]
+    Unknown(serde_json::Value),
 }
 
 /// Display block within a layout
@@ -598,6 +626,309 @@ impl ContentBlock {
             duration: None,
             metadata: None,
         }
+    }
+}
+
+/// Manual `Deserialize` for [`ContentBlock`].
+///
+/// A plain derive can't give `Unknown` both properties it needs: capturing the
+/// raw JSON of an unrecognized `type` tag *and* still erroring out on a
+/// recognized tag with a malformed payload. Marking `Unknown` as the derive's
+/// per-variant `#[serde(untagged)]` gets the former by treating literally any
+/// failure among the tagged variants as "fall through to `Unknown`" — including
+/// a missing required field on a known block type. Deserializing first into
+/// `Tagged` (a private mirror of `ContentBlock` using the classic
+/// `#[serde(other)]` catch-all) keeps tag matching and payload validation
+/// separate: an unrecognized tag lands in `Tagged::Unknown`, but a recognized
+/// tag with a bad payload fails inside `serde_json::from_value` and propagates
+/// as a real error.
+impl<'de> Deserialize<'de> for ContentBlock {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "lowercase")]
+        enum Tagged {
+            Text {
+                text: String,
+                subtype: Option<String>,
+                formatting: Option<Vec<InlineFormat>>,
+            },
+            Image {
+                media: Vec<MediaObject>,
+                alt_text: Option<String>,
+                caption: Option<String>,
+                #[serde(default, deserialize_with = "deserialize_attribution")]
+                attribution: Option<Attribution>,
+            },
+            Link {
+                url: String,
+                title: Option<String>,
+                description: Option<String>,
+                poster: Option<Vec<MediaObject>>,
+            },
+            Audio {
+                media: Option<Box<MediaObject>>,
+                url: Option<String>,
+                provider: Option<String>,
+                artist: Option<String>,
+                album: Option<String>,
+                title: Option<String>,
+                #[serde(default, deserialize_with = "deserialize_string_or_false")]
+                embed_html: Option<String>,
+                embed_url: Option<String>,
+                poster: Option<Vec<MediaObject>>,
+                #[serde(default, deserialize_with = "deserialize_attribution")]
+                attribution: Option<Attribution>,
+                metadata: Option<AudioMetadata>,
+            },
+            Video {
+                #[serde(default, deserialize_with = "deserialize_media_object_lenient")]
+                media: Option<Box<MediaObject>>,
+                url: Option<String>,
+                provider: Option<String>,
+                #[serde(default, deserialize_with = "deserialize_string_or_false")]
+                embed_html: Option<String>,
+                embed_iframe: Option<EmbedIframe>,
+                embed_url: Option<String>,
+                poster: Option<Vec<MediaObject>>,
+                #[serde(default, deserialize_with = "deserialize_attribution")]
+                attribution: Option<Attribution>,
+                can_autoplay_on_cellular: Option<bool>,
+                duration: Option<f64>,
+                metadata: Option<VideoMetadata>,
+            },
+            Paywall {
+                subtype: Option<PaywallSubtype>,
+                url: Option<String>,
+                text: Option<String>,
+                is_visible: Option<bool>,
+            },
+            Poll {
+                client_id: String,
+                question: String,
+                answers: Vec<PollAnswer>,
+                settings: Option<PollSettings>,
+                created_at: Option<String>,
+                timestamp: Option<i64>,
+            },
+            #[serde(other)]
+            Unknown,
+        }
+
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let tagged: Tagged =
+            serde_json::from_value(value.clone()).map_err(serde::de::Error::custom)?;
+        Ok(match tagged {
+            Tagged::Text {
+                text,
+                subtype,
+                formatting,
+            } => ContentBlock::Text {
+                text,
+                subtype,
+                formatting,
+            },
+            Tagged::Image {
+                media,
+                alt_text,
+                caption,
+                attribution,
+            } => ContentBlock::Image {
+                media,
+                alt_text,
+                caption,
+                attribution,
+            },
+            Tagged::Link {
+                url,
+                title,
+                description,
+                poster,
+            } => ContentBlock::Link {
+                url,
+                title,
+                description,
+                poster,
+            },
+            Tagged::Audio {
+                media,
+                url,
+                provider,
+                artist,
+                album,
+                title,
+                embed_html,
+                embed_url,
+                poster,
+                attribution,
+                metadata,
+            } => ContentBlock::Audio {
+                media,
+                url,
+                provider,
+                artist,
+                album,
+                title,
+                embed_html,
+                embed_url,
+                poster,
+                attribution,
+                metadata,
+            },
+            Tagged::Video {
+                media,
+                url,
+                provider,
+                embed_html,
+                embed_iframe,
+                embed_url,
+                poster,
+                attribution,
+                can_autoplay_on_cellular,
+                duration,
+                metadata,
+            } => ContentBlock::Video {
+                media,
+                url,
+                provider,
+                embed_html,
+                embed_iframe,
+                embed_url,
+                poster,
+                attribution,
+                can_autoplay_on_cellular,
+                duration,
+                metadata,
+            },
+            Tagged::Paywall {
+                subtype,
+                url,
+                text,
+                is_visible,
+            } => ContentBlock::Paywall {
+                subtype,
+                url,
+                text,
+                is_visible,
+            },
+            Tagged::Poll {
+                client_id,
+                question,
+                answers,
+                settings,
+                created_at,
+                timestamp,
+            } => ContentBlock::Poll {
+                client_id,
+                question,
+                answers,
+                settings,
+                created_at,
+                timestamp,
+            },
+            Tagged::Unknown => ContentBlock::Unknown(value),
+        })
+    }
+}
+
+/// Manual `Deserialize` for [`Attribution`]; see the note on the `ContentBlock`
+/// impl for why `Unknown` needs this instead of a derived `#[serde(untagged)]`.
+impl<'de> Deserialize<'de> for Attribution {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "lowercase")]
+        enum Tagged {
+            Post {
+                url: String,
+                post: Option<AttributionPost>,
+                blog: Option<AttributionBlog>,
+            },
+            Link {
+                url: String,
+            },
+            Blog {
+                blog: Option<AttributionBlog>,
+            },
+            App {
+                url: String,
+                app_name: Option<String>,
+                display_text: Option<String>,
+                logo: Option<Box<MediaObject>>,
+            },
+            #[serde(other)]
+            Unknown,
+        }
+
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let tagged: Tagged =
+            serde_json::from_value(value.clone()).map_err(serde::de::Error::custom)?;
+        Ok(match tagged {
+            Tagged::Post { url, post, blog } => Attribution::Post { url, post, blog },
+            Tagged::Link { url } => Attribution::Link { url },
+            Tagged::Blog { blog } => Attribution::Blog { blog },
+            Tagged::App {
+                url,
+                app_name,
+                display_text,
+                logo,
+            } => Attribution::App {
+                url,
+                app_name,
+                display_text,
+                logo,
+            },
+            Tagged::Unknown => Attribution::Unknown(value),
+        })
+    }
+}
+
+/// Manual `Deserialize` for [`LayoutBlock`]; see the note on the `ContentBlock`
+/// impl for why `Unknown` needs this instead of a derived `#[serde(untagged)]`.
+impl<'de> Deserialize<'de> for LayoutBlock {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "lowercase")]
+        enum Tagged {
+            Rows {
+                display: Vec<DisplayBlock>,
+                truncate_after: Option<i64>,
+            },
+            Ask {
+                blocks: Vec<usize>,
+                attribution: Option<AskAttribution>,
+            },
+            #[serde(other)]
+            Unknown,
+        }
+
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let tagged: Tagged =
+            serde_json::from_value(value.clone()).map_err(serde::de::Error::custom)?;
+        Ok(match tagged {
+            Tagged::Rows {
+                display,
+                truncate_after,
+            } => LayoutBlock::Rows {
+                display,
+                truncate_after,
+            },
+            Tagged::Ask {
+                blocks,
+                attribution,
+            } => LayoutBlock::Ask {
+                blocks,
+                attribution,
+            },
+            Tagged::Unknown => LayoutBlock::Unknown(value),
+        })
     }
 }
 
@@ -923,7 +1254,7 @@ mod tests {
         });
 
         let block: ContentBlock = serde_json::from_value(json).unwrap();
-        assert!(matches!(block, ContentBlock::Unknown));
+        assert!(matches!(block, ContentBlock::Unknown(_)));
     }
 
     #[test]
@@ -934,7 +1265,7 @@ mod tests {
         });
 
         let attr: Attribution = serde_json::from_value(json).unwrap();
-        assert!(matches!(attr, Attribution::Unknown));
+        assert!(matches!(attr, Attribution::Unknown(_)));
     }
 
     #[test]
@@ -945,7 +1276,7 @@ mod tests {
         });
 
         let layout: LayoutBlock = serde_json::from_value(json).unwrap();
-        assert!(matches!(layout, LayoutBlock::Unknown));
+        assert!(matches!(layout, LayoutBlock::Unknown(_)));
     }
 
     #[test]
@@ -959,7 +1290,99 @@ mod tests {
         let blocks: Vec<ContentBlock> = serde_json::from_value(json).unwrap();
         assert_eq!(blocks.len(), 3);
         assert!(matches!(&blocks[0], ContentBlock::Text { text, .. } if text == "hello"));
-        assert!(matches!(blocks[1], ContentBlock::Unknown));
+        assert!(matches!(blocks[1], ContentBlock::Unknown(_)));
         assert!(matches!(&blocks[2], ContentBlock::Text { text, .. } if text == "world"));
+    }
+
+    #[test]
+    fn test_unknown_content_block_round_trips_original_json() {
+        let json = serde_json::json!({
+            "type": "some_future_block",
+            "payload": { "x": 1 }
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        match &block {
+            ContentBlock::Unknown(value) => assert_eq!(value, &json),
+            _ => panic!("Expected Unknown block"),
+        }
+
+        assert_eq!(serde_json::to_value(&block).unwrap(), json);
+    }
+
+    #[test]
+    fn test_known_content_block_with_malformed_payload_still_errors() {
+        let json = serde_json::json!({ "type": "text" });
+        let result: Result<ContentBlock, _> = serde_json::from_value(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_rows_layout_truncate_after_negative_one() {
+        let json = serde_json::json!({
+            "type": "rows",
+            "display": [{ "blocks": [0] }],
+            "truncate_after": -1
+        });
+
+        let layout: LayoutBlock = serde_json::from_value(json).unwrap();
+        match layout {
+            LayoutBlock::Rows { truncate_after, .. } => {
+                assert_eq!(truncate_after, Some(-1));
+            }
+            _ => panic!("Expected Rows layout"),
+        }
+    }
+
+    #[test]
+    fn test_audio_metadata_empty_object() {
+        let json = serde_json::json!({
+            "type": "audio",
+            "url": "https://spotify.com/track/123",
+            "metadata": {}
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Audio { metadata, .. } => {
+                let metadata = metadata.expect("expected metadata object");
+                assert!(metadata.id.is_none());
+            }
+            _ => panic!("Expected Audio block"),
+        }
+    }
+
+    #[test]
+    fn test_video_metadata_numeric_id() {
+        let json = serde_json::json!({
+            "type": "video",
+            "url": "https://vimeo.com/123456789",
+            "metadata": { "id": 123456789 }
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Video { metadata, .. } => {
+                let metadata = metadata.expect("expected metadata object");
+                assert_eq!(metadata.id, Some("123456789".to_string()));
+            }
+            _ => panic!("Expected Video block"),
+        }
+    }
+
+    #[test]
+    fn test_paywall_unrecognized_subtype() {
+        let json = serde_json::json!({
+            "type": "paywall",
+            "subtype": "some_future_subtype"
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Paywall { subtype, .. } => {
+                assert!(matches!(subtype, Some(PaywallSubtype::Unknown)));
+            }
+            _ => panic!("Expected Paywall block"),
+        }
     }
 }

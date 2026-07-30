@@ -1,6 +1,6 @@
 //! Response handling and parsing for the Tumblr API
 
-use crate::{CrabError, CrabResult};
+use crate::{ApiErrorDetail, CrabError, CrabResult};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +14,11 @@ pub struct ApiResponse<T> {
     pub meta: Meta,
     /// The actual response data
     pub response: T,
+    /// Raw error objects from the envelope, present on error responses
+    ///
+    /// Kept as raw JSON so a malformed entry can never fail envelope parsing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<serde_json::Value>,
 }
 
 /// Response metadata returned by the API
@@ -25,14 +30,32 @@ pub struct Meta {
     pub msg: String,
 }
 
-/// A response type for endpoints that return an empty array
+/// A response type for endpoints that return no useful data
 ///
 /// Some Tumblr API endpoints return an empty array `[]` in the response field
-/// when there's no useful data to return (e.g., bulk operations, deletions).
-/// This type allows those responses to be deserialized properly while
-/// conveying that no useful data is returned.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// when there's no useful data to return (e.g., bulk operations, deletions),
+/// while others (per Tumblr's docs, e.g. filtered tags/content) return an
+/// empty object `{}` or `null` instead. This type accepts any of the three
+/// shapes and normalizes them to an (possibly empty) `Vec`.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct EmptyResponse(Vec<serde_json::Value>);
+
+impl<'de> Deserialize<'de> for EmptyResponse {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        match value {
+            serde_json::Value::Null | serde_json::Value::Object(_) => Ok(EmptyResponse(Vec::new())),
+            serde_json::Value::Array(arr) => Ok(EmptyResponse(arr)),
+            other => Err(serde::de::Error::custom(format!(
+                "expected null, object, or array for empty response, got {}",
+                crate::kind_of(&other),
+            ))),
+        }
+    }
+}
 
 impl<T> ApiResponse<T> {
     /// Unwraps the response data, consuming the envelope
@@ -62,18 +85,62 @@ pub fn parse_response<T: DeserializeOwned>(json: &str) -> CrabResult<T> {
 
 /// Parses a Tumblr API response from bytes
 ///
-/// Parses the JSON once into the envelope, checks the status code, then
+/// Thin wrapper around [`parse_response_bytes_with_status`] for callers (and
+/// existing tests) that don't have an HTTP status to hand; it assumes 200,
+/// which preserves the original behavior of surfacing non-JSON bodies as
+/// `Serialization` errors.
+pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> {
+    parse_response_bytes_with_status(bytes, 200)
+}
+
+/// Parses a Tumblr API response from bytes, given the HTTP status of the request.
+///
+/// Parses the JSON once into the envelope, checks the envelope status, then
 /// converts the inner response value into the target type.
 ///
 /// When deserialization fails on a response containing a `posts` array,
 /// each post is tried individually to identify which one caused the error.
-pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> {
-    let envelope: ApiResponse<serde_json::Value> = serde_json::from_slice(bytes)?;
+///
+/// If the body isn't a JSON envelope at all (e.g. a CDN error page), the HTTP
+/// status is used to decide how to report it: a non-2xx status yields an
+/// `Api` error carrying the status and a snippet of the raw body, while a 2xx
+/// status preserves the original `Serialization` error.
+pub(crate) fn parse_response_bytes_with_status<T: DeserializeOwned>(
+    bytes: &[u8],
+    http_status: u16,
+) -> CrabResult<T> {
+    let envelope: ApiResponse<serde_json::Value> = match serde_json::from_slice(bytes) {
+        Ok(envelope) => envelope,
+        Err(parse_err) => {
+            return if is_success(http_status) {
+                Err(CrabError::Serialization(parse_err))
+            } else {
+                let snippet: String = String::from_utf8_lossy(bytes).chars().take(200).collect();
+                Err(CrabError::Api {
+                    status: http_status,
+                    message: format!("non-JSON response body: {snippet}"),
+                    errors: Vec::new(),
+                })
+            };
+        }
+    };
 
     if !is_success(envelope.meta.status) {
+        let errors = extract_error_details(&envelope.errors);
+        let mut message = envelope.meta.msg.clone();
+        let summaries: Vec<String> = errors
+            .iter()
+            .map(format_error_detail)
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !summaries.is_empty() {
+            message.push_str("; ");
+            message.push_str(&summaries.join("; "));
+        }
         return Err(CrabError::Api {
             status: envelope.meta.status,
-            message: envelope.meta.msg,
+            message,
+            errors,
         });
     }
 
@@ -83,9 +150,8 @@ pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> 
         if let Some(posts) = envelope.response.get("posts").and_then(|p| p.as_array()) {
             for (i, post) in posts.iter().enumerate() {
                 let post_id = post.get("id_string").and_then(|v| v.as_str());
-                if let Err(e) = serde_json::from_value::<crate::handlers::blog::Post>(
-                    post.clone(),
-                ) {
+                if let Err(e) = serde_json::from_value::<crate::handlers::blog::Post>(post.clone())
+                {
                     let id_info = post_id.map_or(String::new(), |id| format!(" (id: {id})"));
                     return CrabError::InvalidResponse(format!(
                         "failed to parse post at index {i}{id_info}: {e}"
@@ -95,6 +161,57 @@ pub fn parse_response_bytes<T: DeserializeOwned>(bytes: &[u8]) -> CrabResult<T> 
         }
         CrabError::Serialization(original_err)
     })
+}
+
+/// Best-effort extraction of structured error details from an envelope's raw `errors` array.
+///
+/// Each entry is read leniently via `.get()`/`.as_str()`/`.as_i64()` rather than
+/// deserialized strictly, so a malformed or unexpected entry degrades to a
+/// mostly-empty `ApiErrorDetail` instead of failing the whole response.
+fn extract_error_details(errors: &[serde_json::Value]) -> Vec<ApiErrorDetail> {
+    errors
+        .iter()
+        .map(|e| ApiErrorDetail {
+            title: e.get("title").and_then(|v| v.as_str()).map(str::to_owned),
+            code: e.get("code").and_then(serde_json::Value::as_i64),
+            detail: e.get("detail").and_then(|v| v.as_str()).map(str::to_owned),
+            subcode: e.get("subcode").and_then(|v| {
+                v.as_str()
+                    .map(str::to_owned)
+                    .or_else(|| v.as_i64().map(|n| n.to_string()))
+            }),
+        })
+        .collect()
+}
+
+/// Renders one error detail as a compact summary, omitting parts that are absent.
+fn format_error_detail(detail: &ApiErrorDetail) -> String {
+    let mut parts: Vec<String> = Vec::new();
+
+    if let Some(title) = &detail.title {
+        parts.push(title.clone());
+    }
+
+    let mut code_part = String::new();
+    if let Some(code) = detail.code {
+        code_part.push_str(&format!("code {code}"));
+    }
+    if let Some(subcode) = &detail.subcode {
+        if code_part.is_empty() {
+            code_part.push_str(&format!("subcode {subcode}"));
+        } else {
+            code_part.push_str(&format!(", subcode {subcode}"));
+        }
+    }
+    if !code_part.is_empty() {
+        parts.push(format!("({code_part})"));
+    }
+
+    if let Some(text) = &detail.detail {
+        parts.push(text.clone());
+    }
+
+    parts.join(": ")
 }
 
 fn is_success(code: u16) -> bool {
@@ -148,9 +265,14 @@ mod tests {
         assert!(result.is_err());
 
         match result {
-            Err(CrabError::Api { status, message }) => {
+            Err(CrabError::Api {
+                status,
+                message,
+                errors,
+            }) => {
                 assert_eq!(status, 404);
                 assert_eq!(message, "Not Found");
+                assert!(errors.is_empty());
             }
             _ => panic!("Expected Api error"),
         }
@@ -167,6 +289,7 @@ mod tests {
                 name: "test".to_string(),
                 value: 42,
             },
+            errors: Vec::new(),
         };
 
         assert!(response.is_success());
@@ -180,6 +303,7 @@ mod tests {
                 msg: "Internal Server Error".to_string(),
             },
             response: (),
+            errors: Vec::new(),
         };
 
         assert!(!response.is_success());
@@ -251,5 +375,97 @@ mod tests {
         let result: CrabResult<PostsResponse> = parse_response(&envelope.to_string());
         assert!(result.is_ok(), "unexpected error: {:?}", result);
         assert_eq!(result.unwrap().posts.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_error_response_with_error_details() {
+        let json = json!({
+            "meta": { "status": 400, "msg": "Bad Request" },
+            "response": {},
+            "errors": [
+                {
+                    "title": "Bad Request",
+                    "code": 8001,
+                    "detail": "NPF is invalid",
+                    "subcode": "8001.1"
+                }
+            ]
+        });
+
+        let result: CrabResult<TestData> = parse_response(&json.to_string());
+        let err = result.unwrap_err();
+
+        match &err {
+            CrabError::Api { status, errors, .. } => {
+                assert_eq!(*status, 400);
+                assert_eq!(errors.len(), 1);
+                assert_eq!(errors[0].title.as_deref(), Some("Bad Request"));
+                assert_eq!(errors[0].code, Some(8001));
+                assert_eq!(errors[0].detail.as_deref(), Some("NPF is invalid"));
+                assert_eq!(errors[0].subcode.as_deref(), Some("8001.1"));
+            }
+            other => panic!("Expected Api error, got: {other:?}"),
+        }
+
+        let msg = err.to_string();
+        assert!(msg.contains("NPF is invalid"), "message: {msg}");
+        assert!(msg.contains("8001.1"), "message: {msg}");
+    }
+
+    #[test]
+    fn test_parse_error_response_with_code_only_detail() {
+        let json = json!({
+            "meta": { "status": 400, "msg": "Bad Request" },
+            "response": {},
+            "errors": [
+                { "code": 8001, "subcode": "8001.1" }
+            ]
+        });
+
+        let result: CrabResult<TestData> = parse_response(&json.to_string());
+        let err = result.unwrap_err();
+
+        let msg = err.to_string();
+        assert!(msg.contains("code 8001"), "message: {msg}");
+        assert!(msg.contains("8001.1"), "message: {msg}");
+    }
+
+    #[test]
+    fn test_parse_non_json_body_with_error_status_yields_api_error() {
+        let result: CrabResult<TestData> =
+            parse_response_bytes_with_status(b"<html>bad gateway</html>", 502);
+
+        match result {
+            Err(CrabError::Api {
+                status, message, ..
+            }) => {
+                assert_eq!(status, 502);
+                assert!(message.contains("bad gateway"), "message: {message}");
+            }
+            other => panic!("Expected Api error, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_parse_non_json_body_with_success_status_yields_serialization_error() {
+        let result: CrabResult<TestData> =
+            parse_response_bytes_with_status(b"<html>bad gateway</html>", 200);
+
+        match result {
+            Err(CrabError::Serialization(_)) => {}
+            other => panic!("Expected Serialization error, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_empty_response_accepts_array_object_and_null() {
+        let from_array: EmptyResponse = serde_json::from_str("[]").unwrap();
+        assert_eq!(from_array, EmptyResponse(Vec::new()));
+
+        let from_object: EmptyResponse = serde_json::from_str("{}").unwrap();
+        assert_eq!(from_object, EmptyResponse(Vec::new()));
+
+        let from_null: EmptyResponse = serde_json::from_str("null").unwrap();
+        assert_eq!(from_null, EmptyResponse(Vec::new()));
     }
 }

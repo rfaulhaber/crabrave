@@ -1829,7 +1829,7 @@ pub struct Post {
 
     // === NPF Content ===
     /// Content blocks (NPF format)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::deserialize_content_blocks")]
     pub content: Vec<ContentBlock>,
     /// Layout blocks (NPF format)
     #[serde(default)]
@@ -2091,7 +2091,7 @@ pub struct BlockedBlog {
     pub uuid: String,
     pub updated: i64,
     pub blocked_timestamp: i64,
-    #[serde(deserialize_with = "crate::empty_object_as_none")]
+    #[serde(default, deserialize_with = "crate::empty_object_as_none")]
     pub tumblrmart_accessories: Option<TumblrmartAccessories>,
     pub can_show_badges: bool,
 }
