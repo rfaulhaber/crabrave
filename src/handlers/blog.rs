@@ -6,7 +6,7 @@ use crate::{
     models::TumblrmartAccessories,
     npf::{ContentBlock, LayoutBlock},
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// API for blog-related endpoints
 ///
@@ -1501,7 +1501,31 @@ pub struct NoteNextQueryParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     /// Timestamp before which to fetch notes
-    pub before_timestamp: i64,
+    #[serde(deserialize_with = "deserialize_timestamp_as_string")]
+    pub before_timestamp: String,
+}
+
+/// Deserializes `before_timestamp` as a string.
+///
+/// The live Tumblr API returns this value quoted (e.g. `"1785363201"`) inside
+/// `_links.next.query_params`, but older captures/number forms are tolerated
+/// by coercing a JSON integer to its decimal string.
+fn deserialize_timestamp_as_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrInt {
+        String(String),
+        Int(i64),
+    }
+
+    let value = StringOrInt::deserialize(deserializer)?;
+    Ok(match value {
+        StringOrInt::String(s) => s,
+        StringOrInt::Int(i) => i.to_string(),
+    })
 }
 
 /// Response from the notes endpoint

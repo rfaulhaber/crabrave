@@ -315,7 +315,7 @@ impl CreatePostBuilder {
         let mime_type = source.mime_type().map(|s| s.to_string());
 
         self.content.push(ContentBlock::Video {
-            media: Some(vec![MediaObject {
+            media: Some(Box::new(MediaObject {
                 url: String::new(),
                 media_type: mime_type,
                 media_key: None,
@@ -327,7 +327,7 @@ impl CreatePostBuilder {
                 has_original_dimensions: None,
                 colors: None,
                 exif: None,
-            }]),
+            })),
             url: None,
             provider: Some("tumblr".to_string()),
             embed_html: None,
@@ -602,7 +602,7 @@ impl EditPostBuilder {
         let mime_type = source.mime_type().map(|s| s.to_string());
 
         let video_block = ContentBlock::Video {
-            media: Some(vec![MediaObject {
+            media: Some(Box::new(MediaObject {
                 url: String::new(),
                 media_type: mime_type,
                 media_key: None,
@@ -614,7 +614,7 @@ impl EditPostBuilder {
                 has_original_dimensions: None,
                 colors: None,
                 exif: None,
-            }]),
+            })),
             url: None,
             provider: Some("tumblr".to_string()),
             embed_html: None,
@@ -736,7 +736,7 @@ pub struct EditPostResponse {
 /// #     .consumer_secret("secret")
 /// #     .access_token("token")
 /// #     .build()?;
-/// // Simple text comment
+/// // Simple text comment, sent as a single NPF text block
 /// crab.blogs("my-blog")
 ///     .reblog("parent-blog-uuid", "123456", "reblogkey")
 ///     .comment("Great post!")
@@ -813,7 +813,8 @@ impl ReblogBuilder {
 
     /// Adds a simple text comment to the reblog
     ///
-    /// For richer content, use `content()` with NPF blocks instead.
+    /// Sent as a single NPF text block. For richer content, use `content()`
+    /// with NPF blocks instead.
     pub fn comment(mut self, comment: impl Into<String>) -> Self {
         self.comment = Some(comment.into());
         self
@@ -848,11 +849,12 @@ impl ReblogBuilder {
             "reblog_key": self.reblog_key,
         });
 
-        // NPF content takes precedence over simple comment
+        // NPF content takes precedence over simple comment. The /posts route
+        // has no `comment` param, so a plain comment must become an NPF text block.
         if let Some(content) = self.content {
             body["content"] = serde_json::json!(content);
         } else if let Some(comment) = self.comment {
-            body["comment"] = serde_json::json!(comment);
+            body["content"] = serde_json::json!(vec![ContentBlock::text(comment)]);
         }
 
         if let Some(layout) = self.layout {

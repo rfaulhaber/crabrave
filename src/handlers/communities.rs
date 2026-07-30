@@ -201,28 +201,86 @@ impl Communities {
     /// # Arguments
     ///
     /// * `blog` - The blog identifier of the member to remove
+    /// * `reason` - Why the member is being removed
     ///
     /// # Example
     ///
     /// ```no_run
     /// # use crabrave::Crabrave;
+    /// # use crabrave::handlers::communities::RemovalReason;
     /// # async fn example() -> Result<(), crabrave::CrabError> {
     /// # let crab = Crabrave::builder()
     /// #     .consumer_key("key")
     /// #     .consumer_secret("secret")
     /// #     .access_token("token")
     /// #     .build()?;
-    /// crab.communities("rust-community").remove_member("problematic-blog").await?;
+    /// crab.communities("rust-community")
+    ///     .remove_member("problematic-blog", RemovalReason::Spam)
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
     pub async fn remove_member(
         &self,
         blog: impl Into<BlogIdentifier>,
+        reason: RemovalReason,
+    ) -> CrabResult<EmptyResponse> {
+        self.remove_member_with_ban(blog, reason, None).await
+    }
+
+    /// Removes a member from the community and bans them from rejoining
+    ///
+    /// Requires moderator or admin privileges.
+    ///
+    /// # Arguments
+    ///
+    /// * `blog` - The blog identifier of the member to remove
+    /// * `reason` - Why the member is being removed
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # use crabrave::handlers::communities::RemovalReason;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// crab.communities("rust-community")
+    ///     .ban_member("problematic-blog", RemovalReason::Spam)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn ban_member(
+        &self,
+        blog: impl Into<BlogIdentifier>,
+        reason: RemovalReason,
+    ) -> CrabResult<EmptyResponse> {
+        self.remove_member_with_ban(blog, reason, Some(true)).await
+    }
+
+    async fn remove_member_with_ban(
+        &self,
+        blog: impl Into<BlogIdentifier>,
+        reason: RemovalReason,
+        ban_user: Option<bool>,
     ) -> CrabResult<EmptyResponse> {
         let blog_id: BlogIdentifier = blog.into();
         let path = format!("communities/{}/members/{}", self.handle, blog_id.as_str());
-        self.client.delete(&path).await
+        let (reason, note) = reason.into_wire();
+        self.client
+            .delete_with_body(
+                &path,
+                &RemoveMemberRequest {
+                    reason,
+                    note,
+                    ban_user,
+                },
+            )
+            .await
     }
 
     /// Changes a member's role in the community
@@ -354,13 +412,57 @@ impl Communities {
     /// # }
     /// ```
     pub async fn invite(&self, blog: impl Into<BlogIdentifier>) -> CrabResult<EmptyResponse> {
+        self.invite_with_optional_message(blog, None).await
+    }
+
+    /// Invites a blog to join the community with an accompanying message
+    ///
+    /// Requires moderator or admin privileges. The API caps the message at
+    /// 100 characters; longer messages are rejected by the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `blog` - The blog identifier to invite
+    /// * `message` - A short message to include with the invitation (max 100 characters)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// crab.communities("rust-community")
+    ///     .invite_with_message("friend-blog", "Would love to have you here!")
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn invite_with_message(
+        &self,
+        blog: impl Into<BlogIdentifier>,
+        message: impl Into<String>,
+    ) -> CrabResult<EmptyResponse> {
+        self.invite_with_optional_message(blog, Some(message.into()))
+            .await
+    }
+
+    async fn invite_with_optional_message(
+        &self,
+        blog: impl Into<BlogIdentifier>,
+        message: Option<String>,
+    ) -> CrabResult<EmptyResponse> {
         let blog_id: BlogIdentifier = blog.into();
         let path = format!("communities/{}/invitations", self.handle);
         self.client
             .put(
                 &path,
                 &InviteRequest {
-                    blog: blog_id.to_string(),
+                    recipient_blog: blog_id.to_string(),
+                    message,
                 },
             )
             .await
@@ -468,12 +570,13 @@ impl Communities {
     /// # Arguments
     ///
     /// * `post_id` - The ID of the post to react to
-    /// * `reaction_id` - The reaction ID to add
+    /// * `reaction` - The reaction to add
     ///
     /// # Example
     ///
     /// ```no_run
     /// # use crabrave::Crabrave;
+    /// # use crabrave::handlers::communities::Reaction;
     /// # async fn example() -> Result<(), crabrave::CrabError> {
     /// # let crab = Crabrave::builder()
     /// #     .consumer_key("key")
@@ -481,7 +584,7 @@ impl Communities {
     /// #     .access_token("token")
     /// #     .build()?;
     /// crab.communities("rust-community")
-    ///     .add_reaction("123456789", "heart")
+    ///     .add_reaction("123456789", Reaction::slug(":heart:"))
     ///     .await?;
     /// # Ok(())
     /// # }
@@ -489,21 +592,14 @@ impl Communities {
     pub async fn add_reaction(
         &self,
         post_id: impl Into<String>,
-        reaction_id: impl Into<String>,
+        reaction: Reaction,
     ) -> CrabResult<EmptyResponse> {
         let path = format!(
             "communities/{}/posts/{}/reactions",
             self.handle,
             post_id.into()
         );
-        self.client
-            .put(
-                &path,
-                &ReactionRequest {
-                    reaction_id: reaction_id.into(),
-                },
-            )
-            .await
+        self.client.put(&path, &reaction).await
     }
 
     /// Removes a reaction from a post in the community
@@ -657,12 +753,18 @@ struct ChangeRoleRequest {
 
 #[derive(Debug, Clone, Serialize)]
 struct InviteRequest {
-    blog: String,
+    recipient_blog: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct ReactionRequest {
-    reaction_id: String,
+struct RemoveMemberRequest {
+    reason: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    note: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ban_user: Option<bool>,
 }
 
 // ============================================================================
@@ -717,6 +819,67 @@ pub enum MemberRole {
     Moderator,
     /// Community administrator
     Admin,
+}
+
+/// A reaction to add to a community post
+///
+/// The API accepts either a named slug (e.g. `:thumbs_up:`) or a raw unicode
+/// emoji grapheme (e.g. 👍); if both were somehow sent, slug takes precedence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reaction {
+    /// A named reaction slug, e.g. `:thumbs_up:`
+    Slug(String),
+    /// A raw unicode emoji, e.g. 👍
+    Grapheme(String),
+}
+
+impl Reaction {
+    /// Creates a reaction from a named slug, e.g. `:thumbs_up:`
+    pub fn slug(s: impl Into<String>) -> Self {
+        Self::Slug(s.into())
+    }
+
+    /// Creates a reaction from a raw unicode emoji, e.g. 👍
+    pub fn grapheme(g: impl Into<String>) -> Self {
+        Self::Grapheme(g.into())
+    }
+}
+
+/// Reason for removing a member from a community
+///
+/// Required by the moderation endpoint; the `Other` variant carries the
+/// mandatory note the API requires when no other reason fits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RemovalReason {
+    /// Wire value: `community_guidelines`
+    CommunityGuidelines,
+    /// Wire value: `off_topic`
+    OffTopic,
+    /// Wire value: `spam`
+    Spam,
+    /// Wire value: `inappropriate_behavior`
+    InappropriateBehavior,
+    /// Wire value: `tumblr_guidelines`
+    TumblrGuidelines,
+    /// Wire value: `other`, with a required explanatory note
+    Other {
+        /// Explanation for the removal, required by the API when reason is `other`
+        note: String,
+    },
+}
+
+impl RemovalReason {
+    fn into_wire(self) -> (&'static str, Option<String>) {
+        match self {
+            Self::CommunityGuidelines => ("community_guidelines", None),
+            Self::OffTopic => ("off_topic", None),
+            Self::Spam => ("spam", None),
+            Self::InappropriateBehavior => ("inappropriate_behavior", None),
+            Self::TumblrGuidelines => ("tumblr_guidelines", None),
+            Self::Other { note } => ("other", Some(note)),
+        }
+    }
 }
 
 /// Response from the community timeline endpoint

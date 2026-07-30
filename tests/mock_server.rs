@@ -1274,7 +1274,7 @@ async fn test_blog_notes() {
                         "query_params": {
                             "id": "123456789",
                             "mode": "all",
-                            "before_timestamp": 1234567870
+                            "before_timestamp": "1234567870"
                         }
                     }
                 }
@@ -1303,7 +1303,7 @@ async fn test_blog_notes() {
     assert!(links.next.is_some());
     assert_eq!(
         links.next.unwrap().query_params.before_timestamp,
-        1234567870
+        "1234567870"
     );
 }
 
@@ -2515,9 +2515,20 @@ async fn test_edit_post_npf_not_found() {
 async fn test_reblog_post_with_comment() {
     let mock_server = MockServer::start().await;
 
-    // NPF reblog uses POST to /blog/{blog}/posts with parent_tumblelog_uuid
+    // NPF reblog uses POST to /blog/{blog}/posts with parent_tumblelog_uuid.
+    // The exact body match proves a plain `.comment()` is sent as an NPF text
+    // block, not a legacy top-level `comment` key.
     Mock::given(method("POST"))
         .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
+        .and(body_json(serde_json::json!({
+            "parent_tumblelog_uuid": "parent-blog-uuid",
+            "parent_post_id": "789012",
+            "reblog_key": "abc123reblogkey",
+            "content": [
+                {"type": "text", "text": "Great post!"}
+            ],
+            "tags": "reblog,interesting"
+        })))
         .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
             "meta": {
                 "status": 201,
@@ -2792,6 +2803,220 @@ async fn test_community_members() {
     assert!(!response.members[0].is_moderator);
     assert!(response.members[1].is_moderator);
     assert_eq!(response.members[1].joined_ts, Some(1234567100));
+}
+
+#[tokio::test]
+async fn test_community_invite() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/invitations"))
+        .and(body_json(serde_json::json!({
+            "recipient_blog": "friend-blog"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .invite("friend-blog")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_invite_with_message() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/invitations"))
+        .and(body_json(serde_json::json!({
+            "recipient_blog": "friend-blog",
+            "message": "come join us"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .invite_with_message("friend-blog", "come join us")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_add_reaction_slug() {
+    use crabrave::handlers::communities::Reaction;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/posts/123456789/reactions"))
+        .and(body_json(serde_json::json!({
+            "slug": ":heart:"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .add_reaction("123456789", Reaction::slug(":heart:"))
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_add_reaction_grapheme() {
+    use crabrave::handlers::communities::Reaction;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/posts/123456789/reactions"))
+        .and(body_json(serde_json::json!({
+            "grapheme": "👍"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .add_reaction("123456789", Reaction::grapheme("👍"))
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_remove_member_spam() {
+    use crabrave::handlers::communities::RemovalReason;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/members/bad-blog"))
+        .and(body_json(serde_json::json!({
+            "reason": "spam"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .remove_member("bad-blog", RemovalReason::Spam)
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_remove_member_other_with_note() {
+    use crabrave::handlers::communities::RemovalReason;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/members/bad-blog"))
+        .and(body_json(serde_json::json!({
+            "reason": "other",
+            "note": "repeated harassment"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .remove_member(
+            "bad-blog",
+            RemovalReason::Other {
+                note: "repeated harassment".into(),
+            },
+        )
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_ban_member() {
+    use crabrave::handlers::communities::RemovalReason;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/members/bad-blog"))
+        .and(body_json(serde_json::json!({
+            "reason": "spam",
+            "ban_user": true
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .ban_member("bad-blog", RemovalReason::Spam)
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
 }
 
 // =============================================================================

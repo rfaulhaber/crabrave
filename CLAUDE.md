@@ -247,7 +247,7 @@ crab.communities("rust-community")
     .await?
 
 // Member management (moderator/admin)
-crab.communities("rust-community").remove_member("bad-blog").await?
+crab.communities("rust-community").remove_member("bad-blog", RemovalReason::Spam).await?
 crab.communities("rust-community").change_role("trusted-blog", MemberRole::Moderator).await?
 
 // Mute/unmute notifications
@@ -257,12 +257,13 @@ crab.communities("rust-community").unmute().await?
 // Invitation management
 crab.communities("rust-community").invitations().await?
 crab.communities("rust-community").invite("friend-blog").await?
+crab.communities("rust-community").invite_with_message("friend-blog", "Would love to have you here!").await?
 crab.communities("rust-community").cancel_invitation("friend-blog").await?
 crab.communities("rust-community").invitation_status("friend-blog").await?
 crab.communities("rust-community").regenerate_invite_url().await?
 
 // Reactions on posts
-crab.communities("rust-community").add_reaction("123456", "heart").await?
+crab.communities("rust-community").add_reaction("123456", Reaction::slug(":heart:")).await?
 crab.communities("rust-community").remove_reaction("123456", "heart").await?
 
 // Moderation (moderator/admin)

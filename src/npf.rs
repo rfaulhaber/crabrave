@@ -103,13 +103,13 @@ pub enum ContentBlock {
     },
     /// Video content block
     Video {
-        /// Media objects for this video (used for Tumblr-hosted video)
+        /// Media object for this video (used for Tumblr-hosted video)
         #[serde(
             skip_serializing_if = "Option::is_none",
             default,
-            deserialize_with = "deserialize_media_single_or_vec"
+            deserialize_with = "deserialize_media_object_lenient"
         )]
-        media: Option<Vec<MediaObject>>,
+        media: Option<Box<MediaObject>>,
         /// External video URL (used for external providers like YouTube, Vimeo)
         #[serde(skip_serializing_if = "Option::is_none")]
         url: Option<String>,
@@ -625,13 +625,14 @@ where
     }
 }
 
-/// Deserializes a media field that can be either a single object or an array.
+/// Deserializes a video block's `media` field, which the NPF spec defines as a
+/// single `MediaObject` but which the API sometimes returns as an array instead.
 ///
-/// The Tumblr API sometimes returns `media` as a single `MediaObject` and sometimes
-/// as an array of `MediaObject`s. This deserializer handles both cases.
-fn deserialize_media_single_or_vec<'de, D>(
+/// Accepts either shape; an array's first element is used and an empty array
+/// deserializes to `None`.
+fn deserialize_media_object_lenient<'de, D>(
     deserializer: D,
-) -> Result<Option<Vec<MediaObject>>, D::Error>
+) -> Result<Option<Box<MediaObject>>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -643,9 +644,9 @@ where
     }
 
     let value: Option<MediaOneOrMany> = Option::deserialize(deserializer)?;
-    Ok(value.map(|v| match v {
-        MediaOneOrMany::One(obj) => vec![*obj],
-        MediaOneOrMany::Many(vec) => vec,
+    Ok(value.and_then(|v| match v {
+        MediaOneOrMany::One(obj) => Some(obj),
+        MediaOneOrMany::Many(vec) => vec.into_iter().next().map(Box::new),
     }))
 }
 
@@ -761,6 +762,55 @@ mod tests {
             ContentBlock::Video { url, media, .. } => {
                 assert_eq!(url, Some("https://youtube.com/watch?v=abc".to_string()));
                 assert!(media.is_none());
+            }
+            _ => panic!("Expected video block"),
+        }
+    }
+
+    #[test]
+    fn test_video_media_serializes_as_single_object() {
+        let block = ContentBlock::Video {
+            media: Some(Box::new(MediaObject {
+                url: String::new(),
+                media_type: Some("video/mp4".to_string()),
+                media_key: None,
+                identifier: Some("video-1".to_string()),
+                width: None,
+                height: None,
+                original_dimensions_missing: None,
+                cropped: None,
+                has_original_dimensions: None,
+                colors: None,
+                exif: None,
+            })),
+            url: None,
+            provider: Some("tumblr".to_string()),
+            embed_html: None,
+            embed_iframe: None,
+            embed_url: None,
+            poster: None,
+            attribution: None,
+            can_autoplay_on_cellular: None,
+            duration: None,
+            metadata: None,
+        };
+
+        let value = serde_json::to_value(&block).unwrap();
+        assert!(value["media"].is_object());
+        assert_eq!(value["media"]["identifier"], "video-1");
+    }
+
+    #[test]
+    fn test_video_media_deserializes_from_array() {
+        let json = serde_json::json!({
+            "type": "video",
+            "media": [{"url": "https://example.com/video.mp4", "type": "video/mp4"}]
+        });
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Video { media, .. } => {
+                let media = media.expect("expected media object");
+                assert_eq!(media.url, "https://example.com/video.mp4");
             }
             _ => panic!("Expected video block"),
         }

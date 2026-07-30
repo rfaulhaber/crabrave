@@ -569,6 +569,27 @@ impl Crabrave {
         let bytes = response.bytes().await?;
         response::parse_response_bytes(&bytes)
     }
+
+    /// Makes a DELETE request with a JSON body to the API
+    ///
+    /// This is an internal helper method used by handlers.
+    pub(crate) async fn delete_with_body<T, B>(&self, path: &str, body: &B) -> CrabResult<T>
+    where
+        T: serde::de::DeserializeOwned,
+        B: serde::Serialize,
+    {
+        let url = self.url(path);
+        let request = self.client.delete(&url).json(body).header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", self.auth.access_token),
+        );
+        let response = request.send().await?;
+
+        Self::check_rate_limit(&response)?;
+
+        let bytes = response.bytes().await?;
+        response::parse_response_bytes(&bytes)
+    }
 }
 
 /// Builder for constructing a `Crabrave` client
