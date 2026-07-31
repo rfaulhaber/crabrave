@@ -218,7 +218,7 @@ impl Blogs {
         LikesBuilder::blog(self.client.clone(), self.identifier.clone())
     }
 
-    /// Get the blogs following this blog
+    /// Get the blogs this blog follows
     pub fn following(&self) -> FollowingBuilder {
         FollowingBuilder::blog(self.client.clone(), self.identifier.clone())
     }
@@ -631,7 +631,7 @@ impl Blogs {
     /// let post = crab.blogs("my-blog")
     ///     .create_post()
     ///     .add_block(ContentBlock::text("Hello World!"))
-    ///     .add_image(MediaSource::from_path("/path/to/image.jpg"))
+    ///     .add_image(MediaSource::from_path("/path/to/image.jpg")?)
     ///     .tags(vec!["rust", "programming"])
     ///     .send()
     ///     .await?;
@@ -1665,7 +1665,7 @@ pub struct Note {
     /// Formatted reply text (HTML)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formatting: Option<Vec<serde_json::Value>>,
-    /// Whether this note is from the original poster
+    /// Whether the authenticated user can block this note's author
     #[serde(default)]
     pub can_block: bool,
     /// Tags added in reblog (for reblogs_with_tags mode)

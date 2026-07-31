@@ -251,6 +251,77 @@ async fn test_rate_limit_nonzero_remaining() {
 }
 
 #[tokio::test]
+async fn test_rate_limit_retry_after_header_wins() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/staff/info"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .insert_header("retry-after", "42")
+                .insert_header("x-ratelimit-perhour-remaining", "0")
+                .insert_header("x-ratelimit-perhour-reset", "60")
+                .set_body_json(serde_json::json!({
+                    "meta": {
+                        "status": 429,
+                        "msg": "Rate Limit Exceeded"
+                    },
+                    "response": []
+                })),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("staff").info().await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CrabError::RateLimit { retry_after } => {
+            // An explicit Retry-After is the server's direct instruction and
+            // takes precedence over values inferred from the limit windows.
+            assert_eq!(retry_after, Some(42));
+        }
+        _ => panic!("Expected rate limit error"),
+    }
+}
+
+#[tokio::test]
+async fn test_rate_limit_per_minute() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/blog/staff/info"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .insert_header("x-ratelimit-perminute-remaining", "0")
+                .insert_header("x-ratelimit-perminute-reset", "30")
+                .insert_header("x-ratelimit-perhour-remaining", "100")
+                .insert_header("x-ratelimit-perhour-reset", "60")
+                .set_body_json(serde_json::json!({
+                    "meta": {
+                        "status": 429,
+                        "msg": "Rate Limit Exceeded"
+                    },
+                    "response": []
+                })),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("staff").info().await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        CrabError::RateLimit { retry_after } => {
+            assert_eq!(retry_after, Some(30));
+        }
+        _ => panic!("Expected rate limit error"),
+    }
+}
+
+#[tokio::test]
 async fn test_blog_posts_with_filters() {
     let mock_server = MockServer::start().await;
 

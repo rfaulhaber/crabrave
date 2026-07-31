@@ -325,18 +325,24 @@ impl Crabrave {
         if response.status().as_u16() == 429 {
             let headers = response.headers();
 
-            let per_hour_remaining =
-                get_header_number_value("x-ratelimit-perhour-remaining", headers);
-
-            let per_day_remaining =
-                get_header_number_value("x-ratelimit-perday-remaining", headers);
-
-            // the API should return a 0 value for one of these headers if we hit the limit
-            let retry_after = match (per_hour_remaining, per_day_remaining) {
-                (_, Some(0)) => get_header_number_value("x-ratelimit-perday-reset", headers),
-                (Some(0), _) => get_header_number_value("x-ratelimit-perhour-reset", headers),
-                _ => None,
+            // The reset for an exhausted window (remaining == 0), if the API
+            // sent both headers for it.
+            let exhausted_window_reset = |window: &str| {
+                (get_header_number_value(&format!("x-ratelimit-{window}-remaining"), headers)
+                    == Some(0))
+                .then(|| get_header_number_value(&format!("x-ratelimit-{window}-reset"), headers))
+                .flatten()
             };
+
+            // An explicit Retry-After (delta-seconds; a non-numeric HTTP-date
+            // form is ignored) is the server's direct instruction, so it wins.
+            // Otherwise infer from the x-ratelimit-* windows, longest first:
+            // if the daily quota is spent, waiting out an hourly or per-minute
+            // reset won't help.
+            let retry_after = get_header_number_value("retry-after", headers)
+                .or_else(|| exhausted_window_reset("perday"))
+                .or_else(|| exhausted_window_reset("perhour"))
+                .or_else(|| exhausted_window_reset("perminute"));
 
             return Err(CrabError::RateLimit { retry_after });
         }
@@ -507,22 +513,20 @@ impl Crabrave {
 
         // Add JSON part
         let json_str = serde_json::to_string(body).map_err(|e| {
-            CrabError::InvalidResponse(format!("Failed to serialize request body: {}", e))
+            CrabError::InvalidRequest(format!("failed to serialize request body: {e}"))
         })?;
         form = form.text("json", json_str);
 
         // Add media parts
         for (identifier, source) in media_sources {
-            let bytes = source.read_bytes().map_err(|e| {
-                CrabError::InvalidResponse(format!("Failed to read media source: {}", e))
-            })?;
+            let filename = source.filename().to_string();
+            let mime_type = source.mime_type().map(str::to_owned);
 
-            let mut part =
-                reqwest::multipart::Part::bytes(bytes).file_name(source.filename().to_string());
+            let mut part = reqwest::multipart::Part::bytes(source.into_bytes()).file_name(filename);
 
-            if let Some(mime_type) = source.mime_type() {
-                part = part.mime_str(mime_type).map_err(|e| {
-                    CrabError::InvalidResponse(format!("Invalid MIME type '{}': {}", mime_type, e))
+            if let Some(mime_type) = mime_type {
+                part = part.mime_str(&mime_type).map_err(|e| {
+                    CrabError::InvalidRequest(format!("invalid MIME type '{mime_type}': {e}"))
                 })?;
             }
 

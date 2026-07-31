@@ -298,8 +298,7 @@ impl OAuth2Token {
 /// assert_eq!(params.get("state"), Some(&"xyz789".to_string()));
 /// ```
 pub fn parse_callback(callback_url: &str) -> CrabResult<HashMap<String, String>> {
-    let url = url::Url::parse(callback_url)
-        .map_err(|e| CrabError::Auth(format!("Invalid callback URL: {}", e)))?;
+    let url = url::Url::parse(callback_url)?;
 
     let params: HashMap<String, String> = url
         .query_pairs()
@@ -369,7 +368,7 @@ mod tests {
     #[test]
     fn test_parse_callback_invalid() {
         let result = parse_callback("not a url");
-        assert!(result.is_err());
+        assert!(matches!(result, Err(CrabError::Url(_))));
     }
 
     #[test]

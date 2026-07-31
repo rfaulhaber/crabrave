@@ -1,6 +1,6 @@
 //! Likes are their own module as likes can be retrieved relative to a blog or a user. They return the same information.
 
-use crate::{BlogIdentifier, CrabResult, Crabrave};
+use crate::{BlogIdentifier, CrabError, CrabResult, Crabrave};
 use serde::{Deserialize, Serialize};
 
 /// Query parameters for user likes
@@ -83,7 +83,25 @@ impl LikesBuilder {
     }
 
     /// Sends the request and returns the liked posts in NPF format
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CrabError::InvalidParameter`] if more than one of
+    /// [`offset`](Self::offset), [`before`](Self::before), or
+    /// [`after`](Self::after) is set — the API treats them as mutually
+    /// exclusive pagination modes.
     pub async fn send(mut self) -> CrabResult<LikesResponse> {
+        let pagination_modes = [
+            self.query.offset.is_some(),
+            self.query.before.is_some(),
+            self.query.after.is_some(),
+        ];
+        if pagination_modes.iter().filter(|set| **set).count() > 1 {
+            return Err(CrabError::InvalidParameter(
+                "offset, before, and after are mutually exclusive".to_string(),
+            ));
+        }
+
         // Always request NPF format
         self.query.npf = Some(true);
         match self.blog {
@@ -94,6 +112,28 @@ impl LikesBuilder {
             }
             None => self.client.get_with_query("user/likes", &self.query).await,
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_send_rejects_combined_pagination_params() {
+        let crab = Crabrave::builder().consumer_key("key").build().unwrap();
+
+        let result = LikesBuilder::user(crab).before(1).after(2).send().await;
+        assert!(matches!(result, Err(CrabError::InvalidParameter(_))));
+    }
+
+    #[tokio::test]
+    async fn test_send_rejects_offset_with_before() {
+        let crab = Crabrave::builder().consumer_key("key").build().unwrap();
+
+        let result = LikesBuilder::user(crab).offset(20).before(1).send().await;
+        assert!(matches!(result, Err(CrabError::InvalidParameter(_))));
     }
 }
 

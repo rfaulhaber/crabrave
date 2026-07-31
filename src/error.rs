@@ -44,7 +44,7 @@ pub enum CrabError {
     },
 
     /// Rate limit exceeded
-    #[error("Rate limit exceeded. Retry after: {retry_after:?} seconds")]
+    #[error("Rate limit exceeded{}", .retry_after.map_or_else(String::new, |secs| format!("; retry after {secs} seconds")))]
     RateLimit {
         /// Number of seconds to wait before retrying (if provided by API)
         retry_after: Option<u64>,
@@ -62,9 +62,17 @@ pub enum CrabError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    /// I/O error reading local data (e.g. a media file)
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
     /// URL parsing error
     #[error("Invalid URL: {0}")]
     Url(#[from] url::ParseError),
+
+    /// The request could not be constructed before sending
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
 
     /// Invalid response from API
     #[error("Invalid API response: {0}")]
@@ -107,8 +115,11 @@ mod tests {
         };
         assert_eq!(
             err.to_string(),
-            "Rate limit exceeded. Retry after: Some(60) seconds"
+            "Rate limit exceeded; retry after 60 seconds"
         );
+
+        let err = CrabError::RateLimit { retry_after: None };
+        assert_eq!(err.to_string(), "Rate limit exceeded");
 
         let err = CrabError::Api {
             status: 404,

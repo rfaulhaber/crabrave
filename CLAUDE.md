@@ -237,9 +237,9 @@ crab.blogs("my-blog")
 // Create post with media uploads
 crab.blogs("my-blog")
     .create_post()
-    .add_image(MediaSource::from_path("/path/to/image.jpg"))
-    .add_video(MediaSource::from_path("/path/to/video.mp4"))
-    .add_audio(MediaSource::from_path("/path/to/audio.mp3"))
+    .add_image(MediaSource::from_path("/path/to/image.jpg")?)
+    .add_video(MediaSource::from_path("/path/to/video.mp4")?)
+    .add_audio(MediaSource::from_path("/path/to/audio.mp3")?)
     .send()
     .await?
 
@@ -356,10 +356,13 @@ admin/mutating endpoints follow the published docs.
 
 **Media Module** (`media.rs`)
 ```rust
-// Create media sources for uploads
-let image = MediaSource::from_path("/path/to/image.jpg");
+// Create media sources for uploads. from_path reads the file eagerly
+// (synchronously) at construction, so the async request path never does
+// blocking I/O; to avoid the sync read, load the bytes with your
+// runtime's async file API and use from_bytes.
+let image = MediaSource::from_path("/path/to/image.jpg")?;
 let video = MediaSource::from_bytes("video.mp4", video_bytes);
-let audio = MediaSource::from_path("/path/to/song.mp3")
+let audio = MediaSource::from_path("/path/to/song.mp3")?
     .with_mime_type("audio/mpeg");
 ```
 

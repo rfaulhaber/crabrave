@@ -113,7 +113,7 @@ pub struct MuteResponse {
 /// // Create a post with an uploaded image
 /// let post = crab.blogs("my-blog")
 ///     .create_post()
-///     .add_image(MediaSource::from_path("/path/to/image.jpg"))
+///     .add_image(MediaSource::from_path("/path/to/image.jpg")?)
 ///     .tags(vec!["photography"])
 ///     .send()
 ///     .await?;
@@ -236,7 +236,7 @@ impl CreatePostBuilder {
     /// // Using add_image is simpler, but you can also use media_source for manual control
     /// let post = crab.blogs("my-blog")
     ///     .create_post()
-    ///     .add_image(MediaSource::from_path("/path/to/image.jpg"))
+    ///     .add_image(MediaSource::from_path("/path/to/image.jpg")?)
     ///     .send()
     ///     .await?;
     /// # Ok(())
@@ -270,7 +270,7 @@ impl CreatePostBuilder {
     /// // Simple image upload
     /// let post = crab.blogs("my-blog")
     ///     .create_post()
-    ///     .add_image(MediaSource::from_path("/path/to/photo.jpg"))
+    ///     .add_image(MediaSource::from_path("/path/to/photo.jpg")?)
     ///     .send()
     ///     .await?;
     /// # Ok(())
@@ -329,7 +329,7 @@ impl CreatePostBuilder {
     /// // Simple video upload
     /// let post = crab.blogs("my-blog")
     ///     .create_post()
-    ///     .add_video(MediaSource::from_path("/path/to/video.mp4"))
+    ///     .add_video(MediaSource::from_path("/path/to/video.mp4")?)
     ///     .send()
     ///     .await?;
     /// # Ok(())
@@ -392,7 +392,7 @@ impl CreatePostBuilder {
     /// // Simple audio upload
     /// let post = crab.blogs("my-blog")
     ///     .create_post()
-    ///     .add_audio(MediaSource::from_path("/path/to/song.mp3"))
+    ///     .add_audio(MediaSource::from_path("/path/to/song.mp3")?)
     ///     .send()
     ///     .await?;
     /// # Ok(())

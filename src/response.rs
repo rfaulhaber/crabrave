@@ -154,14 +154,16 @@ pub(crate) fn parse_response_bytes_with_status<T: DeserializeOwned>(
         });
     }
 
-    serde_json::from_value(envelope.response.clone()).map_err(|original_err| {
+    // Deserializing from a borrowed `&Value` (rather than `from_value` on a
+    // clone) spares the success path a deep copy of the whole response tree,
+    // while keeping the value available for the per-post diagnosis below.
+    T::deserialize(&envelope.response).map_err(|original_err| {
         // If the response has a "posts" array, try each post individually
         // to produce a more useful error pointing at the specific failing post.
         if let Some(posts) = envelope.response.get("posts").and_then(|p| p.as_array()) {
             for (i, post) in posts.iter().enumerate() {
                 let post_id = post.get("id_string").and_then(|v| v.as_str());
-                if let Err(e) = serde_json::from_value::<crate::handlers::blog::Post>(post.clone())
-                {
+                if let Err(e) = crate::handlers::blog::Post::deserialize(post) {
                     let id_info = post_id.map_or(String::new(), |id| format!(" (id: {id})"));
                     return CrabError::InvalidResponse(format!(
                         "failed to parse post at index {i}{id_info}: {e}"

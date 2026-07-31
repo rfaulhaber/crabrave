@@ -90,7 +90,7 @@ crab.blogs("my-blog")
 // Post with image upload
 crab.blogs("my-blog")
     .create_post()
-    .add_image(MediaSource::from_path("/path/to/image.jpg"))
+    .add_image(MediaSource::from_path("/path/to/image.jpg")?)
     .send()
     .await?;
 ```

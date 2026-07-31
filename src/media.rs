@@ -2,6 +2,7 @@
 //!
 //! This module provides types for specifying media to upload when creating or editing posts.
 
+use crate::CrabResult;
 use camino::{Utf8Path, Utf8PathBuf};
 
 /// A source of media data to upload to Tumblr
@@ -14,7 +15,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 /// ```no_run
 /// # use crabrave::media::MediaSource;
 /// // From file path (auto-detects filename and MIME type)
-/// let source = MediaSource::from_path("/path/to/image.jpg");
+/// let source = MediaSource::from_path("/path/to/image.jpg")?;
 ///
 /// // From bytes with explicit filename
 /// let bytes = vec![0u8; 1024];
@@ -23,48 +24,52 @@ use camino::{Utf8Path, Utf8PathBuf};
 /// // Override MIME type
 /// let source = MediaSource::from_bytes("image.data", vec![0u8; 1024])
 ///     .with_mime_type("image/jpeg");
+/// # Ok::<(), crabrave::CrabError>(())
 /// ```
 #[derive(Debug, Clone)]
 pub struct MediaSource {
     filename: String,
     mime_type: Option<String>,
-    data: MediaData,
-}
-
-/// Internal representation of media data
-#[derive(Debug, Clone)]
-enum MediaData {
-    /// Media loaded from bytes in memory
-    Bytes(Vec<u8>),
-    /// Media to be loaded from a file path
-    Path(Utf8PathBuf),
+    data: Vec<u8>,
 }
 
 impl MediaSource {
-    /// Creates a MediaSource from a file path
+    /// Creates a MediaSource by reading a file
     ///
     /// Automatically extracts the filename and detects MIME type from the file extension.
+    ///
+    /// The file is read in full, synchronously, at construction time — never
+    /// inside the async request path, which keeps the library free of
+    /// blocking I/O inside futures regardless of async runtime. To avoid the
+    /// synchronous read entirely, load the file with your runtime's async
+    /// file API and use [`from_bytes`](Self::from_bytes) instead.
     ///
     /// # Arguments
     ///
     /// * `path` - Path to the media file
     ///
+    /// # Errors
+    ///
+    /// Returns [`CrabError::Io`](crate::CrabError::Io) if the file cannot be read.
+    ///
     /// # Example
     ///
     /// ```no_run
     /// # use crabrave::media::MediaSource;
-    /// let source = MediaSource::from_path("/path/to/video.mp4");
+    /// let source = MediaSource::from_path("/path/to/video.mp4")?;
+    /// # Ok::<(), crabrave::CrabError>(())
     /// ```
-    pub fn from_path(path: impl Into<Utf8PathBuf>) -> Self {
+    pub fn from_path(path: impl Into<Utf8PathBuf>) -> CrabResult<Self> {
         let path = path.into();
         let filename = path.file_name().unwrap_or("file").to_string();
         let mime_type = detect_mime_type_from_filename(&filename);
+        let data = fs_err::read(&path)?;
 
-        Self {
+        Ok(Self {
             filename,
             mime_type,
-            data: MediaData::Path(path),
-        }
+            data,
+        })
     }
 
     /// Creates a MediaSource from bytes
@@ -90,7 +95,7 @@ impl MediaSource {
         Self {
             filename,
             mime_type,
-            data: MediaData::Bytes(data.into()),
+            data: data.into(),
         }
     }
 
@@ -121,15 +126,9 @@ impl MediaSource {
         self.mime_type.as_deref()
     }
 
-    /// Reads the media data into bytes
-    ///
-    /// For path-based sources, this reads the file from disk.
-    /// For byte-based sources, this returns a clone of the bytes.
-    pub(crate) fn read_bytes(&self) -> std::io::Result<Vec<u8>> {
-        match &self.data {
-            MediaData::Bytes(bytes) => Ok(bytes.clone()),
-            MediaData::Path(path) => fs_err::read(path),
-        }
+    /// Consumes the source, returning its bytes
+    pub(crate) fn into_bytes(self) -> Vec<u8> {
+        self.data
     }
 }
 
@@ -189,7 +188,26 @@ mod tests {
 
         assert_eq!(source.filename(), "image.jpg");
         assert_eq!(source.mime_type(), Some("image/jpeg"));
-        assert_eq!(source.read_bytes().unwrap(), data);
+        assert_eq!(source.into_bytes(), data);
+    }
+
+    #[test]
+    fn test_from_path_reads_file() {
+        let path = std::env::temp_dir().join("crabrave_media_from_path_test.jpg");
+        fs_err::write(&path, b"fake image data").unwrap();
+
+        let source = MediaSource::from_path(path.to_str().unwrap()).unwrap();
+        fs_err::remove_file(&path).ok();
+
+        assert_eq!(source.filename(), "crabrave_media_from_path_test.jpg");
+        assert_eq!(source.mime_type(), Some("image/jpeg"));
+        assert_eq!(source.into_bytes(), b"fake image data");
+    }
+
+    #[test]
+    fn test_from_path_missing_file() {
+        let result = MediaSource::from_path("/nonexistent/crabrave/file.jpg");
+        assert!(matches!(result, Err(crate::CrabError::Io(_))));
     }
 
     #[test]
