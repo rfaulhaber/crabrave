@@ -9,6 +9,9 @@
     clippy::panic,
     clippy::redundant_static_lifetimes
 )]
+// The community info fixture is a large, deeply-nested `json!` invocation
+// that mirrors a real API response; the default limit isn't enough for it.
+#![recursion_limit = "256"]
 
 use crabrave::handlers::blog::AvatarResponse;
 use crabrave::{CrabError, Crabrave};
@@ -1713,24 +1716,91 @@ async fn test_communities_timeline() {
 
     Mock::given(method("GET"))
         .and(path("/communities/rust-community/timeline"))
-        .and(query_param("limit", "20"))
+        .and(query_param("npf", "true"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
                 "msg": "OK"
             },
             "response": {
-                "posts": [
-                    {
-                        "id_string": "111222",
-                        "blog_name": "rustdev",
-                        "post_url": "https://rustdev.tumblr.com/post/111222",
-                        "type": "text",
-                        "timestamp": 1234567890,
-                        "tags": ["rust"],
-                        "note_count": 25
+                "timeline": {
+                    "elements": [
+                        {
+                            "id_string": "111222",
+                            "blog_name": "rustdev",
+                            "post_url": "https://rustdev.tumblr.com/post/111222",
+                            "type": "blocks",
+                            "timestamp": 1234567890,
+                            "reblog_key": "reblogkey1",
+                            "is_blocks_post_format": true,
+                            "tags": ["rust"],
+                            "note_count": 25,
+                            "content": [{"type": "text", "text": "hello"}],
+                            "layout": [],
+                            "trail": [],
+                            "followed": false,
+                            "can_react": true,
+                            "reactions": [
+                                {
+                                    "emoji": {
+                                        "id": "735345404083896320",
+                                        "grapheme": "👍",
+                                        "base_slug": "thumbs_up"
+                                    },
+                                    "count": 61,
+                                    "reacted": false
+                                }
+                            ]
+                        }
+                    ],
+                    "_links": {
+                        "next": {
+                            "href": "/v2/communities/rust-community/timeline?cursor=CURSOR_OPAQUE_1",
+                            "method": "GET",
+                            "query_params": {
+                                "community": "rust-community",
+                                "rawurldecode": "1",
+                                "cursor": "CURSOR_OPAQUE_1"
+                            }
+                        }
                     }
-                ]
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.communities("rust-community").timeline().send().await;
+
+    assert!(result.is_ok());
+    let timeline = result.unwrap();
+    assert_eq!(timeline.posts.len(), 1);
+    assert_eq!(
+        timeline.links.unwrap().next.unwrap().query_params.cursor,
+        Some("CURSOR_OPAQUE_1".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_communities_timeline_type_polls() {
+    use crabrave::handlers::communities::TimelineType;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/timeline"))
+        .and(query_param("type", "polls"))
+        .and(query_param("npf", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "timeline": {
+                    "elements": []
+                }
             }
         })))
         .mount(&mock_server)
@@ -1740,13 +1810,44 @@ async fn test_communities_timeline() {
     let result = client
         .communities("rust-community")
         .timeline()
-        .limit(20)
+        .timeline_type(TimelineType::Polls)
         .send()
         .await;
 
-    assert!(result.is_ok());
-    let timeline = result.unwrap();
-    assert_eq!(timeline.posts.len(), 1);
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    assert!(result.unwrap().posts.is_empty());
+}
+
+#[tokio::test]
+async fn test_communities_timeline_cursor() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/timeline"))
+        .and(query_param("cursor", "CURSOR_OPAQUE_1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "timeline": {
+                    "elements": []
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .timeline()
+        .cursor("CURSOR_OPAQUE_1")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
 }
 
 #[tokio::test]
@@ -2699,6 +2800,183 @@ async fn test_reblog_post_invalid_key() {
 // =============================================================================
 
 #[tokio::test]
+async fn test_community_info() {
+    use crabrave::handlers::communities::MemberRole;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/test-community"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "name": "test-community",
+                "uuid": "t:AbCdEfGh12345",
+                "title": "Test Community",
+                "description": "A community for testing",
+                "about": "About the test community",
+                "guidelines_summary": "",
+                "guidelines": ["Be kind"],
+                "language": "en_US",
+                "location": "",
+                "visibility": "public",
+                "member_count": 1119,
+                "members_online_count": 311,
+                "mention_tag": "@@test-community",
+                "is_member": true,
+                "can_view": true,
+                "can_post": true,
+                "can_edit": false,
+                "can_interact": true,
+                "can_invite": false,
+                "can_view_comments": true,
+                "can_view_all_members": true,
+                "post_count": 276,
+                "unread_post_count": 0,
+                "categories": [],
+                "tags": ["testing", "rust"],
+                "blog_ids": [],
+                "boards": [],
+                "created_ts": 1734388393,
+                "avatar_image": [
+                    {
+                        "width": 512,
+                        "height": 512,
+                        "url": "https://64.media.tumblr.com/test/s512x512u_c1/avatar.jpg",
+                        "accessories": []
+                    },
+                    {
+                        "width": 128,
+                        "height": 128,
+                        "url": "https://64.media.tumblr.com/test/s128x128u_c1/avatar.jpg",
+                        "accessories": []
+                    }
+                ],
+                "population_cap": 10000,
+                "join_type": "request",
+                "has_content_label": false,
+                "content_label_categories": [],
+                "content_label_last_reporter": null,
+                "role": "member",
+                "blog": { "name": "my-blog" },
+                "is_muted": false,
+                "header_image": [
+                    {
+                        "media_key": "abc123:def456-4d",
+                        "type": "image/jpeg",
+                        "width": 1284,
+                        "height": 527,
+                        "url": "https://64.media.tumblr.com/test/s2048x3072/header.jpg",
+                        "has_original_dimensions": true
+                    }
+                ],
+                "related_communities": []
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.communities("test-community").info().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let community = result.unwrap();
+    assert_eq!(community.name, "test-community");
+    assert_eq!(community.uuid, "t:AbCdEfGh12345");
+    assert_eq!(community.avatar_image.len(), 2);
+    assert_eq!(community.header_image[0].width, Some(1284));
+    assert_eq!(community.role, Some(MemberRole::Member));
+    assert_eq!(community.is_muted, Some(false));
+    assert_eq!(community.blog.unwrap().name, "my-blog");
+    assert_eq!(community.join_type.as_deref(), Some("request"));
+    assert_eq!(community.member_count, Some(1119));
+}
+
+#[tokio::test]
+async fn test_community_info_for_edit() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/test-community"))
+        .and(query_param("context", "edit"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "name": "test-community",
+                "uuid": "t:AbCdEfGh12345",
+                "title": "Test Community",
+                "handle_can_change": false,
+                "handle_next_change_ts": 1234567890,
+                "settings": {
+                    "invite_links_enabled": true,
+                    "join_type": "invite"
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.communities("test-community").info_for_edit().await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let community = result.unwrap();
+    assert_eq!(community.settings.unwrap().invite_links_enabled, Some(true));
+    assert_eq!(community.handle_can_change, Some(false));
+}
+
+#[tokio::test]
+async fn test_community_edit() {
+    use crabrave::handlers::communities::CommunityPrivacy;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/test-community"))
+        .and(body_json(serde_json::json!({
+            "title": "New Title",
+            "privacy": 1
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "name": "test-community",
+                "uuid": "t:AbCdEfGh12345",
+                "title": "New Title",
+                "handle_can_change": false,
+                "handle_next_change_ts": 1234567890,
+                "settings": {
+                    "invite_links_enabled": true,
+                    "join_type": "invite"
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("test-community")
+        .edit()
+        .title("New Title")
+        .privacy(CommunityPrivacy::Private)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    assert_eq!(result.unwrap().title, Some("New Title".to_string()));
+}
+
+#[tokio::test]
 async fn test_community_join() {
     let mock_server = MockServer::start().await;
 
@@ -2709,9 +2987,7 @@ async fn test_community_join() {
                 "status": 200,
                 "msg": "OK"
             },
-            "response": {
-                "success": true
-            }
+            "response": []
         })))
         .mount(&mock_server)
         .await;
@@ -2720,8 +2996,34 @@ async fn test_community_join() {
     let result = client.communities("rust-community").join().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
-    let response = result.unwrap();
-    assert_eq!(response.success, Some(true));
+}
+
+#[tokio::test]
+async fn test_community_join_with_invite_hash() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/members"))
+        .and(body_json(serde_json::json!({
+            "invite_hash": "abcd123"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .join_with_invite_hash("abcd123")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
 }
 
 #[tokio::test]
@@ -2748,42 +3050,46 @@ async fn test_community_leave() {
 
 #[tokio::test]
 async fn test_community_members() {
+    use crabrave::handlers::communities::MemberFilter;
+
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
         .and(path("/communities/rust-community/members"))
-        .and(query_param("limit", "10"))
+        .and(query_param("page", "2"))
+        .and(query_param("filter", "admin"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
                 "msg": "OK"
             },
             "response": {
-                "count": 150,
+                "count": 1119,
                 "members": [
                     {
-                        "name": "rustdev",
-                        "title": "Rust Developer",
-                        "description": "Learning Rust",
-                        "url": "https://rustdev.tumblr.com/",
-                        "uuid": "t:abc123",
-                        "updated": 1234567890,
-                        "avatar": [],
-                        "is_admin": false,
+                        "name": "admin-blog",
+                        "title": "Admin Blog",
+                        "url": "https://admin-blog.tumblr.com/",
+                        "uuid": "t:MemberUuid1",
+                        "updated": 1740000000,
+                        "description": "",
+                        "avatar": [
+                            {
+                                "width": 64,
+                                "height": 64,
+                                "url": "https://64.media.tumblr.com/avatar/test64.jpg",
+                                "accessories": []
+                            }
+                        ],
+                        "can_show_badges": true,
+                        "tumblrmart_accessories": {},
+                        "followed": true,
+                        "is_following_you": false,
+                        "is_mutual": false,
+                        "is_online": true,
+                        "is_admin": true,
                         "is_moderator": false,
-                        "joined_ts": 1234567000
-                    },
-                    {
-                        "name": "crabfan",
-                        "title": "Crab Fan",
-                        "description": "I love crabs",
-                        "url": "https://crabfan.tumblr.com/",
-                        "uuid": "t:def456",
-                        "updated": 1234567891,
-                        "avatar": [],
-                        "is_admin": false,
-                        "is_moderator": true,
-                        "joined_ts": 1234567100
+                        "joined_ts": 1734388393
                     }
                 ]
             }
@@ -2795,18 +3101,17 @@ async fn test_community_members() {
     let result = client
         .communities("rust-community")
         .members()
-        .limit(10)
+        .page(2)
+        .filter(MemberFilter::Admin)
         .send()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.total_members, 150);
-    assert_eq!(response.members.len(), 2);
-    assert_eq!(response.members[0].blog.name, "rustdev");
-    assert!(!response.members[0].is_moderator);
-    assert!(response.members[1].is_moderator);
-    assert_eq!(response.members[1].joined_ts, Some(1234567100));
+    assert_eq!(response.total_members, 1119);
+    assert!(response.members[0].is_admin);
+    assert!(response.members[0].blog.followed);
+    assert_eq!(response.members[0].joined_ts, Some(1734388393));
 }
 
 #[tokio::test]
@@ -2931,6 +3236,68 @@ async fn test_community_add_reaction_grapheme() {
 }
 
 #[tokio::test]
+async fn test_community_add_reaction_celebration_banner() {
+    use crabrave::handlers::communities::Reaction;
+
+    let mock_server = MockServer::start().await;
+
+    // On a reaction's first use, the API responds with a timeline object
+    // containing a celebration banner instead of an empty body.
+    Mock::given(method("PUT"))
+        .and(path(
+            "/communities/rust-community/posts/123456789/reactions",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "timeline": {
+                    "elements": []
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .add_reaction("123456789", Reaction::slug(":heart:"))
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_remove_reaction() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path(
+            "/communities/rust-community/posts/123456789/reactions/735345404083896320",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .remove_reaction("123456789", "735345404083896320")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
 async fn test_community_remove_member_spam() {
     use crabrave::handlers::communities::RemovalReason;
 
@@ -3022,6 +3389,36 @@ async fn test_community_ban_member() {
     let result = client
         .communities("rust-community")
         .ban_member("bad-blog", RemovalReason::Spam)
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_change_role() {
+    use crabrave::handlers::communities::MemberRole;
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/members/trusted-blog"))
+        .and(body_json(serde_json::json!({
+            "role": "moderator"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .change_role("trusted-blog", MemberRole::Moderator)
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
@@ -4886,6 +5283,88 @@ async fn test_avatar_endpoint_jpeg() {
 }
 
 #[tokio::test]
+async fn test_community_cancel_invitation() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/invitations/friend-blog"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .cancel_invitation("friend-blog")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_cancel_invitation_do_not_invite() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/invitations/friend-blog"))
+        .and(query_param("do_not_invite", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .cancel_invitation_do_not_invite("friend-blog")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+#[tokio::test]
+async fn test_community_regenerate_invite_url() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/communities/rust-community/invite_hash"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "invite_link": "https://www.tumblr.com/join/AbCd123"
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .regenerate_invite_url()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    assert_eq!(
+        result.unwrap().invite_link,
+        "https://www.tumblr.com/join/AbCd123"
+    );
+}
+
+#[tokio::test]
 async fn test_community_invitation_status_pending() {
     let mock_server = MockServer::start().await;
 
@@ -4958,21 +5437,168 @@ async fn test_community_invitations() {
                         "recipient": { "name": "friend-blog" },
                         "sent_on": 1234567890
                     }
-                ]
+                ],
+                "_links": {
+                    "next": {
+                        "href": "/v2/communities/rust-community/invitations?before=1234567890",
+                        "method": "GET",
+                        "query_params": {
+                            "before": "1234567890"
+                        }
+                    }
+                }
             }
         })))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.communities("rust-community").invitations().await;
+    let result = client
+        .communities("rust-community")
+        .invitations()
+        .send()
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
-    let invitations = result.unwrap().invitations;
+    let response = result.unwrap();
+    let invitations = response.invitations;
     assert_eq!(invitations.len(), 1);
     assert_eq!(invitations[0].sender.name, "admin-blog");
     assert_eq!(invitations[0].recipient.name, "friend-blog");
     assert_eq!(invitations[0].sent_on, 1234567890);
+    assert_eq!(
+        response.links.unwrap().next.unwrap().query_params.before,
+        Some("1234567890".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_community_invitations_before() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/invitations"))
+        .and(query_param("before", "1234567890"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "invitations": []
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .invitations()
+        .before(1234567890)
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    assert!(result.unwrap().invitations.is_empty());
+}
+
+// The moderation endpoints appear nowhere in Tumblr's published API docs, so
+// this fixture shape is unverified against the live API.
+#[tokio::test]
+async fn test_community_moderated_post() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/communities/rust-community/moderation/posts/123456"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "post": {
+                    "id_string": "123456",
+                    "blog_name": "member-blog",
+                    "post_url": "https://member-blog.tumblr.com/post/123456",
+                    "type": "blocks",
+                    "timestamp": 1234567890,
+                    "reblog_key": "rk",
+                    "content": [],
+                    "layout": [],
+                    "trail": []
+                },
+                "moderation": {
+                    "moderated_at": 1234567999,
+                    "reason": "spam"
+                }
+            }
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .moderated_post("123456")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    assert_eq!(result.unwrap().post.id, "123456");
+}
+
+// The moderation endpoints appear nowhere in Tumblr's published API docs, so
+// this fixture shape is unverified against the live API.
+#[tokio::test]
+async fn test_community_moderate_post() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/communities/rust-community/moderation/posts/123456"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .moderate_post("123456")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+}
+
+// The moderation endpoints appear nowhere in Tumblr's published API docs, so
+// this fixture shape is unverified against the live API.
+#[tokio::test]
+async fn test_community_restore_post() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/communities/rust-community/moderation/posts/123456"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .communities("rust-community")
+        .restore_post("123456")
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
 }
 
 #[tokio::test]

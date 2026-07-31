@@ -253,7 +253,6 @@ impl Crabrave {
     /// // Get community timeline
     /// let timeline = crab.communities("rust-community")
     ///     .timeline()
-    ///     .limit(20)
     ///     .send()
     ///     .await?;
     ///
@@ -263,7 +262,7 @@ impl Crabrave {
     /// // Get community members
     /// let members = crab.communities("rust-community")
     ///     .members()
-    ///     .limit(20)
+    ///     .page(1)
     ///     .send()
     ///     .await?;
     /// # Ok(())

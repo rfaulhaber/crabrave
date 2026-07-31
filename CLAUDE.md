@@ -225,24 +225,42 @@ crab.tagged("rust").filter("text").send().await?
 
 **Communities API** (`handlers/communities.rs`)
 ```rust
-// Community info
+// Community info (returns the Community object directly; the edit-context
+// variant includes admin-only settings fields)
 crab.communities("rust-community").info().await?
+crab.communities("rust-community").info_for_edit().await?
 
-// Community timeline
+// Edit the community (admin)
 crab.communities("rust-community")
-    .timeline()
-    .limit(20)
+    .edit()
+    .title("New Title")
+    .privacy(CommunityPrivacy::Private)
     .send()
     .await?
 
-// Join/leave communities
+// Community timeline; pagination is cursor-based via links.next, and
+// timeline_type selects recent/polls/discover
+crab.communities("rust-community")
+    .timeline()
+    .timeline_type(TimelineType::Polls)
+    .send()
+    .await?
+crab.communities("rust-community")
+    .timeline()
+    .cursor(cursor_from_links)
+    .send()
+    .await?
+
+// Join/leave communities (invite links carry a hash)
 crab.communities("rust-community").join().await?
+crab.communities("rust-community").join_with_invite_hash("abcd123").await?
 crab.communities("rust-community").leave("my-blog").await?
 
-// Get members with pagination
+// Get members; paginated by page number (20/page), filter by role/relationship
 crab.communities("rust-community")
     .members()
-    .limit(20)
+    .page(2)
+    .filter(MemberFilter::Admin)
     .send()
     .await?
 
@@ -254,23 +272,31 @@ crab.communities("rust-community").change_role("trusted-blog", MemberRole::Moder
 crab.communities("rust-community").mute().await?
 crab.communities("rust-community").unmute().await?
 
-// Invitation management
-crab.communities("rust-community").invitations().await?
+// Invitation management (invitations list paginates with before + _links)
+crab.communities("rust-community").invitations().send().await?
+crab.communities("rust-community").invitations().before(timestamp).send().await?
 crab.communities("rust-community").invite("friend-blog").await?
 crab.communities("rust-community").invite_with_message("friend-blog", "Would love to have you here!").await?
 crab.communities("rust-community").cancel_invitation("friend-blog").await?
+crab.communities("rust-community").cancel_invitation_do_not_invite("friend-blog").await?
 crab.communities("rust-community").invitation_status("friend-blog").await?
-crab.communities("rust-community").regenerate_invite_url().await?
+crab.communities("rust-community").regenerate_invite_url().await?  // response has invite_link
 
 // Reactions on posts
 crab.communities("rust-community").add_reaction("123456", Reaction::slug(":heart:")).await?
 crab.communities("rust-community").remove_reaction("123456", "heart").await?
 
-// Moderation (moderator/admin)
+// Moderation (moderator/admin) — NOTE: these endpoints appear nowhere in
+// Tumblr's published API docs and could not be verified against the live API
 crab.communities("rust-community").moderated_post("123456").await?
 crab.communities("rust-community").moderate_post("123456").await?
 crab.communities("rust-community").restore_post("123456").await?
 ```
+
+Communities is a beta feature; Tumblr documents that these endpoints may
+change in backwards-incompatible ways. The read-only endpoints (info,
+timeline, members) were verified against live captures on 2026-07-30; the
+admin/mutating endpoints follow the published docs.
 
 **Internal Handlers:**
 - `following.rs` - Following/followers operations used by both Blogs and Users APIs
@@ -293,8 +319,10 @@ All complex queries use type-safe builders:
 - `LikesBuilder` - Liked posts with pagination (limit, before, after)
 - `FollowingBuilder` - Following list with pagination
 - `TaggedBuilder` - Tagged posts search
-- `TimelineBuilder` - Community timeline
-- `MembersBuilder` - Community members with pagination
+- `TimelineBuilder` - Community timeline (type selection, cursor pagination)
+- `MembersBuilder` - Community members (page-number pagination, role filter)
+- `InvitationsBuilder` - Pending community invitations (before-timestamp pagination)
+- `EditCommunityBuilder` - Community settings editing (admin)
 - `BlocksBuilder` - Blocked blogs
 - `CreatePostBuilder` - NPF post creation with media uploads
 - `EditPostBuilder` - NPF post editing with media uploads
