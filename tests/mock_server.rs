@@ -34,40 +34,23 @@ async fn test_client(mock_server: &MockServer) -> Crabrave {
 #[tokio::test]
 async fn test_blog_info_success() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_info.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
-    // Mock response matching Tumblr API format
     Mock::given(method("GET"))
-        .and(path("/blog/staff/info"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "blog": {
-                    "name": "staff",
-                    "title": "Staff",
-                    "description": "Tumblr Staff Blog",
-                    "url": "https://staff.tumblr.com/",
-                    "uuid": "t:123456",
-                    "updated": 1234567890,
-                    "posts": 1000,
-                    "is_nsfw": false,
-                    "is_adult": false
-                }
-            }
-        })))
+        .and(path("/blog/crabrave-demo/info"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs("staff").info().await;
+    let result = client.blogs("crabrave-demo").info().await;
 
     assert!(result.is_ok());
     let info = result.unwrap();
-    assert_eq!(info.blog.name, "staff");
-    assert_eq!(info.blog.title, "Staff");
-    assert_eq!(info.blog.posts, 1000);
+    assert_eq!(info.blog.name, "crabrave-demo");
+    assert_eq!(info.blog.title, "crabrave-demo");
+    assert_eq!(info.blog.posts, 22);
 }
 
 #[tokio::test]
@@ -317,53 +300,24 @@ async fn test_blog_posts_with_filters() {
 #[tokio::test]
 async fn test_blog_queue() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_queue.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/posts/queue", TEST_BLOG_NAME)))
+        .and(path("/blog/crabrave-demo/posts/queue"))
         .and(query_param("limit", "5"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "posts": [
-                    {
-                        "id": 123456,
-                        "id_string": "123456",
-                        "blog_name": TEST_BLOG_NAME,
-                        "post_url": format!("https://{}.tumblr.com/post/123456", TEST_BLOG_NAME),
-                        "type": "text",
-                        "timestamp": 1234567890,
-                        "scheduled_publish_time": 1234567900,
-                        "tags": ["queued"],
-                        "note_count": 0
-                    },
-                    {
-                        "id": 123457,
-                        "id_string": "123457",
-                        "blog_name": TEST_BLOG_NAME,
-                        "post_url": format!("https://{}.tumblr.com/post/123457", TEST_BLOG_NAME),
-                        "type": "photo",
-                        "timestamp": 1234567891,
-                        "scheduled_publish_time": 1234568000,
-                        "tags": ["photo", "queued"],
-                        "note_count": 0
-                    }
-                ]
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).queue().limit(5).send().await;
+    let result = client.blogs("crabrave-demo").queue().limit(5).send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let queue = result.unwrap();
-    assert_eq!(queue.posts.len(), 2);
-    assert_eq!(queue.posts[0].id, "123456");
-    assert_eq!(queue.posts[1].id, "123457");
+    assert_eq!(queue.posts.len(), 1);
+    assert_eq!(queue.posts[0].id, "823667986154094592");
+    assert_eq!(queue.posts[0].state.as_deref(), Some("queued"));
 }
 
 #[tokio::test]
@@ -512,52 +466,23 @@ async fn test_queue_shuffle() {
 #[tokio::test]
 async fn test_blog_drafts() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_drafts.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/posts/draft", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "posts": [
-                    {
-                        "id": 111111,
-                        "id_string": "111111",
-                        "blog_name": TEST_BLOG_NAME,
-                        "post_url": format!("https://{}.tumblr.com/post/111111", TEST_BLOG_NAME),
-                        "type": "text",
-                        "timestamp": 1234567890,
-                        "state": "draft",
-                        "tags": ["draft", "wip"],
-                        "note_count": 0
-                    },
-                    {
-                        "id": 222222,
-                        "id_string": "222222",
-                        "blog_name": TEST_BLOG_NAME,
-                        "post_url": format!("https://{}.tumblr.com/post/222222", TEST_BLOG_NAME),
-                        "type": "photo",
-                        "timestamp": 1234567891,
-                        "state": "draft",
-                        "tags": [],
-                        "note_count": 0
-                    }
-                ]
-            }
-        })))
+        .and(path("/blog/crabrave-demo/posts/draft"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).drafts().send().await;
+    let result = client.blogs("crabrave-demo").drafts().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let drafts = result.unwrap();
-    assert_eq!(drafts.posts.len(), 2);
-    assert_eq!(drafts.posts[0].id, "111111");
-    assert_eq!(drafts.posts[1].id, "222222");
+    assert_eq!(drafts.posts.len(), 1);
+    assert_eq!(drafts.posts[0].id, "823667985992564736");
+    assert_eq!(drafts.posts[0].state.as_deref(), Some("draft"));
 }
 
 #[tokio::test]
@@ -797,23 +722,17 @@ async fn test_blog_submissions_with_filter() {
 #[tokio::test]
 async fn test_blog_submissions_empty() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_submissions.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/posts/submission", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "posts": []
-            }
-        })))
+        .and(path("/blog/crabrave-demo/posts/submission"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).submissions().send().await;
+    let result = client.blogs("crabrave-demo").submissions().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let submissions = result.unwrap();
@@ -878,65 +797,32 @@ async fn test_blog_submissions_anonymous() {
 #[tokio::test]
 async fn test_blog_notifications() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notifications.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "notifications": [
-                    {
-                        "id": "notif-001",
-                        "type": "like",
-                        "timestamp": 1234567890,
-                        "unread": true,
-                        "target_post_id": "123456",
-                        "from_tumblelog_name": "friendly-blog"
-                    },
-                    {
-                        "id": "notif-002",
-                        "type": "reblog_naked",
-                        "timestamp": 1234567880,
-                        "unread": false,
-                        "target_post_id": "123456",
-                        "from_tumblelog_name": "reblogger-blog"
-                    },
-                    {
-                        "id": "notif-003",
-                        "type": "follow",
-                        "timestamp": 1234567870,
-                        "unread": true,
-                        "from_tumblelog_name": "new-follower"
-                    }
-                ],
-                "_links": {
-                    "next": {
-                        "href": "/blog/crabrave/notifications?before=1234567870"
-                    }
-                }
-            }
-        })))
+        .and(path("/blog/crabrave-demo/notifications"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).notifications().send().await;
+    let result = client.blogs("crabrave-demo").notifications().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notifs = result.unwrap();
-    assert_eq!(notifs.notifications.len(), 3);
-    assert_eq!(notifs.notifications[0].id, "notif-001");
-    assert_eq!(notifs.notifications[0].notification_type, "like");
-    assert!(notifs.notifications[0].unread);
-    assert_eq!(
-        notifs.notifications[0].from_tumblelog_name,
-        Some("friendly-blog".to_string())
+    // The only notification type present in this capture is milestone_post.
+    assert_eq!(notifs.notifications.len(), 2);
+    assert!(
+        notifs
+            .notifications
+            .iter()
+            .all(|n| n.notification_type == "milestone_post")
     );
-    assert_eq!(notifs.notifications[1].notification_type, "reblog_naked");
-    assert_eq!(notifs.notifications[2].notification_type, "follow");
+    assert_eq!(
+        notifs.notifications[0].target_tumblelog_name,
+        Some("crabrave-demo".to_string())
+    );
 
     // Check pagination links
     assert!(notifs.links.is_some());
@@ -1231,118 +1117,52 @@ async fn test_blog_notifications_ask_type() {
 #[tokio::test]
 async fn test_blog_notes() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notes.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
-        .and(query_param("id", "123456789"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "notes": [
-                    {
-                        "type": "reblog",
-                        "timestamp": 1234567890,
-                        "blog_name": "reblogger",
-                        "blog_uuid": "t:abc123",
-                        "blog_url": "https://reblogger.tumblr.com",
-                        "followed": false,
-                        "avatar_shape": "square",
-                        "post_id": "987654321",
-                        "reblog_parent_blog_name": TEST_BLOG_NAME
-                    },
-                    {
-                        "type": "like",
-                        "timestamp": 1234567880,
-                        "blog_name": "liker",
-                        "blog_uuid": "t:def456",
-                        "blog_url": "https://liker.tumblr.com",
-                        "followed": true,
-                        "avatar_shape": "circle"
-                    },
-                    {
-                        "type": "reply",
-                        "timestamp": 1234567870,
-                        "blog_name": "replier",
-                        "blog_uuid": "t:ghi789",
-                        "reply_text": "Great post!",
-                        "followed": false
-                    }
-                ],
-                "total_notes": 150,
-                "_links": {
-                    "next": {
-                        "query_params": {
-                            "id": "123456789",
-                            "mode": "all",
-                            "before_timestamp": "1234567870"
-                        }
-                    }
-                }
-            }
-        })))
+        .and(path("/blog/crabrave-demo/notes"))
+        .and(query_param("id", "819597601864335360"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).notes("123456789").send().await;
+    let result = client
+        .blogs("crabrave-demo")
+        .notes("819597601864335360")
+        .send()
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notes = result.unwrap();
-    assert_eq!(notes.notes.len(), 3);
-    assert_eq!(notes.total_notes, 150);
+    assert_eq!(notes.notes.len(), 8);
+    assert_eq!(notes.total_notes, 10885);
     assert_eq!(notes.notes[0].note_type, "reblog");
-    assert_eq!(notes.notes[0].blog_name, "reblogger");
-    assert_eq!(notes.notes[1].note_type, "like");
-    assert!(notes.notes[1].followed);
-    assert_eq!(notes.notes[2].note_type, "reply");
-    assert_eq!(notes.notes[2].reply_text, Some("Great post!".to_string()));
-
-    // Check pagination links
-    assert!(notes.links.is_some());
-    let links = notes.links.unwrap();
-    assert!(links.next.is_some());
+    assert_eq!(notes.notes[0].blog_name, "example-blog-002");
     assert_eq!(
-        links.next.unwrap().query_params.before_timestamp,
-        "1234567870"
+        notes.notes[0].reblog_parent_blog_name,
+        Some("example-blog-014".to_string())
     );
+    assert_eq!(notes.notes[2].note_type, "like");
+    assert!(!notes.notes[2].followed);
+
+    let links = notes.links.expect("expected pagination links");
+    let next = links.next.expect("expected a next link");
+    assert_eq!(next.query_params.before_timestamp, "1785084215");
 }
 
 #[tokio::test]
 async fn test_blog_notes_likes_mode() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notes_likes.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
-        .and(query_param("id", "123456789"))
+        .and(path("/blog/crabrave-demo/notes"))
+        .and(query_param("id", "819597601864335360"))
         .and(query_param("mode", "likes"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "notes": [
-                    {
-                        "type": "like",
-                        "timestamp": 1234567890,
-                        "blog_name": "liker1",
-                        "blog_uuid": "t:aaa111",
-                        "followed": false
-                    },
-                    {
-                        "type": "like",
-                        "timestamp": 1234567880,
-                        "blog_name": "liker2",
-                        "blog_uuid": "t:bbb222",
-                        "followed": true
-                    }
-                ],
-                "total_notes": 50
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -1350,122 +1170,70 @@ async fn test_blog_notes_likes_mode() {
 
     use crabrave::handlers::blog::NoteMode;
     let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notes("123456789")
+        .blogs("crabrave-demo")
+        .notes("819597601864335360")
         .mode(NoteMode::Likes)
         .send()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notes = result.unwrap();
-    assert_eq!(notes.notes.len(), 2);
+    assert_eq!(notes.notes.len(), 8);
+    assert_eq!(notes.total_notes, 6597);
     assert!(notes.notes.iter().all(|n| n.note_type == "like"));
 }
 
 #[tokio::test]
 async fn test_blog_notes_conversation_mode() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notes_conversation.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
-        .and(query_param("id", "123456789"))
+        .and(path("/blog/crabrave-demo/notes"))
+        .and(query_param("id", "819597601864335360"))
         .and(query_param("mode", "conversation"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "notes": [
-                    {
-                        "type": "reply",
-                        "timestamp": 1234567890000_i64,
-                        "blog_name": "replier1",
-                        "reply_text": "I agree!",
-                        "followed": false
-                    },
-                    {
-                        "type": "reblog",
-                        "timestamp": 1234567880000_i64,
-                        "blog_name": "reblogger",
-                        "added_text": "Adding my thoughts...",
-                        "followed": true
-                    }
-                ],
-                "rollup_notes": [
-                    {
-                        "type": "like",
-                        "timestamp": 1234567870,
-                        "blog_name": "liker",
-                        "followed": false
-                    }
-                ],
-                "total_notes": 100,
-                "total_likes": 75,
-                "total_reblogs": 25
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
 
     use crabrave::handlers::blog::NoteMode;
-    let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notes("123456789")
+    let notes = client
+        .blogs("crabrave-demo")
+        .notes("819597601864335360")
         .mode(NoteMode::Conversation)
         .send()
-        .await;
+        .await
+        .expect("Failed to get conversation-mode notes");
 
-    assert!(result.is_ok(), "Failed with: {:?}", result);
-    let notes = result.unwrap();
-    assert_eq!(notes.notes.len(), 2);
+    assert_eq!(notes.total_notes, 10885);
+    assert_eq!(notes.total_likes, Some(6597));
+    assert_eq!(notes.total_reblogs, Some(4229));
+    // Non-commentary interactions are collapsed into a single rollup group
+    // that carries its own aggregates and a sample of the collapsed notes.
     assert_eq!(notes.rollup_notes.len(), 1);
-    assert_eq!(notes.total_likes, Some(75));
-    assert_eq!(notes.total_reblogs, Some(25));
-    assert_eq!(notes.notes[0].reply_text, Some("I agree!".to_string()));
-    assert_eq!(
-        notes.notes[1].added_text,
-        Some("Adding my thoughts...".to_string())
-    );
+    let group = &notes.rollup_notes[0];
+    assert_eq!(group.total_notes, 10885);
+    assert_eq!(group.total_likes, Some(6597));
+    assert_eq!(group.total_reblogs, Some(4229));
+    assert_eq!(group.notes.len(), 50);
+    assert_eq!(group.notes[0].note_type, "reblog");
+    assert_eq!(group.notes[0].blog_name, "example-blog-002");
 }
 
 #[tokio::test]
 async fn test_blog_notes_reblogs_with_tags_mode() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notes_reblogs_with_tags.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
-        .and(query_param("id", "123456789"))
+        .and(path("/blog/crabrave-demo/notes"))
+        .and(query_param("id", "819597601864335360"))
         .and(query_param("mode", "reblogs_with_tags"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "notes": [
-                    {
-                        "type": "reblog",
-                        "timestamp": 1234567890,
-                        "blog_name": "tagger1",
-                        "blog_uuid": "t:tag111",
-                        "followed": false,
-                        "tags": ["cool", "nice", "reblogged"]
-                    },
-                    {
-                        "type": "reblog",
-                        "timestamp": 1234567880,
-                        "blog_name": "tagger2",
-                        "blog_uuid": "t:tag222",
-                        "followed": true,
-                        "tags": ["art", "favorite"]
-                    }
-                ],
-                "total_notes": 30
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -1473,18 +1241,25 @@ async fn test_blog_notes_reblogs_with_tags_mode() {
 
     use crabrave::handlers::blog::NoteMode;
     let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notes("123456789")
+        .blogs("crabrave-demo")
+        .notes("819597601864335360")
         .mode(NoteMode::ReblogsWithTags)
         .send()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notes = result.unwrap();
-    assert_eq!(notes.notes.len(), 2);
+    assert_eq!(notes.notes.len(), 8);
     assert!(notes.notes.iter().all(|n| n.note_type == "reblog"));
-    assert_eq!(notes.notes[0].tags, vec!["cool", "nice", "reblogged"]);
-    assert_eq!(notes.notes[1].tags, vec!["art", "favorite"]);
+    assert_eq!(
+        notes.notes[0].reblog_parent_blog_name,
+        Some("example-blog-014".to_string())
+    );
+    // None of these reblogs added tags, so the `tags` array is present but empty.
+    assert!(notes.notes[0].tags.is_empty());
+    // This mode's response carries only `notes` and `_links`; total_notes is
+    // absent and defaults to 0.
+    assert_eq!(notes.total_notes, 0);
 }
 
 #[tokio::test]
@@ -1562,34 +1337,14 @@ async fn test_blog_notes_empty() {
 #[tokio::test]
 async fn test_blog_notes_rollup_mode() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notes_rollup.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/notes", TEST_BLOG_NAME)))
-        .and(query_param("id", "123456789"))
+        .and(path("/blog/crabrave-demo/notes"))
+        .and(query_param("id", "819597601864335360"))
         .and(query_param("mode", "rollup"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "notes": [
-                    {
-                        "type": "like",
-                        "timestamp": 1234567890,
-                        "blog_name": "liker",
-                        "followed": false
-                    },
-                    {
-                        "type": "reblog",
-                        "timestamp": 1234567880,
-                        "blog_name": "reblogger",
-                        "followed": true
-                    }
-                ],
-                "total_notes": 80
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -1597,15 +1352,16 @@ async fn test_blog_notes_rollup_mode() {
 
     use crabrave::handlers::blog::NoteMode;
     let result = client
-        .blogs(TEST_BLOG_NAME)
-        .notes("123456789")
+        .blogs("crabrave-demo")
+        .notes("819597601864335360")
         .mode(NoteMode::Rollup)
         .send()
         .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let notes = result.unwrap();
-    assert_eq!(notes.notes.len(), 2);
+    assert_eq!(notes.notes.len(), 8);
+    assert_eq!(notes.total_notes, 10885);
     // Rollup mode returns only likes and reblogs
     assert!(
         notes
@@ -1616,25 +1372,45 @@ async fn test_blog_notes_rollup_mode() {
 }
 
 #[tokio::test]
+async fn test_blog_notes_page2() {
+    let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_notes_page2.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
+
+    Mock::given(method("GET"))
+        .and(path("/blog/crabrave-demo/notes"))
+        .and(query_param("id", "819597601864335360"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client
+        .blogs("crabrave-demo")
+        .notes("819597601864335360")
+        .send()
+        .await;
+
+    assert!(result.is_ok(), "Failed with: {:?}", result);
+    let notes = result.unwrap();
+    assert_eq!(notes.notes.len(), 8);
+
+    // The live API quotes before_timestamp inside _links.next.query_params;
+    // this is the shape that used to fail to parse.
+    let links = notes.links.expect("expected pagination links");
+    let next = links.next.expect("expected a next link");
+    assert_eq!(next.query_params.before_timestamp, "1784951304");
+}
+
+#[tokio::test]
 async fn test_user_info() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/user_info.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/info"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "user": {
-                    "name": "testuser",
-                    "likes": 42,
-                    "following": 100,
-                    "blogs": []
-                }
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -1643,71 +1419,68 @@ async fn test_user_info() {
 
     assert!(result.is_ok());
     let info = result.unwrap();
-    assert_eq!(info.user.name, "testuser");
-    assert_eq!(info.user.likes, 42);
+    assert_eq!(info.user.name, "demo-primary");
+    assert_eq!(info.user.likes, 111534);
+    assert_eq!(info.user.blogs.len(), 4);
 }
 
 #[tokio::test]
 async fn test_tagged_posts() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/tagged.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
+    // The tagged endpoint returns posts directly as the response array,
+    // which this fixture reflects (no `response.posts` wrapper).
     Mock::given(method("GET"))
         .and(path("/tagged"))
-        .and(query_param("tag", "rust"))
+        .and(query_param("tag", "photography"))
         .and(query_param("limit", "10"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": [
-                    {
-                        "id": 789012,
-                        "id_string": "789012",
-                        "blog_name": "rustblog",
-                        "post_url": "https://rustblog.tumblr.com/post/789012",
-                        "type": "text",
-                        "timestamp": 1234567890,
-                        "tags": ["rust", "programming"],
-                        "note_count": 50
-                    }
-                ]
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.tagged("rust").limit(10).send().await;
+    let result = client.tagged("photography").limit(10).send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let tagged = result.unwrap();
-    assert_eq!(tagged.posts.len(), 1);
-    assert!(tagged.posts[0].tags.contains(&"rust".to_string()));
+    assert_eq!(tagged.posts.len(), 4);
+    assert_eq!(tagged.posts[0].id, "823667709349888002");
+    assert!(
+        tagged
+            .posts
+            .iter()
+            .all(|p| p.tags.contains(&"photography".to_string()))
+    );
 }
 
 #[tokio::test]
 async fn test_delete_post() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/post_delete.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("POST"))
-        .and(path("/blog/myblog/post/delete"))
-        .and(body_json(serde_json::json!({ "id": "123456" })))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "id": "123456"
-            }
-        })))
+        .and(path("/blog/crabrave-demo/post/delete"))
+        .and(body_json(serde_json::json!({ "id": "823667986154094592" })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs("myblog").post("123456").delete().await;
+    let result = client
+        .blogs("crabrave-demo")
+        .post("823667986154094592")
+        .delete()
+        .await;
 
     assert!(result.is_ok());
+    // The live API returns `id` as a JSON number plus `id_string`; both must
+    // deserialize to the same value.
+    let response = result.unwrap();
+    assert_eq!(response.id, Some("823667986154094592".to_string()));
+    assert_eq!(response.id_string, Some("823667986154094592".to_string()));
 }
 
 #[tokio::test]
@@ -1921,18 +1694,12 @@ async fn test_npf_post_creation_with_image() {
 #[tokio::test]
 async fn test_npf_post_creation_as_draft() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/post_create_draft.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("POST"))
         .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 201,
-                "msg": "Created"
-            },
-            "response": {
-                "id": "draft-post-456"
-            }
-        })))
+        .respond_with(ResponseTemplate::new(201).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -1947,24 +1714,18 @@ async fn test_npf_post_creation_as_draft() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.id, "draft-post-456");
+    assert_eq!(response.id, "823667985992564736");
 }
 
 #[tokio::test]
 async fn test_npf_post_creation_queued() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/post_create_queue.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("POST"))
         .and(path(format!("/blog/{}/posts", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 201,
-                "msg": "Created"
-            },
-            "response": {
-                "id": "queued-post-789"
-            }
-        })))
+        .respond_with(ResponseTemplate::new(201).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -1983,7 +1744,7 @@ async fn test_npf_post_creation_queued() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.id, "queued-post-789");
+    assert_eq!(response.id, "823667986154094592");
 }
 
 #[tokio::test]
@@ -2142,17 +1903,14 @@ async fn test_avatar_endpoint() {
 
 #[tokio::test]
 async fn test_get_blocks() {
-    let blocks_response = include_str!("./fixtures/get_blocks.json");
+    let fixture = include_str!("fixtures/live/blog_blocks.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     let mock_server = MockServer::start().await;
 
     Mock::given(method("GET"))
         .and(path(format!("/blog/{TEST_BLOG_NAME}/blocks")))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(blocks_response)
-                .insert_header("content-type", "application/json"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -2321,15 +2079,14 @@ async fn test_unblock_all_anonymous() {
 async fn test_blog_likes() {
     let mock_server = MockServer::start().await;
 
-    let mock_response = include_str!("./fixtures/blog_likes.json");
+    // Blog likes and user likes share a response shape, so the live capture
+    // for the latter (there's no separate live blog-likes capture) backs both.
+    let fixture = include_str!("fixtures/live/user_likes.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path(format!("/blog/{TEST_BLOG_NAME}/likes")))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(mock_response)
-                .insert_header("content-type", "application/json"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -2342,22 +2099,26 @@ async fn test_blog_likes() {
         .await
         .expect("Callout to get blog likes failed");
 
-    assert_eq!(result.liked_count, 106883);
+    assert_eq!(result.liked_count, 111534);
+    assert_eq!(result.liked_posts.len(), 3);
+    assert_eq!(result.liked_posts[0].id, "823667562844930048");
 }
 
 #[tokio::test]
 async fn test_blog_following() {
     let mock_server = MockServer::start().await;
 
-    let mock_response = include_str!("./fixtures/get_blog_following.json");
+    // Blog-following of a secondary blog is 403 for its own owner (see
+    // test_blog_following_secondary_forbidden), so this happy path could not
+    // be captured live; it reuses the user-following capture on the
+    // assumption that the two endpoints share a response shape per Tumblr's
+    // docs.
+    let fixture = include_str!("fixtures/live/user_following.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path(format!("/blog/{TEST_BLOG_NAME}/following")))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(mock_response)
-                .insert_header("content-type", "application/json"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -2370,22 +2131,20 @@ async fn test_blog_following() {
         .await
         .expect("Callout to get blog likes failed");
 
-    assert_eq!(result.total_blogs, 1190);
+    assert_eq!(result.total_blogs, 1241);
+    assert_eq!(result.blogs.len(), 5);
 }
 
 #[tokio::test]
 async fn test_user_following() {
     let mock_server = MockServer::start().await;
 
-    let mock_response = include_str!("./fixtures/get_user_following.json");
+    let fixture = include_str!("fixtures/live/user_following.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/following"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(mock_response)
-                .insert_header("content-type", "application/json"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -2398,22 +2157,37 @@ async fn test_user_following() {
         .await
         .expect("Callout to get blog likes failed");
 
-    assert_eq!(result.total_blogs, 1190);
+    assert_eq!(result.total_blogs, 1241);
+    assert_eq!(result.blogs.len(), 5);
+    assert_eq!(result.blogs[0].name, "example-blog-068");
 }
 
 #[tokio::test]
 async fn test_blog_followers() {
     let mock_server = MockServer::start().await;
 
-    let mock_response = include_str!("./fixtures/blog_followers.json");
-
+    // The live capture for this endpoint is a real empty state (the demo blog
+    // has no followers; see test_blog_followers_empty), so the populated case
+    // here is a hand-crafted, unverified body.
     Mock::given(method("GET"))
         .and(path(format!("/blog/{TEST_BLOG_NAME}/followers")))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(mock_response)
-                .insert_header("content-type", "application/json"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "meta": {
+                "status": 200,
+                "msg": "OK"
+            },
+            "response": {
+                "total_users": 2450,
+                "users": [
+                    {
+                        "name": "a-follower",
+                        "url": "https://a-follower.tumblr.com/",
+                        "following": true,
+                        "updated": 1234567890
+                    }
+                ]
+            }
+        })))
         .mount(&mock_server)
         .await;
 
@@ -2427,6 +2201,77 @@ async fn test_blog_followers() {
         .expect("Callout to get blog likes failed");
 
     assert_eq!(result.total_users, 2450);
+    assert_eq!(result.users.len(), 1);
+}
+
+#[tokio::test]
+async fn test_blog_followers_empty() {
+    let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_followers.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
+
+    Mock::given(method("GET"))
+        .and(path("/blog/crabrave-demo/followers"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+
+    let result = client
+        .blogs("crabrave-demo")
+        .followers()
+        .send()
+        .await
+        .expect("Callout to get blog likes failed");
+
+    assert_eq!(result.total_users, 0);
+    assert!(result.users.is_empty());
+}
+
+#[tokio::test]
+async fn test_blog_following_secondary_forbidden() {
+    let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_following_403.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
+
+    // Fetching who a *secondary* blog follows is 403 for that blog's own owner.
+    Mock::given(method("GET"))
+        .and(path("/blog/demo-sideblog/following"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(body))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("demo-sideblog").following().send().await;
+
+    match result {
+        Err(CrabError::Api { status, .. }) => assert_eq!(status, 403),
+        other => panic!("Expected Api error, got: {:?}", other.map(|_| ())),
+    }
+}
+
+#[tokio::test]
+async fn test_blog_likes_secondary_forbidden() {
+    let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_likes_403.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
+
+    // Likes of a secondary blog are also 403 without the share-likes setting;
+    // the envelope's `response` is a bare string here rather than an object.
+    Mock::given(method("GET"))
+        .and(path("/blog/demo-sideblog/likes"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(body))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("demo-sideblog").likes().send().await;
+
+    match result {
+        Err(CrabError::Api { status, .. }) => assert_eq!(status, 403),
+        other => panic!("Expected Api error, got: {:?}", other),
+    }
 }
 
 #[tokio::test]
@@ -2466,46 +2311,29 @@ async fn test_followed_by() {
 #[tokio::test]
 async fn test_get_post() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/single_post.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/posts/123456", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "object_type": "post",
-                "type": "blocks",
-                "id": 123456,
-                "id_string": "123456",
-                "tumblelog_uuid": "t:abc123",
-                "blog_name": TEST_BLOG_NAME,
-                "post_url": format!("https://{}.tumblr.com/post/123456", TEST_BLOG_NAME),
-                "timestamp": 1234567890,
-                "tags": ["test", "example"],
-                "reblog_key": "abc123xyz",
-                "interactability_reblog": "everyone",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "This is the post body"
-                    }
-                ],
-                "layout": [],
-                "trail": []
-            }
-        })))
+        .and(path("/blog/crabrave-demo/posts/819597601864335360"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).post("123456").get().await;
+    let result = client
+        .blogs("crabrave-demo")
+        .post("819597601864335360")
+        .get()
+        .await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let post_response = result.unwrap();
-    assert_eq!(post_response.id, "123456");
-    assert_eq!(post_response.blog_name, TEST_BLOG_NAME);
+    assert_eq!(post_response.id, "819597601864335360");
+    assert_eq!(post_response.blog_name, "crabrave-demo");
+    assert_eq!(post_response.post_type, "blocks");
+    assert_eq!(post_response.reblog_key, "4UatWJQP");
+    assert_eq!(post_response.content.len(), 1);
 }
 
 #[tokio::test]
@@ -3431,40 +3259,13 @@ async fn test_community_change_role() {
 #[tokio::test]
 async fn test_user_dashboard() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/user_dashboard_npf.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/dashboard"))
         .and(query_param("limit", "10"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "posts": [
-                    {
-                        "id": 111111,
-                        "id_string": "111111",
-                        "blog_name": "friend1",
-                        "post_url": "https://friend1.tumblr.com/post/111111",
-                        "type": "text",
-                        "timestamp": 1234567890,
-                        "tags": [],
-                        "note_count": 10
-                    },
-                    {
-                        "id": 222222,
-                        "id_string": "222222",
-                        "blog_name": "friend2",
-                        "post_url": "https://friend2.tumblr.com/post/222222",
-                        "type": "photo",
-                        "timestamp": 1234567891,
-                        "tags": ["photo"],
-                        "note_count": 50
-                    }
-                ]
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -3473,39 +3274,21 @@ async fn test_user_dashboard() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.posts.len(), 2);
-    assert_eq!(response.posts[0].blog_name, "friend1");
-    assert_eq!(response.posts[1].blog_name, "friend2");
+    assert_eq!(response.posts.len(), 3);
+    assert_eq!(response.posts[0].blog_name, "example-blog-015");
+    assert_eq!(response.posts[1].blog_name, "example-blog-074");
 }
 
 #[tokio::test]
 async fn test_user_likes() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/user_likes.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/likes"))
         .and(query_param("limit", "5"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "liked_posts": [
-                    {
-                        "id": 333333,
-                        "id_string": "333333",
-                        "blog_name": "coolblog",
-                        "post_url": "https://coolblog.tumblr.com/post/333333",
-                        "type": "text",
-                        "timestamp": 1234567890,
-                        "tags": ["liked"],
-                        "note_count": 100
-                    }
-                ],
-                "liked_count": 500
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -3514,9 +3297,9 @@ async fn test_user_likes() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.liked_count, 500);
-    assert_eq!(response.liked_posts.len(), 1);
-    assert_eq!(response.liked_posts[0].id, "333333");
+    assert_eq!(response.liked_count, 111534);
+    assert_eq!(response.liked_posts.len(), 3);
+    assert_eq!(response.liked_posts[0].id, "823667562844930048");
 }
 
 #[tokio::test]
@@ -3959,23 +3742,17 @@ async fn test_blog_pages_with_limit_and_offset() {
 #[tokio::test]
 async fn test_blog_pages_empty() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_pages.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{}/pages", TEST_BLOG_NAME)))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "pages": []
-            }
-        })))
+        .and(path("/blog/crabrave-demo/pages"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
-    let result = client.blogs(TEST_BLOG_NAME).pages().send().await;
+    let result = client.blogs("crabrave-demo").pages().send().await;
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let pages = result.unwrap();
@@ -4365,49 +4142,12 @@ async fn test_post_mute_forbidden() {
 #[tokio::test]
 async fn test_user_limits() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/user_limits.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/limits"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "user": {
-                    "posts": {
-                        "description": "posts",
-                        "limit": 250,
-                        "remaining": 245,
-                        "reset_at": 1735776000
-                    },
-                    "photos": {
-                        "description": "photo uploads",
-                        "limit": 250,
-                        "remaining": 250,
-                        "reset_at": 1735776000
-                    },
-                    "videos": {
-                        "description": "video uploads",
-                        "limit": 20,
-                        "remaining": 18,
-                        "reset_at": 1735776000
-                    },
-                    "video_seconds": {
-                        "description": "video upload seconds",
-                        "limit": 3600,
-                        "remaining": 3540,
-                        "reset_at": 1735776000
-                    },
-                    "follows": {
-                        "description": "follows",
-                        "limit": 200,
-                        "remaining": 195,
-                        "reset_at": 1735776000
-                    }
-                }
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -4419,40 +4159,35 @@ async fn test_user_limits() {
 
     // Check posts limit
     let posts = limits.user.posts.expect("posts limit should be present");
-    assert_eq!(posts.description, "posts");
-    assert_eq!(posts.limit, 250);
-    assert_eq!(posts.remaining, 245);
-    assert_eq!(posts.reset_at, 1735776000);
+    assert_eq!(posts.limit, 500);
+    assert_eq!(posts.remaining, 488);
+    assert_eq!(posts.reset_at, 1785556800);
 
     // Check photos limit
     let photos = limits.user.photos.expect("photos limit should be present");
-    assert_eq!(photos.description, "photo uploads");
-    assert_eq!(photos.limit, 250);
-    assert_eq!(photos.remaining, 250);
+    assert_eq!(photos.limit, 500);
+    assert_eq!(photos.remaining, 500);
 
     // Check videos limit
     let videos = limits.user.videos.expect("videos limit should be present");
-    assert_eq!(videos.description, "video uploads");
-    assert_eq!(videos.limit, 20);
-    assert_eq!(videos.remaining, 18);
+    assert_eq!(videos.limit, 40);
+    assert_eq!(videos.remaining, 40);
 
     // Check video_seconds limit
     let video_seconds = limits
         .user
         .video_seconds
         .expect("video_seconds limit should be present");
-    assert_eq!(video_seconds.description, "video upload seconds");
-    assert_eq!(video_seconds.limit, 3600);
-    assert_eq!(video_seconds.remaining, 3540);
+    assert_eq!(video_seconds.limit, 7200);
+    assert_eq!(video_seconds.remaining, 7200);
 
     // Check follows limit
     let follows = limits
         .user
         .follows
         .expect("follows limit should be present");
-    assert_eq!(follows.description, "follows");
     assert_eq!(follows.limit, 200);
-    assert_eq!(follows.remaining, 195);
+    assert_eq!(follows.remaining, 200);
 }
 
 #[tokio::test]
@@ -4686,18 +4421,12 @@ async fn test_user_like_unauthorized() {
 #[tokio::test]
 async fn test_user_filtered_tags_get() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/user_filtered_tags.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/filtered_tags"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "filtered_tags": ["spoilers", "nsfw", "politics"]
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -4706,10 +4435,12 @@ async fn test_user_filtered_tags_get() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.filtered_tags.len(), 3);
-    assert!(response.filtered_tags.contains(&"spoilers".to_string()));
-    assert!(response.filtered_tags.contains(&"nsfw".to_string()));
-    assert!(response.filtered_tags.contains(&"politics".to_string()));
+    assert_eq!(response.filtered_tags.len(), 1);
+    assert!(
+        response
+            .filtered_tags
+            .contains(&"crabrave-test-filter".to_string())
+    );
 }
 
 #[tokio::test]
@@ -4858,18 +4589,12 @@ async fn test_user_filtered_tags_add_limit_exceeded() {
 #[tokio::test]
 async fn test_user_filtered_content_get() {
     let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/user_filtered_content.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
         .and(path("/user/filtered_content"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "meta": {
-                "status": 200,
-                "msg": "OK"
-            },
-            "response": {
-                "filtered_content": ["spam", "annoying phrase", "blocked user"]
-            }
-        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
@@ -4878,12 +4603,11 @@ async fn test_user_filtered_content_get() {
 
     assert!(result.is_ok(), "Failed with: {:?}", result);
     let response = result.unwrap();
-    assert_eq!(response.filtered_content.len(), 3);
-    assert!(response.filtered_content.contains(&"spam".to_string()));
+    assert_eq!(response.filtered_content.len(), 1);
     assert!(
         response
             .filtered_content
-            .contains(&"annoying phrase".to_string())
+            .contains(&"crabrave test filtered phrase".to_string())
     );
 }
 
@@ -5010,27 +4734,53 @@ async fn test_user_filtered_content_add_limit_exceeded() {
 #[tokio::test]
 async fn test_npf_posts() {
     let mock_server = MockServer::start().await;
-    let mock_response = include_str!("./fixtures/posts_npf.json");
+    let fixture = include_str!("fixtures/live/blog_posts_npf.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
 
     Mock::given(method("GET"))
-        .and(path(format!("/blog/{TEST_BLOG_NAME}/posts")))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .set_body_string(mock_response)
-                .insert_header("content-type", "application/json"),
-        )
+        .and(path("/blog/crabrave-demo/posts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&mock_server)
         .await;
 
     let client = test_client(&mock_server).await;
 
     // NPF is now always used by default
-    let result = client.blogs(TEST_BLOG_NAME).posts().send().await;
+    let result = client.blogs("crabrave-demo").posts().send().await;
 
     assert!(result.is_ok(), "failed with: {:?}", result);
     let posts = result.unwrap();
-    assert!(!posts.posts.is_empty());
+    assert_eq!(posts.total_posts, 22);
+    assert_eq!(posts.posts.len(), 8);
+    assert!(posts.posts.iter().all(|p| p.post_type == "blocks"));
     assert_eq!(posts.posts.get(2).unwrap().trail.len(), 1);
+}
+
+#[tokio::test]
+async fn test_blog_posts_legacy() {
+    let mock_server = MockServer::start().await;
+    let fixture = include_str!("fixtures/live/blog_posts_legacy.json");
+    let body: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
+
+    // Same 8 posts as blog_posts_npf.json, captured without `?npf=true`:
+    // content arrives as legacy HTML (in `body`, not NPF `content`), so
+    // Post.content deserializes to empty via deserialize_content_blocks.
+    Mock::given(method("GET"))
+        .and(path("/blog/crabrave-demo/posts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&mock_server)
+        .await;
+
+    let client = test_client(&mock_server).await;
+    let result = client.blogs("crabrave-demo").posts().send().await;
+
+    assert!(result.is_ok(), "failed with: {:?}", result);
+    let posts = result.unwrap();
+    assert_eq!(posts.total_posts, 22);
+    assert_eq!(posts.posts.len(), 8);
+    assert_eq!(posts.posts[0].id, "819598039806263296");
+    assert_eq!(posts.posts[0].post_type, "text");
+    assert!(posts.posts[0].content.is_empty());
 }
 
 #[tokio::test]

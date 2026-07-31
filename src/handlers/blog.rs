@@ -1439,6 +1439,10 @@ pub struct Note {
     #[serde(rename = "type")]
     pub note_type: String,
     /// Unix epoch timestamp of the interaction
+    ///
+    /// `conversation` mode returns this with sub-second precision as a JSON
+    /// float rather than the whole-second integer every other mode uses.
+    #[serde(deserialize_with = "deserialize_timestamp_truncating")]
     pub timestamp: i64,
     /// Name of the interacting blog
     pub blog_name: String,
@@ -1528,14 +1532,60 @@ where
     })
 }
 
+/// Deserializes a Unix timestamp as whole seconds, truncating away any
+/// sub-second precision.
+///
+/// `notes` in `conversation` mode returns `timestamp` as a JSON float
+/// (e.g. `1785113047.762693`) instead of the integer every other mode uses.
+fn deserialize_timestamp_truncating<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrFloat {
+        Int(i64),
+        Float(f64),
+    }
+
+    let value = IntOrFloat::deserialize(deserializer)?;
+    Ok(match value {
+        IntOrFloat::Int(i) => i,
+        IntOrFloat::Float(f) => f as i64,
+    })
+}
+
+/// Aggregated group of notes collapsed out of the primary array
+/// (`conversation` mode)
+///
+/// Conversation mode returns commentary notes in `notes` and collapses the
+/// rest (likes, plain reblogs) into rollup groups, each carrying its own
+/// aggregate counts and a sample of the collapsed notes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RollupNoteGroup {
+    /// Sample of the notes collapsed into this group
+    #[serde(default)]
+    pub notes: Vec<Note>,
+    /// Total notes collapsed into this group
+    #[serde(default)]
+    pub total_notes: u64,
+    /// Total likes collapsed into this group
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_likes: Option<u64>,
+    /// Total reblogs collapsed into this group
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_reblogs: Option<u64>,
+}
+
 /// Response from the notes endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotesResponse {
     /// List of notes
     pub notes: Vec<Note>,
-    /// Notes excluded from primary array (conversation mode only)
+    /// Groups of notes excluded from the primary array (conversation mode
+    /// only)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub rollup_notes: Vec<Note>,
+    pub rollup_notes: Vec<RollupNoteGroup>,
     /// Total note count
     #[serde(default)]
     pub total_notes: u64,

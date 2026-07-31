@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "status": 200,
+    "msg": "OK"
+  },
+  "response": {
+    "notes": [
+      {
+        "type": "like",
+        "timestamp": 1785366266,
+        "blog_name": "example-blog-072",
+        "blog_uuid": "t:FixtureUuid027xxxxxx",
+        "blog_url": "https://example-blog-072.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "circle",
+        "avatar_url": {
+          "64": "https://64.media.tumblr.com/avatar_aaaaaaaaaaaa_64.png",
+          "128": "https://64.media.tumblr.com/avatar_aaaaaaaaaaaa_128.png"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785342552,
+        "blog_name": "example-blog-086",
+        "blog_uuid": "t:FixtureUuid072xxxxxx",
+        "blog_url": "https://example-blog-086.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "circle",
+        "avatar_url": {
+          "64": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/5c7edef6f6c864a0-bc/s64x64u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg",
+          "128": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/5c7edef6f6c864a0-bc/s128x128u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785340844,
+        "blog_name": "example-blog-057",
+        "blog_uuid": "t:FixtureUuid059xxxxxx",
+        "blog_url": "https://example-blog-057.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "square",
+        "avatar_url": {
+          "64": "https://44.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/99ab261515eeaf76-96/s64x64u_c1_f1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gif",
+          "128": "https://44.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/99ab261515eeaf76-96/s128x128u_c1_f1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gif"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785300139,
+        "blog_name": "example-blog-039",
+        "blog_uuid": "t:FixtureUuid056xxxxxx",
+        "blog_url": "https://example-blog-039.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "square",
+        "avatar_url": {
+          "64": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/5e140bc4262043c2-77/s64x64u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+          "128": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/5e140bc4262043c2-77/s128x128u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785199533,
+        "blog_name": "example-blog-081",
+        "blog_uuid": "t:FixtureUuid035xxxxxx",
+        "blog_url": "https://example-blog-081.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "circle",
+        "avatar_url": {
+          "64": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/8e2a67310331e92a-e1/s64x64u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+          "128": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/8e2a67310331e92a-e1/s128x128u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785181990,
+        "blog_name": "example-blog-027",
+        "blog_uuid": "t:FixtureUuid031xxxxxx",
+        "blog_url": "https://example-blog-027.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "square",
+        "avatar_url": {
+          "64": "https://assets.tumblr.com/images/default_avatar_64.png",
+          "128": "https://assets.tumblr.com/images/default_avatar_128.png"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785181450,
+        "blog_name": "example-blog-058",
+        "blog_uuid": "t:FixtureUuid019xxxxxx",
+        "blog_url": "https://example-blog-058.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "circle",
+        "avatar_url": {
+          "64": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/907bb425af171189-51/s64x64u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+          "128": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/907bb425af171189-51/s128x128u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"
+        }
+      },
+      {
+        "type": "like",
+        "timestamp": 1785178154,
+        "blog_name": "example-blog-046",
+        "blog_uuid": "t:FixtureUuid088xxxxxx",
+        "blog_url": "https://example-blog-046.tumblr.com/",
+        "followed": false,
+        "avatar_shape": "square",
+        "avatar_url": {
+          "64": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/e9071ac933d8fb13-ae/s64x64u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg",
+          "128": "https://64.media.tumblr.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/e9071ac933d8fb13-ae/s128x128u_c1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg"
+        }
+      }
+    ],
+    "total_notes": 6597,
+    "_links": {
+      "next": {
+        "href": "/v2/blog/crabrave-demo/notes?mode=likes&id=819597601864335360&before_timestamp=1785084695",
+        "method": "GET",
+        "query_params": {
+          "mode": "likes",
+          "id": "819597601864335360",
+          "before_timestamp": "1785084695"
+        }
+      }
+    }
+  }
+}

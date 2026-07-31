@@ -1,0 +1,70 @@
+{
+  "meta": {
+    "status": 200,
+    "msg": "OK"
+  },
+  "response": {
+    "total_blogs": 1241,
+    "blogs": [
+      {
+        "name": "example-blog-068",
+        "title": "a study in red: virtue, terror, desire",
+        "description": "<p>persephone’s revolutionary theory &amp; history blog</p>",
+        "url": "https://www.tumblr.com/blog/view/example-blog-068",
+        "uuid": "t:FixtureUuid095xxxxxx",
+        "updated": 1785249532,
+        "tumblrmart_accessories": {},
+        "can_show_badges": true
+      },
+      {
+        "name": "example-blog-053",
+        "title": "castles in the air.",
+        "description": "<p>we are all drifting reefwards now</p><p>— nilou, 29, pnw, she/her.</p>",
+        "url": "https://www.tumblr.com/blog/view/example-blog-053",
+        "uuid": "t:FixtureUuid058xxxxxx",
+        "updated": 1785510014,
+        "tumblrmart_accessories": {},
+        "can_show_badges": false
+      },
+      {
+        "name": "example-blog-031",
+        "title": "Hannah Lock Illustration",
+        "description": "27. Open for Comissions!",
+        "url": "https://example-blog-031.tumblr.com/",
+        "uuid": "t:FixtureUuid037xxxxxx",
+        "updated": 1785443225,
+        "tumblrmart_accessories": {},
+        "can_show_badges": true
+      },
+      {
+        "name": "example-blog-052",
+        "title": "Vintage postcards",
+        "description": "",
+        "url": "https://www.tumblr.com/blog/view/example-blog-052",
+        "uuid": "t:FixtureUuid039xxxxxx",
+        "updated": 1785510672,
+        "tumblrmart_accessories": {},
+        "can_show_badges": true
+      },
+      {
+        "name": "example-blog-006",
+        "title": "The Toadstool",
+        "description": "Welcome to the new theme! Please be patient while I get pages and tags in place. I've got lots of missing posts because of the new rules and I'm trying to figure out how to get them taken care of. \nIf you are reading this, THANKS! for sticking with me after all these crazy changes.\n<br>                                              \n*** PLEASE LEAVE ARTIST NAME INTACT WHEN SHARING***",
+        "url": "https://example-blog-006.tumblr.com/",
+        "uuid": "t:FixtureUuid053xxxxxx",
+        "updated": 1618802072,
+        "tumblrmart_accessories": {},
+        "can_show_badges": true
+      }
+    ],
+    "_links": {
+      "next": {
+        "href": "/v2/user/following?offset=21",
+        "method": "GET",
+        "query_params": {
+          "offset": "21"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "status": 302,
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json"
+    },
+    {
+      "name": "location",
+      "value": "https://assets.tumblr.com/images/default_avatar/diamond_pink_purple_128.png"
+    }
+  ]
+}

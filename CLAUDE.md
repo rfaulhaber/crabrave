@@ -68,6 +68,22 @@ cargo nextest run
 cargo test test_name
 ```
 
+**Fixtures:** `tests/fixtures/live/` holds sanitized captures of real
+Tumblr API responses (see its README for provenance and sanitization
+rules); mock tests are backed by these wherever a live capture exists.
+Never edit a live fixture to make a test pass — a mismatch means the
+model is wrong, not the fixture. Root-level `tests/fixtures/` files are
+hand-crafted edge cases.
+
+**Live smoke tests (opt-in, read-only):**
+```bash
+CRABRAVE_LIVE_TESTS=1 cargo nextest run --test live_smoke
+```
+Hermetic by default (each test no-ops without the env var). Credentials
+come from `TUMBLR_*` env vars or the gitignored `tokens.json`; access
+tokens are short-lived, so refresh first (`tumblr.nu oauth refresh`) and
+sync `tokens.json`.
+
 ## Architecture
 
 The project uses a modular structure with the main library in `lib.rs` and specialized modules:

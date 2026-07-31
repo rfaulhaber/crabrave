@@ -805,6 +805,27 @@ where
     }
 }
 
+/// Deserializes an optional ID leniently: Tumblr is inconsistent about
+/// whether IDs arrive as JSON strings or numbers (post creation returns a
+/// string, post deletion a number), so accept both as `String`.
+pub(crate) fn deserialize_opt_string_or_number<'de, D>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<serde_json::Value> = Option::deserialize(deserializer)?;
+    match value {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::String(s)) => Ok(Some(s)),
+        Some(serde_json::Value::Number(n)) => Ok(Some(n.to_string())),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected either a string or number, got {}",
+            kind_of(&other)
+        ))),
+    }
+}
+
 /// Custom deserializer for content blocks that handles both NPF arrays and legacy HTML strings.
 /// Legacy posts have `content` as an HTML string, while NPF posts have it as an array of ContentBlock.
 /// This deserializer returns the array for NPF posts and an empty Vec for legacy posts.

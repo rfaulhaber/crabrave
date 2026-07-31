@@ -54,11 +54,21 @@ pub struct PostResponse {
 }
 
 /// Response from deleting a post
+///
+/// The live API returns `id` as a JSON number here (unlike post creation,
+/// which returns a string), alongside a redundant `id_string`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeleteResponse {
     /// Post ID that was deleted
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::deserialize_opt_string_or_number"
+    )]
     pub id: Option<String>,
+    /// String form of the deleted post's ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_string: Option<String>,
 }
 
 /// Response from creating a post
