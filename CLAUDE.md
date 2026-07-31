@@ -92,7 +92,11 @@ The project uses a modular structure with the main library in `lib.rs` and speci
 
 **`Crabrave` Client** (`lib.rs`)
 - Main entry point with builder pattern initialization
-- Supports only OAuth2 authentication
+- Two auth modes: OAuth2 (Bearer token, full access) or api-key-only —
+  `build()` needs just `consumer_key`, which is then sent as an
+  `api_key` query param (works for the documented public read
+  endpoints: tagged, blog info/posts/likes, avatar; everything else
+  401s server-side)
 - Runtime-agnostic async implementation (no tokio dependency in library)
 - Automatic User-Agent header configuration
 - Built-in rate limit detection (429 status handling)
@@ -113,6 +117,11 @@ The project uses a modular structure with the main library in `lib.rs` and speci
 - `Blog`, `User` - Core data structures
 - `BlogIdentifier` - Enum supporting name/hostname/UUID
 - `Page<T>` - Pagination wrapper with total count and next page links
+- `Links`/`Link` - Generic `_links` pagination cursors, exposed as
+  `links` on the general list responses (posts, queue, drafts,
+  submissions, blocks, followers, pages, following, likes, dashboard);
+  endpoints with typed cursors (notes, notifications, community
+  timeline/invitations) keep their bespoke links models
 - `TumblrmartAccessories`, `Badge` - Premium features
 - All models use serde for JSON serialization
 
@@ -139,8 +148,18 @@ The project uses a modular structure with the main library in `lib.rs` and speci
 // Blog information
 crab.blogs("staff").info().await?
 
-// Blog posts with builder
+// Blog posts with builder; tags() ANDs up to 4 tags (sent as the
+// PHP-style indexed form tag[0]=..&tag[1]=.. — the only encoding the
+// server honors; see TODO.org Phase 5)
 crab.blogs("staff").posts().limit(20).send().await?
+crab.blogs("staff").posts()
+    .tags(["rust", "programming"])
+    .sort(SortOrder::Asc)
+    .filter(PostFilter::Text)
+    .reblog_info(true)
+    .notes_info(true)
+    .send()
+    .await?
 
 // Avatar (returns URL or binary data depending on auth)
 crab.blogs("staff").avatar(Some(128)).await?
@@ -192,14 +211,26 @@ crab.users().remove_filtered_content("trigger warning").await?
 
 **Posts API** (`handlers/posts.rs`)
 ```rust
-// Get a specific post
+// Get a specific post (post_format selects npf/legacy serving)
 crab.blogs("my-blog").post("123456").get().await?
+crab.blogs("my-blog").post("123456").post_format(PostFormat::Legacy).get().await?
 
 // Create posts using NPF
 crab.blogs("my-blog")
     .create_post()
     .add_block(ContentBlock::text("Hello World!"))
     .tags(vec!["rust", "programming"])
+    .send()
+    .await?
+
+// Schedule a post (publish_on requires state "queue"; ISO 8601) or
+// backdate one with date(). When editing a scheduled post, resend its
+// publish_on or the schedule is silently dropped.
+crab.blogs("my-blog")
+    .create_post()
+    .add_block(ContentBlock::text("Later!"))
+    .state("queue")
+    .publish_on("2026-08-15T12:00:00Z")
     .send()
     .await?
 
@@ -229,6 +260,11 @@ crab.blogs("my-blog")
     .comment("Great post!")
     .send()
     .await?
+
+// Mute a post's notifications (permanently or for a duration), unmute
+crab.blogs("my-blog").post("123456").mute().await?
+crab.blogs("my-blog").post("123456").mute_for(86400).await?
+crab.blogs("my-blog").post("123456").unmute().await?
 ```
 
 **Tagged API** (`handlers/tagged.rs`)

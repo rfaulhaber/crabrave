@@ -312,6 +312,75 @@ impl<T> Default for Page<T> {
     }
 }
 
+/// A single entry in a Tumblr `_links` map
+///
+/// Per Tumblr's API docs, a link's `type` is either "action" (typically a
+/// paginated fetch, carrying `method` and `query_params` to reissue the
+/// request) or "navigation" (a plain `href`). All fields are optional and
+/// defaulted since the shape isn't validated beyond what individual
+/// endpoints happen to populate.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Link {
+    /// URL for the link, relative to the API base
+    #[serde(default)]
+    pub href: Option<String>,
+    /// HTTP method to use when following the link ("action" links only)
+    #[serde(default)]
+    pub method: Option<String>,
+    /// Link type: "action" or "navigation"
+    #[serde(default, rename = "type")]
+    pub link_type: Option<String>,
+    /// Literal query parameters to reissue the request with ("action" links only)
+    #[serde(default)]
+    pub query_params: Option<serde_json::Value>,
+}
+
+impl Link {
+    /// Flattens `query_params` into string pairs suitable for feeding back
+    /// into a request's query string
+    ///
+    /// Only scalar (string, number, bool) values are kept; nested objects
+    /// or arrays are skipped since a query string has no way to represent
+    /// them.
+    pub fn query_pairs(&self) -> Vec<(String, String)> {
+        let Some(serde_json::Value::Object(params)) = &self.query_params else {
+            return Vec::new();
+        };
+        params
+            .iter()
+            .filter_map(|(key, value)| {
+                let value = match value {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Number(n) => n.to_string(),
+                    serde_json::Value::Bool(b) => b.to_string(),
+                    _ => return None,
+                };
+                Some((key.clone(), value))
+            })
+            .collect()
+    }
+}
+
+/// Wire pagination cursors for list responses (Tumblr's `_links`)
+///
+/// This is the generic shape: a `next` and/or `prev` link. Some endpoints
+/// (notes, community timeline/invitations) return more tightly-typed links
+/// with their own bespoke models elsewhere in the crate — those take
+/// precedence over this one where they exist. `Links` covers everything
+/// else.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Links {
+    /// Link to the next page, if any
+    #[serde(default)]
+    pub next: Option<Link>,
+    /// Link to the previous page, if any
+    ///
+    /// Tumblr's docs use "previous" but some responses use "prev"; both are
+    /// accepted.
+    #[serde(default, alias = "previous")]
+    pub prev: Option<Link>,
+}
+
 /// Tumblrmart accessories (badges, checkmarks, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TumblrmartAccessories {
@@ -397,5 +466,53 @@ mod tests {
 
         let page = Page::new(vec![1]);
         assert!(!page.is_empty());
+    }
+
+    #[test]
+    fn test_link_query_pairs_flattens_scalars() {
+        let link = Link {
+            href: Some("/v2/user/likes?before=123".to_string()),
+            method: Some("GET".to_string()),
+            link_type: Some("action".to_string()),
+            query_params: Some(serde_json::json!({
+                "before": "123",
+                "limit": 20,
+                "npf": true,
+            })),
+        };
+
+        let mut pairs = link.query_pairs();
+        pairs.sort();
+        assert_eq!(
+            pairs,
+            vec![
+                ("before".to_string(), "123".to_string()),
+                ("limit".to_string(), "20".to_string()),
+                ("npf".to_string(), "true".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_link_query_pairs_skips_non_scalar_values() {
+        let link = Link {
+            query_params: Some(serde_json::json!({
+                "before": "123",
+                "nested": {"a": 1},
+                "array": [1, 2, 3],
+            })),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            link.query_pairs(),
+            vec![("before".to_string(), "123".to_string())]
+        );
+    }
+
+    #[test]
+    fn test_link_query_pairs_none_when_no_query_params() {
+        let link = Link::default();
+        assert!(link.query_pairs().is_empty());
     }
 }

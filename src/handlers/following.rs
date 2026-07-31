@@ -67,4 +67,6 @@ impl FollowingBuilder {
 pub struct FollowingResponse {
     pub blogs: Vec<Blog>,
     pub total_blogs: u64,
+    #[serde(rename = "_links", default)]
+    pub links: Option<crate::models::Links>,
 }

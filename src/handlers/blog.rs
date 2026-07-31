@@ -706,36 +706,160 @@ pub(crate) struct AvatarResponseUrl {
     pub avatar_url: String,
 }
 
+/// Sort order for posts returned by [`PostsBuilder`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SortOrder {
+    /// Newest posts first (the default)
+    Desc,
+    /// Oldest posts first
+    Asc,
+}
+
+impl SortOrder {
+    /// Returns the string representation used in API requests
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SortOrder::Desc => "desc",
+            SortOrder::Asc => "asc",
+        }
+    }
+}
+
+impl std::fmt::Display for SortOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Post body format requested by [`PostsBuilder`], as an alternative to HTML
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PostFilter {
+    /// Plain text, HTML stripped
+    Text,
+    /// Content in the format the user originally entered it
+    Raw,
+}
+
+impl PostFilter {
+    /// Returns the string representation used in API requests
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PostFilter::Text => "text",
+            PostFilter::Raw => "raw",
+        }
+    }
+}
+
+impl std::fmt::Display for PostFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// Query parameters for fetching blog posts
-#[derive(Debug, Clone, Serialize, Default)]
+///
+/// Serialized by hand via [`PostsQuery::to_pairs`] rather than derived: the
+/// `tags` filter needs indexed `tag[0]=…&tag[1]=…` keys, which a struct's
+/// derived `Serialize` has no way to produce.
+#[derive(Debug, Clone, Default)]
 struct PostsQuery {
     /// Maximum number of posts to return (API max: 20, default: 20)
-    #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<u32>,
 
     /// Post offset for pagination
-    #[serde(skip_serializing_if = "Option::is_none")]
     offset: Option<u64>,
 
     /// Filter by post type (text, photo, quote, link, chat, audio, video)
-    #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
     post_type: Option<String>,
 
-    /// Filter by tag
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Filter by a single tag
     tag: Option<String>,
 
+    /// Filter by multiple tags (AND semantics), sent as indexed `tag[N]` keys
+    tags: Option<Vec<String>>,
+
     /// Return posts before this timestamp (Unix time)
-    #[serde(skip_serializing_if = "Option::is_none")]
     before: Option<i64>,
 
     /// Return posts after this timestamp (Unix time)
-    #[serde(skip_serializing_if = "Option::is_none")]
     after: Option<i64>,
 
     /// Return posts in NPF format.
-    #[serde(skip_serializing_if = "Option::is_none")]
     npf: Option<bool>,
+
+    /// Sort order ("desc"/"asc")
+    sort: Option<SortOrder>,
+
+    /// Post format other than HTML ("text"/"raw")
+    filter: Option<PostFilter>,
+
+    /// Whether to include the various `reblogged_*` fields
+    reblog_info: Option<bool>,
+
+    /// Whether to include note count and note metadata
+    notes_info: Option<bool>,
+}
+
+impl PostsQuery {
+    /// Builds the request's query pairs.
+    ///
+    /// Tumblr's repeated bare-key form (`tag=a&tag=b`) is last-wins
+    /// server-side — silently wrong rather than an error — so multi-tag
+    /// filtering needs the indexed `tag[0]=a&tag[1]=b` form instead (verified
+    /// against the live API 2026-07-31).
+    fn to_pairs(&self) -> Vec<(String, String)> {
+        let mut pairs = Vec::new();
+        if let Some(v) = self.limit {
+            pairs.push(("limit".to_string(), v.to_string()));
+        }
+        if let Some(v) = self.offset {
+            pairs.push(("offset".to_string(), v.to_string()));
+        }
+        if let Some(v) = &self.post_type {
+            pairs.push(("type".to_string(), v.clone()));
+        }
+        if let Some(v) = &self.tag {
+            pairs.push(("tag".to_string(), v.clone()));
+        }
+        if let Some(tags) = &self.tags {
+            push_indexed(&mut pairs, "tag", tags);
+        }
+        if let Some(v) = self.before {
+            pairs.push(("before".to_string(), v.to_string()));
+        }
+        if let Some(v) = self.after {
+            pairs.push(("after".to_string(), v.to_string()));
+        }
+        if let Some(v) = self.npf {
+            pairs.push(("npf".to_string(), v.to_string()));
+        }
+        if let Some(v) = self.sort {
+            pairs.push(("sort".to_string(), v.as_str().to_string()));
+        }
+        if let Some(v) = self.filter {
+            pairs.push(("filter".to_string(), v.as_str().to_string()));
+        }
+        if let Some(v) = self.reblog_info {
+            pairs.push(("reblog_info".to_string(), v.to_string()));
+        }
+        if let Some(v) = self.notes_info {
+            pairs.push(("notes_info".to_string(), v.to_string()));
+        }
+        pairs
+    }
+}
+
+/// Appends `key[0]=v0&key[1]=v1&…` pairs for a multi-value query parameter.
+///
+/// Several Tumblr endpoints accept array parameters only in this indexed
+/// form — the comma-joined and repeated-bare-key forms are silently ignored
+/// or last-wins server-side (verified against the live API 2026-07-31).
+fn push_indexed(pairs: &mut Vec<(String, String)>, key: &str, values: &[String]) {
+    for (i, v) in values.iter().enumerate() {
+        pairs.push((format!("{key}[{i}]"), v.clone()));
+    }
 }
 
 /// Builder for querying blog posts
@@ -777,21 +901,64 @@ impl PostsBuilder {
         self
     }
 
-    /// Filters posts by tag
+    /// Filters posts by a single tag
     pub fn tag(mut self, tag: impl Into<String>) -> Self {
         self.query.tag = Some(tag.into());
         self
     }
 
+    /// Filters posts by multiple tags (AND semantics — a post must carry all
+    /// of them to match)
+    ///
+    /// Tumblr enforces a server-side maximum of 4 tags per request; this is
+    /// not validated client-side. Sent on the wire as indexed `tag[0]`,
+    /// `tag[1]`, … keys, distinct from the single tag set via
+    /// [`tag`](Self::tag).
+    pub fn tags(mut self, tags: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.query.tags = Some(tags.into_iter().map(Into::into).collect());
+        self
+    }
+
     /// Returns posts before this timestamp (Unix time)
+    ///
+    /// `before` and `offset` cannot be used together in the same request.
     pub fn before(mut self, timestamp: i64) -> Self {
         self.query.before = Some(timestamp);
         self
     }
 
-    /// Returns posts before this timestamp (Unix time)
+    /// Returns posts after this timestamp (Unix time)
+    ///
+    /// Best paired with `sort(SortOrder::Asc)` when paginating forward
+    /// through a blog's history.
     pub fn after(mut self, timestamp: i64) -> Self {
         self.query.after = Some(timestamp);
+        self
+    }
+
+    /// Sets the sort order for returned posts (`desc`, newest first, is the
+    /// default)
+    pub fn sort(mut self, sort: SortOrder) -> Self {
+        self.query.sort = Some(sort);
+        self
+    }
+
+    /// Requests posts in a format other than HTML: `Text` (plain text, HTML
+    /// stripped) or `Raw` (as the user originally entered it)
+    pub fn filter(mut self, filter: PostFilter) -> Self {
+        self.query.filter = Some(filter);
+        self
+    }
+
+    /// Includes the various `reblogged_*` fields on each post
+    pub fn reblog_info(mut self, reblog_info: bool) -> Self {
+        self.query.reblog_info = Some(reblog_info);
+        self
+    }
+
+    /// Includes note count and note metadata on each post
+    pub fn notes_info(mut self, notes_info: bool) -> Self {
+        self.query.notes_info = Some(notes_info);
         self
     }
 
@@ -807,7 +974,9 @@ impl PostsBuilder {
         // Always request NPF format
         self.query.npf = Some(true);
         let path = format!("blog/{}/posts", self.identifier.as_str());
-        self.client.get_with_query(&path, &self.query).await
+        self.client
+            .get_with_query(&path, &self.query.to_pairs())
+            .await
     }
 }
 
@@ -897,6 +1066,9 @@ impl QueueBuilder {
 pub struct QueueResponse {
     /// List of queued posts
     pub posts: Vec<Post>,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 /// Request body for reordering a post in the queue
@@ -994,6 +1166,9 @@ impl DraftsBuilder {
 pub struct DraftsResponse {
     /// List of draft posts
     pub posts: Vec<Post>,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 /// Query parameters for fetching submission posts
@@ -1095,6 +1270,9 @@ impl SubmissionBuilder {
 pub struct SubmissionResponse {
     /// List of submission posts
     pub posts: Vec<Post>,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 /// Types of notifications that can be filtered
@@ -1213,6 +1391,18 @@ pub struct Notification {
     /// Summary text for the notification
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
+    /// The relevant post's ID, for reblog and reply notifications
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post_id: Option<String>,
+    /// Tags used in a reblog, for reblog notifications
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub post_tags: Vec<String>,
+    /// Summary of the added content, for reblogs with commentary
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub added_text: Option<String>,
+    /// The text of the reply, for reply notifications
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_text: Option<String>,
 }
 
 /// Pagination links for notifications
@@ -1241,48 +1431,47 @@ pub struct NotificationsResponse {
 }
 
 /// Query parameters for fetching notifications
-#[derive(Debug, Clone, Serialize, Default)]
+///
+/// Serialized by hand via [`NotificationsQuery::to_pairs`] rather than
+/// derived: `types` and `omit_post_ids` need indexed `key[0]=…&key[1]=…`
+/// keys, which a struct's derived `Serialize` has no way to produce.
+#[derive(Debug, Clone, Default)]
 struct NotificationsQuery {
     /// Return notifications before this Unix epoch timestamp
-    #[serde(skip_serializing_if = "Option::is_none")]
     before: Option<i64>,
 
     /// Whether to consolidate similar activity items (default: true)
-    #[serde(skip_serializing_if = "Option::is_none")]
     rollups: Option<bool>,
 
-    /// Filter by notification types (comma-separated in serialization)
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_types_array"
-    )]
+    /// Filter by notification types, sent as indexed `types[N]` keys
     types: Option<Vec<String>>,
 
-    /// Post IDs to exclude from results (comma-separated in serialization)
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_string_array"
-    )]
+    /// Post IDs to exclude from results, sent as indexed `omit_post_ids[N]` keys
     omit_post_ids: Option<Vec<String>>,
 }
 
-fn serialize_types_array<S>(value: &Option<Vec<String>>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_str(&v.join(",")),
-        None => serializer.serialize_none(),
-    }
-}
-
-fn serialize_string_array<S>(value: &Option<Vec<String>>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_str(&v.join(",")),
-        None => serializer.serialize_none(),
+impl NotificationsQuery {
+    /// Builds the request's query pairs.
+    ///
+    /// The comma-joined form Tumblr's docs otherwise suggest for array
+    /// parameters (`types=like,follow`) is silently ignored server-side for
+    /// both `types` and `omit_post_ids`; only the indexed form works
+    /// (verified against the live API 2026-07-31).
+    fn to_pairs(&self) -> Vec<(String, String)> {
+        let mut pairs = Vec::new();
+        if let Some(v) = self.before {
+            pairs.push(("before".to_string(), v.to_string()));
+        }
+        if let Some(v) = self.rollups {
+            pairs.push(("rollups".to_string(), v.to_string()));
+        }
+        if let Some(types) = &self.types {
+            push_indexed(&mut pairs, "types", types);
+        }
+        if let Some(ids) = &self.omit_post_ids {
+            push_indexed(&mut pairs, "omit_post_ids", ids);
+        }
+        pairs
     }
 }
 
@@ -1348,14 +1537,16 @@ impl NotificationsBuilder {
 
     /// Filter notifications by type
     ///
-    /// Sets the `types` query parameter to request only the given types.
+    /// Sets the `types` query parameter to request only the given types, sent
+    /// on the wire as indexed keys (`types[0]=like&types[1]=follow`, …).
     ///
     /// # Note
     ///
-    /// Tumblr has been observed to **ignore** this server-side filter and return the
-    /// full activity feed regardless of the value sent (verified empirically
-    /// 2026-07-01). Treat it as a hint only; when correctness matters, filter
-    /// client-side on [`Notification::notification_type`].
+    /// An earlier probe using the comma-joined form (`types=like,follow`)
+    /// concluded Tumblr ignored this filter outright; that turned out to be
+    /// an artifact of the encoding rather than the filter itself — the
+    /// indexed form correctly restricts the results (verified empirically
+    /// 2026-07-31).
     pub fn types(mut self, types: Vec<NotificationType>) -> Self {
         self.query.types = Some(types.iter().map(|t| t.to_string()).collect());
         self
@@ -1366,8 +1557,7 @@ impl NotificationsBuilder {
     /// Only return notifications of the specified types.
     /// Use this if you need to specify types not covered by NotificationType enum.
     ///
-    /// The same server-side caveat as [`types`](Self::types) applies: Tumblr may ignore
-    /// this filter, so filter client-side when correctness matters.
+    /// Uses the same indexed wire encoding as [`types`](Self::types).
     pub fn types_str(mut self, types: Vec<impl Into<String>>) -> Self {
         self.query.types = Some(types.into_iter().map(|t| t.into()).collect());
         self
@@ -1375,7 +1565,10 @@ impl NotificationsBuilder {
 
     /// Exclude notifications about specific posts
     ///
-    /// Notifications about these post IDs will not be returned.
+    /// Notifications about these post IDs will not be returned. Sent on the
+    /// wire as indexed keys (`omit_post_ids[0]=…&omit_post_ids[1]=…`, …) —
+    /// Tumblr silently ignores the comma-joined form (verified empirically
+    /// 2026-07-31).
     pub fn omit_post_ids(mut self, post_ids: Vec<impl Into<String>>) -> Self {
         self.query.omit_post_ids = Some(post_ids.into_iter().map(|id| id.into()).collect());
         self
@@ -1392,7 +1585,9 @@ impl NotificationsBuilder {
     /// - API returns an error
     pub async fn send(self) -> CrabResult<NotificationsResponse> {
         let path = format!("blog/{}/notifications", self.identifier.as_str());
-        self.client.get_with_query(&path, &self.query).await
+        self.client
+            .get_with_query(&path, &self.query.to_pairs())
+            .await
     }
 }
 
@@ -1799,6 +1994,9 @@ impl PagesBuilder {
 pub struct PagesResponse {
     /// List of custom pages
     pub pages: Vec<BlogPage>,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 /// Response from the single page endpoint
@@ -1835,6 +2033,9 @@ pub struct PostsResponse {
     /// Information about the blog (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blog: Option<Blog>,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 /// Represents a Tumblr post in NPF (Neue Post Format)
@@ -2149,6 +2350,8 @@ pub struct BlockedBlog {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlocksResponse {
     pub blocked_tumblelogs: Vec<BlockedBlog>,
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2185,6 +2388,8 @@ struct FollowersQuery {
 pub struct FollowersResponse {
     pub total_users: u64,
     pub users: Vec<FollowerUser>,
+    #[serde(rename = "_links", default)]
+    pub links: Option<crate::models::Links>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -2220,6 +2425,39 @@ impl FollowersBuilder {
     }
 }
 
+/// NPF fetch format for a single post, set via [`BlogPost::post_format`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PostFormat {
+    /// Neue Post Format content blocks (the default)
+    Npf,
+    /// Legacy HTML content
+    Legacy,
+}
+
+impl PostFormat {
+    /// Returns the string representation used in API requests
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PostFormat::Npf => "npf",
+            PostFormat::Legacy => "legacy",
+        }
+    }
+}
+
+impl std::fmt::Display for PostFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Query parameters for fetching a single post
+#[derive(Debug, Clone, Serialize, Default)]
+struct BlogPostQuery {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    post_format: Option<PostFormat>,
+}
+
 /// Handler for operations on a specific blog post
 ///
 /// Provides methods for fetching, editing, deleting, and muting an individual post.
@@ -2229,11 +2467,23 @@ pub struct BlogPost {
     client: Crabrave,
     blog: BlogIdentifier,
     id: String,
+    post_format: Option<PostFormat>,
 }
 
 impl BlogPost {
     pub(crate) fn new(client: Crabrave, blog: BlogIdentifier, id: String) -> Self {
-        Self { client, blog, id }
+        Self {
+            client,
+            blog,
+            id,
+            post_format: None,
+        }
+    }
+
+    /// Requests the post in a specific format: `Npf` (the default) or `Legacy`
+    pub fn post_format(mut self, format: PostFormat) -> Self {
+        self.post_format = Some(format);
+        self
     }
 
     /// Fetches this post
@@ -2251,7 +2501,10 @@ impl BlogPost {
     /// ```
     pub async fn get(self) -> CrabResult<Post> {
         let path = format!("blog/{}/posts/{}", self.blog.as_str(), self.id);
-        self.client.get(&path).await
+        let query = BlogPostQuery {
+            post_format: self.post_format,
+        };
+        self.client.get_with_query(&path, &query).await
     }
 
     /// Deletes this post
@@ -2329,6 +2582,58 @@ impl BlogPost {
     pub async fn mute(self) -> CrabResult<crate::handlers::posts::MuteResponse> {
         let path = format!("blog/{}/posts/{}/mute", self.blog.as_str(), self.id);
         self.client.post(&path, &serde_json::json!({})).await
+    }
+
+    /// Mutes notifications for this post for a limited time
+    ///
+    /// # Arguments
+    ///
+    /// * `seconds` - How long to mute for, in seconds
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// // Mute for an hour
+    /// crab.blogs("my-blog").post("123456").mute_for(3600).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn mute_for(self, seconds: u64) -> CrabResult<crate::handlers::posts::MuteResponse> {
+        let path = format!("blog/{}/posts/{}/mute", self.blog.as_str(), self.id);
+        self.client
+            .post(
+                &path,
+                &serde_json::json!({ "mute_length_seconds": seconds }),
+            )
+            .await
+    }
+
+    /// Unmutes notifications for this post
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use crabrave::Crabrave;
+    /// # async fn example() -> Result<(), crabrave::CrabError> {
+    /// # let crab = Crabrave::builder()
+    /// #     .consumer_key("key")
+    /// #     .consumer_secret("secret")
+    /// #     .access_token("token")
+    /// #     .build()?;
+    /// crab.blogs("my-blog").post("123456").unmute().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn unmute(self) -> CrabResult<crate::handlers::posts::MuteResponse> {
+        let path = format!("blog/{}/posts/{}/mute", self.blog.as_str(), self.id);
+        self.client.delete(&path).await
     }
 }
 

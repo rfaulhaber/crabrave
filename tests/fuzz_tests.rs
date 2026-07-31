@@ -94,7 +94,7 @@ proptest! {
     ) {
         use crabrave::npf::ContentBlock;
 
-        let block = ContentBlock::audio(&url);
+        let block = ContentBlock::audio(&url, "tumblr");
 
         let json = serde_json::to_string(&block);
         prop_assert!(json.is_ok());

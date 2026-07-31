@@ -128,6 +128,7 @@ pub struct CreatePostBuilder {
     tags: Vec<String>,
     state: Option<String>,
     slug: Option<String>,
+    publish_on: Option<String>,
     date: Option<String>,
     media_sources: HashMap<String, MediaSource>,
     next_media_id: usize,
@@ -143,6 +144,7 @@ impl CreatePostBuilder {
             tags: Vec::new(),
             state: None,
             slug: None,
+            publish_on: None,
             date: None,
             media_sources: HashMap::new(),
             next_media_id: 0,
@@ -192,7 +194,17 @@ impl CreatePostBuilder {
         self
     }
 
-    /// Sets a custom publish date (GMT timestamp)
+    /// Sets the exact future date and time (ISO 8601) to publish the post
+    ///
+    /// Ignored unless `state` is set to `"queue"`.
+    pub fn publish_on(mut self, publish_on: impl Into<String>) -> Self {
+        self.publish_on = Some(publish_on.into());
+        self
+    }
+
+    /// Backdates the post to an exact date and time in the past (ISO 8601)
+    ///
+    /// This backdating does not affect when the post shows up in the Dashboard.
     pub fn date(mut self, date: impl Into<String>) -> Self {
         self.date = Some(date.into());
         self
@@ -285,6 +297,9 @@ impl CreatePostBuilder {
             alt_text: None,
             caption: None,
             attribution: None,
+            colors: None,
+            feedback_token: None,
+            poster: None,
         });
 
         self.media_sources.insert(identifier, source);
@@ -443,6 +458,9 @@ impl CreatePostBuilder {
         if let Some(slug) = self.slug {
             body["slug"] = serde_json::json!(slug);
         }
+        if let Some(publish_on) = self.publish_on {
+            body["publish_on"] = serde_json::json!(publish_on);
+        }
         if let Some(date) = self.date {
             body["date"] = serde_json::json!(date);
         }
@@ -498,6 +516,8 @@ pub struct EditPostBuilder {
     tags: Option<Vec<String>>,
     state: Option<String>,
     slug: Option<String>,
+    publish_on: Option<String>,
+    date: Option<String>,
     media_sources: HashMap<String, MediaSource>,
     next_media_id: usize,
 }
@@ -513,6 +533,8 @@ impl EditPostBuilder {
             tags: None,
             state: None,
             slug: None,
+            publish_on: None,
+            date: None,
             media_sources: HashMap::new(),
             next_media_id: 0,
         }
@@ -561,6 +583,24 @@ impl EditPostBuilder {
         self
     }
 
+    /// Sets the exact future date and time (ISO 8601) to publish the post
+    ///
+    /// Ignored unless `state` is set to `"queue"`. If you're editing a
+    /// scheduled post, resend its existing `publish_on` value here — leaving
+    /// it out drops the schedule.
+    pub fn publish_on(mut self, publish_on: impl Into<String>) -> Self {
+        self.publish_on = Some(publish_on.into());
+        self
+    }
+
+    /// Backdates the post to an exact date and time in the past (ISO 8601)
+    ///
+    /// This backdating does not affect when the post shows up in the Dashboard.
+    pub fn date(mut self, date: impl Into<String>) -> Self {
+        self.date = Some(date.into());
+        self
+    }
+
     /// Adds media to upload with an explicit identifier
     ///
     /// The identifier must match the one used in your content blocks' MediaObject.
@@ -596,6 +636,9 @@ impl EditPostBuilder {
             alt_text: None,
             caption: None,
             attribution: None,
+            colors: None,
+            feedback_token: None,
+            poster: None,
         };
 
         self.content.get_or_insert_with(Vec::new).push(image_block);
@@ -707,6 +750,12 @@ impl EditPostBuilder {
         }
         if let Some(slug) = self.slug {
             body["slug"] = serde_json::json!(slug);
+        }
+        if let Some(publish_on) = self.publish_on {
+            body["publish_on"] = serde_json::json!(publish_on);
+        }
+        if let Some(date) = self.date {
+            body["date"] = serde_json::json!(date);
         }
 
         let path = format!("blog/{}/posts/{}", self.blog.as_str(), self.id);
@@ -1059,6 +1108,9 @@ mod tests {
                 alt_text: Some("Custom image".to_string()),
                 caption: None,
                 attribution: None,
+                colors: None,
+                feedback_token: None,
+                poster: None,
             }])
             .media_source("custom_id", media_source);
 

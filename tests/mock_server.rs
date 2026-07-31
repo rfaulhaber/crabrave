@@ -879,7 +879,8 @@ async fn test_blog_notifications_with_types_filter() {
 
     Mock::given(method("GET"))
         .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
-        .and(query_param("types", "like,follow"))
+        .and(query_param("types[0]", "like"))
+        .and(query_param("types[1]", "follow"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -999,7 +1000,8 @@ async fn test_blog_notifications_with_omit_post_ids() {
 
     Mock::given(method("GET"))
         .and(path(format!("/blog/{}/notifications", TEST_BLOG_NAME)))
-        .and(query_param("omit_post_ids", "111111,222222"))
+        .and(query_param("omit_post_ids[0]", "111111"))
+        .and(query_param("omit_post_ids[1]", "222222"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "meta": {
                 "status": 200,
@@ -4160,13 +4162,13 @@ async fn test_user_limits() {
     // Check posts limit
     let posts = limits.user.posts.expect("posts limit should be present");
     assert_eq!(posts.limit, 500);
-    assert_eq!(posts.remaining, 488);
+    assert_eq!(posts.remaining, 484);
     assert_eq!(posts.reset_at, 1785556800);
 
     // Check photos limit
     let photos = limits.user.photos.expect("photos limit should be present");
     assert_eq!(photos.limit, 500);
-    assert_eq!(photos.remaining, 500);
+    assert_eq!(photos.remaining, 497);
 
     // Check videos limit
     let videos = limits.user.videos.expect("videos limit should be present");
@@ -4187,7 +4189,7 @@ async fn test_user_limits() {
         .follows
         .expect("follows limit should be present");
     assert_eq!(follows.limit, 200);
-    assert_eq!(follows.remaining, 200);
+    assert_eq!(follows.remaining, 198);
 }
 
 #[tokio::test]

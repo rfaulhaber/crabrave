@@ -105,4 +105,7 @@ pub struct LikesResponse {
     /// Total number of liked posts
     #[serde(default)]
     pub liked_count: u64,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }

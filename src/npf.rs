@@ -30,6 +30,12 @@ pub enum ContentBlock {
         /// Optional inline formatting
         #[serde(skip_serializing_if = "Option::is_none")]
         formatting: Option<Vec<InlineFormat>>,
+        /// Indentation level, from 0 to 7.
+        ///
+        /// Only meaningful for the `ordered-list-item`, `unordered-list-item`,
+        /// and `indented` subtypes.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        indent_level: Option<u8>,
     },
     /// Image content block
     Image {
@@ -48,6 +54,26 @@ pub enum ContentBlock {
             deserialize_with = "deserialize_attribution"
         )]
         attribution: Option<Attribution>,
+        /// Extracted colors from the image, keyed `c0`, `c1`, … `c9`, with
+        /// 3- or 6-character RGB hex strings as values.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        colors: Option<std::collections::HashMap<String, String>>,
+        /// Identifier for the GIF search result this image came from.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        feedback_token: Option<String>,
+        /// Poster/thumbnail media object for the image.
+        ///
+        /// The NPF spec's property table lists this as a single Media Object
+        /// sibling of `media`, but its worked example instead nests a
+        /// `poster` inside a `media[i]` entry; this models the table shape
+        /// and tolerates the API sending either a single object or an array
+        /// on the wire, the same as [`ContentBlock::Video`]'s `media` field.
+        #[serde(
+            skip_serializing_if = "Option::is_none",
+            default,
+            deserialize_with = "deserialize_media_object_lenient"
+        )]
+        poster: Option<Box<MediaObject>>,
     },
     /// Link content block
     Link {
@@ -62,6 +88,18 @@ pub enum ContentBlock {
         /// Optional poster/thumbnail images
         #[serde(skip_serializing_if = "Option::is_none")]
         poster: Option<Vec<MediaObject>>,
+        /// Content author, auto-populated from OpenGraph data when the block
+        /// is created with only a `url`.
+        ///
+        /// Populated values are capped at 140 characters in that path.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        author: Option<String>,
+        /// Name of the site the link points to, auto-populated from
+        /// OpenGraph data when the block is created with only a `url`.
+        ///
+        /// Populated values are capped at 140 characters in that path.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        site_name: Option<String>,
     },
     /// Audio content block
     Audio {
@@ -148,7 +186,7 @@ pub enum ContentBlock {
         /// Whether the video can autoplay on cellular connections
         #[serde(skip_serializing_if = "Option::is_none")]
         can_autoplay_on_cellular: Option<bool>,
-        /// Video duration in seconds
+        /// Video duration in milliseconds
         #[serde(skip_serializing_if = "Option::is_none")]
         duration: Option<f64>,
         /// Optional metadata from the provider
@@ -169,6 +207,17 @@ pub enum ContentBlock {
         /// Whether the paywall is for supporters only
         #[serde(skip_serializing_if = "Option::is_none")]
         is_visible: Option<bool>,
+        /// The CTA title that appears above the main text.
+        ///
+        /// Required by the spec for the `cta` and `disabled` subtypes; absent
+        /// otherwise, hence `Option` here.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+        /// Divider color as a hex string (e.g. `#eeeeee`).
+        ///
+        /// Only applicable to the `divider` subtype.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        color: Option<String>,
     },
     /// Poll content block
     Poll {
@@ -346,6 +395,12 @@ pub enum Attribution {
         /// Blog data
         #[serde(skip_serializing_if = "Option::is_none")]
         blog: Option<AttributionBlog>,
+        /// URL of the blog.
+        ///
+        /// Present in the spec's worked example but absent from its own
+        /// property table, so presence is not guaranteed.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        url: Option<String>,
     },
     /// Attribution to an app
     App {
@@ -499,6 +554,23 @@ pub enum LayoutBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         attribution: Option<AskAttribution>,
     },
+    /// Condensed layout - deprecated, replaced by [`LayoutBlock::Rows`]'s
+    /// `truncate_after`.
+    ///
+    /// Per the NPF spec, a post created with this layout has it ignored by
+    /// the backend; it's modeled here only so existing posts that still carry
+    /// one round-trip through fetch/modify/edit without loss. `truncate_after`
+    /// and `blocks` are mutually exclusive in the spec's own docs (one implies
+    /// the other is absent), but both are `Option` here to tolerate whatever
+    /// shape the API actually returns.
+    Condensed {
+        /// Index after which to truncate.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        truncate_after: Option<i64>,
+        /// Content block indices covered by this layout, sequential from 0.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        blocks: Option<Vec<usize>>,
+    },
     /// Catch-all preserving the original JSON of unrecognized layout types.
     /// Prevents deserialization failures when the API introduces new types and
     /// round-trips the captured value unchanged on serialization.
@@ -545,6 +617,7 @@ impl ContentBlock {
             text: text.into(),
             subtype: None,
             formatting: None,
+            indent_level: None,
         }
     }
 
@@ -559,6 +632,7 @@ impl ContentBlock {
             text: text.into(),
             subtype: Some(subtype.to_string()),
             formatting: None,
+            indent_level: None,
         }
     }
 
@@ -569,6 +643,8 @@ impl ContentBlock {
             title: None,
             description: None,
             poster: None,
+            author: None,
+            site_name: None,
         }
     }
 
@@ -591,15 +667,24 @@ impl ContentBlock {
             alt_text: None,
             caption: None,
             attribution: None,
+            colors: None,
+            feedback_token: None,
+            poster: None,
         }
     }
 
-    /// Creates an audio content block from a URL (for external providers)
-    pub fn audio(url: impl Into<String>) -> Self {
+    /// Creates an audio content block from a URL, for external providers.
+    ///
+    /// Per the NPF spec, `provider` must always be present alongside either
+    /// `media` or `url`; the spec's property table marks `provider` optional,
+    /// but that contradicts its own prose and is not a safe contract to
+    /// build against. Use `"tumblr"` for native audio, or the name of a
+    /// trusted third-party provider (Spotify, SoundCloud, Bandcamp, etc.).
+    pub fn audio(url: impl Into<String>, provider: impl Into<String>) -> Self {
         ContentBlock::Audio {
             media: None,
             url: Some(url.into()),
-            provider: None,
+            provider: Some(provider.into()),
             artist: None,
             album: None,
             title: None,
@@ -654,6 +739,7 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 text: String,
                 subtype: Option<String>,
                 formatting: Option<Vec<InlineFormat>>,
+                indent_level: Option<u8>,
             },
             Image {
                 media: Vec<MediaObject>,
@@ -661,12 +747,18 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 caption: Option<String>,
                 #[serde(default, deserialize_with = "deserialize_attribution")]
                 attribution: Option<Attribution>,
+                colors: Option<std::collections::HashMap<String, String>>,
+                feedback_token: Option<String>,
+                #[serde(default, deserialize_with = "deserialize_media_object_lenient")]
+                poster: Option<Box<MediaObject>>,
             },
             Link {
                 url: String,
                 title: Option<String>,
                 description: Option<String>,
                 poster: Option<Vec<MediaObject>>,
+                author: Option<String>,
+                site_name: Option<String>,
             },
             Audio {
                 media: Option<Box<MediaObject>>,
@@ -704,6 +796,8 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 url: Option<String>,
                 text: Option<String>,
                 is_visible: Option<bool>,
+                title: Option<String>,
+                color: Option<String>,
             },
             Poll {
                 client_id: String,
@@ -725,32 +819,44 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 text,
                 subtype,
                 formatting,
+                indent_level,
             } => ContentBlock::Text {
                 text,
                 subtype,
                 formatting,
+                indent_level,
             },
             Tagged::Image {
                 media,
                 alt_text,
                 caption,
                 attribution,
+                colors,
+                feedback_token,
+                poster,
             } => ContentBlock::Image {
                 media,
                 alt_text,
                 caption,
                 attribution,
+                colors,
+                feedback_token,
+                poster,
             },
             Tagged::Link {
                 url,
                 title,
                 description,
                 poster,
+                author,
+                site_name,
             } => ContentBlock::Link {
                 url,
                 title,
                 description,
                 poster,
+                author,
+                site_name,
             },
             Tagged::Audio {
                 media,
@@ -807,11 +913,15 @@ impl<'de> Deserialize<'de> for ContentBlock {
                 url,
                 text,
                 is_visible,
+                title,
+                color,
             } => ContentBlock::Paywall {
                 subtype,
                 url,
                 text,
                 is_visible,
+                title,
+                color,
             },
             Tagged::Poll {
                 client_id,
@@ -853,6 +963,7 @@ impl<'de> Deserialize<'de> for Attribution {
             },
             Blog {
                 blog: Option<AttributionBlog>,
+                url: Option<String>,
             },
             App {
                 url: String,
@@ -870,7 +981,7 @@ impl<'de> Deserialize<'de> for Attribution {
         Ok(match tagged {
             Tagged::Post { url, post, blog } => Attribution::Post { url, post, blog },
             Tagged::Link { url } => Attribution::Link { url },
-            Tagged::Blog { blog } => Attribution::Blog { blog },
+            Tagged::Blog { blog, url } => Attribution::Blog { blog, url },
             Tagged::App {
                 url,
                 app_name,
@@ -905,6 +1016,10 @@ impl<'de> Deserialize<'de> for LayoutBlock {
                 blocks: Vec<usize>,
                 attribution: Option<AskAttribution>,
             },
+            Condensed {
+                truncate_after: Option<i64>,
+                blocks: Option<Vec<usize>>,
+            },
             #[serde(other)]
             Unknown,
         }
@@ -926,6 +1041,13 @@ impl<'de> Deserialize<'de> for LayoutBlock {
             } => LayoutBlock::Ask {
                 blocks,
                 attribution,
+            },
+            Tagged::Condensed {
+                truncate_after,
+                blocks,
+            } => LayoutBlock::Condensed {
+                truncate_after,
+                blocks,
             },
             Tagged::Unknown => LayoutBlock::Unknown(value),
         })
@@ -1076,11 +1198,17 @@ mod tests {
 
     #[test]
     fn test_audio_block_creation() {
-        let block = ContentBlock::audio("https://spotify.com/track/123");
+        let block = ContentBlock::audio("https://spotify.com/track/123", "spotify");
         match block {
-            ContentBlock::Audio { url, media, .. } => {
+            ContentBlock::Audio {
+                url,
+                media,
+                provider,
+                ..
+            } => {
                 assert_eq!(url, Some("https://spotify.com/track/123".to_string()));
                 assert!(media.is_none());
+                assert_eq!(provider, Some("spotify".to_string()));
             }
             _ => panic!("Expected audio block"),
         }
@@ -1383,6 +1511,191 @@ mod tests {
                 assert!(matches!(subtype, Some(PaywallSubtype::Unknown)));
             }
             _ => panic!("Expected Paywall block"),
+        }
+    }
+
+    #[test]
+    fn test_text_indent_level_round_trips() {
+        let json = serde_json::json!({
+            "type": "text",
+            "text": "Nested item",
+            "subtype": "unordered-list-item",
+            "indent_level": 3
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        match &block {
+            ContentBlock::Text { indent_level, .. } => {
+                assert_eq!(*indent_level, Some(3));
+            }
+            _ => panic!("Expected Text block"),
+        }
+
+        let value = serde_json::to_value(&block).unwrap();
+        assert_eq!(value["indent_level"], 3);
+    }
+
+    #[test]
+    fn test_condensed_layout_with_truncate_after() {
+        let json = serde_json::json!({
+            "type": "condensed",
+            "truncate_after": 2
+        });
+
+        let layout: LayoutBlock = serde_json::from_value(json.clone()).unwrap();
+        match layout {
+            LayoutBlock::Condensed {
+                truncate_after,
+                blocks,
+            } => {
+                assert_eq!(truncate_after, Some(2));
+                assert!(blocks.is_none());
+            }
+            _ => panic!("Expected Condensed layout"),
+        }
+    }
+
+    #[test]
+    fn test_condensed_layout_with_blocks_round_trips() {
+        let json = serde_json::json!({
+            "type": "condensed",
+            "blocks": [0, 1, 2]
+        });
+
+        let layout: LayoutBlock = serde_json::from_value(json.clone()).unwrap();
+        match &layout {
+            LayoutBlock::Condensed {
+                truncate_after,
+                blocks,
+            } => {
+                assert!(truncate_after.is_none());
+                assert_eq!(blocks, &Some(vec![0, 1, 2]));
+            }
+            _ => panic!("Expected Condensed layout"),
+        }
+
+        assert_eq!(serde_json::to_value(&layout).unwrap(), json);
+    }
+
+    #[test]
+    fn test_paywall_title_and_color_round_trip() {
+        let json = serde_json::json!({
+            "type": "paywall",
+            "subtype": "divider",
+            "title": "Keep reading",
+            "color": "#eeeeee"
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        match &block {
+            ContentBlock::Paywall { title, color, .. } => {
+                assert_eq!(title.as_deref(), Some("Keep reading"));
+                assert_eq!(color.as_deref(), Some("#eeeeee"));
+            }
+            _ => panic!("Expected Paywall block"),
+        }
+
+        assert_eq!(serde_json::to_value(&block).unwrap(), json);
+    }
+
+    #[test]
+    fn test_image_colors_feedback_token_and_poster() {
+        let json = serde_json::json!({
+            "type": "image",
+            "media": [{ "url": "https://example.com/image.jpg", "type": "image/jpeg" }],
+            "colors": { "c0": "abcdef", "c1": "123456" },
+            "feedback_token": "gif-search-token",
+            "poster": { "url": "https://example.com/poster.jpg" }
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Image {
+                colors,
+                feedback_token,
+                poster,
+                ..
+            } => {
+                let colors = colors.expect("expected colors map");
+                assert_eq!(colors.get("c0").map(String::as_str), Some("abcdef"));
+                assert_eq!(colors.get("c1").map(String::as_str), Some("123456"));
+                assert_eq!(feedback_token.as_deref(), Some("gif-search-token"));
+                let poster = poster.expect("expected poster media object");
+                assert_eq!(poster.url, "https://example.com/poster.jpg");
+            }
+            _ => panic!("Expected Image block"),
+        }
+    }
+
+    #[test]
+    fn test_image_poster_deserializes_from_array() {
+        let json = serde_json::json!({
+            "type": "image",
+            "media": [{ "url": "https://example.com/image.jpg" }],
+            "poster": [{ "url": "https://example.com/poster.jpg" }]
+        });
+
+        let block: ContentBlock = serde_json::from_value(json).unwrap();
+        match block {
+            ContentBlock::Image { poster, .. } => {
+                let poster = poster.expect("expected poster media object");
+                assert_eq!(poster.url, "https://example.com/poster.jpg");
+            }
+            _ => panic!("Expected Image block"),
+        }
+    }
+
+    #[test]
+    fn test_attribution_blog_url_round_trips() {
+        let json = serde_json::json!({
+            "type": "blog",
+            "blog": { "uuid": "t:abc123" },
+            "url": "https://randerson.tumblr.com"
+        });
+
+        let attr: Attribution = serde_json::from_value(json.clone()).unwrap();
+        match &attr {
+            Attribution::Blog { url, .. } => {
+                assert_eq!(url.as_deref(), Some("https://randerson.tumblr.com"));
+            }
+            _ => panic!("Expected Blog attribution"),
+        }
+
+        assert_eq!(serde_json::to_value(&attr).unwrap(), json);
+    }
+
+    #[test]
+    fn test_link_author_and_site_name_round_trip() {
+        let json = serde_json::json!({
+            "type": "link",
+            "url": "https://example.com/article",
+            "author": "Jane Doe",
+            "site_name": "Example News"
+        });
+
+        let block: ContentBlock = serde_json::from_value(json.clone()).unwrap();
+        match &block {
+            ContentBlock::Link {
+                author, site_name, ..
+            } => {
+                assert_eq!(author.as_deref(), Some("Jane Doe"));
+                assert_eq!(site_name.as_deref(), Some("Example News"));
+            }
+            _ => panic!("Expected Link block"),
+        }
+
+        assert_eq!(serde_json::to_value(&block).unwrap(), json);
+    }
+
+    #[test]
+    fn test_audio_helper_requires_provider() {
+        let block = ContentBlock::audio("https://tumblr.com/audio/123", "tumblr");
+        match block {
+            ContentBlock::Audio { provider, url, .. } => {
+                assert_eq!(provider.as_deref(), Some("tumblr"));
+                assert_eq!(url.as_deref(), Some("https://tumblr.com/audio/123"));
+            }
+            _ => panic!("Expected Audio block"),
         }
     }
 }

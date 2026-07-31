@@ -42,6 +42,12 @@ Notable files:
 - `user_dashboard_npf.json`, `user_likes.json`, `user_following.json`,
   `tagged.json` — account-level/global endpoints, so their elements are
   third-party posts (pseudonymized as above).
+- `user_limits.json` — captured 2026-07-31 against the owning account;
+  contains no account identifiers, so nothing needed sanitizing. Tumblr's
+  docs show this key set as explicitly non-exhaustive ("..."), and this
+  capture's nine categories (`blogs`, `follows`, `likes`, `photos`,
+  `posts`, `community_posts`, `reply_likes`, `video_seconds`, `videos`)
+  are the full set observed live.
 
 Re-capturing: `tumblr.nu` (see the adjacent project) with the account's
 OAuth token; the capture/sanitize scripts live in the session scratchpad

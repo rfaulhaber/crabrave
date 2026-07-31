@@ -109,6 +109,16 @@ pub(crate) fn parse_response_bytes_with_status<T: DeserializeOwned>(
     bytes: &[u8],
     http_status: u16,
 ) -> CrabResult<T> {
+    // Some endpoints (e.g. DELETE .../members/{blog}) return 204 with a
+    // completely empty body rather than a JSON envelope. There's no `meta`
+    // to check here, so success is inferred from the HTTP status alone;
+    // `EmptyResponse` accepts `null`, while a typed response that actually
+    // needs data still fails with the same `Serialization` error it would
+    // have gotten from an empty envelope.
+    if is_success(http_status) && bytes.iter().all(|b| b.is_ascii_whitespace()) {
+        return serde_json::from_value(serde_json::Value::Null).map_err(CrabError::Serialization);
+    }
+
     let envelope: ApiResponse<serde_json::Value> = match serde_json::from_slice(bytes) {
         Ok(envelope) => envelope,
         Err(parse_err) => {
@@ -450,6 +460,22 @@ mod tests {
     fn test_parse_non_json_body_with_success_status_yields_serialization_error() {
         let result: CrabResult<TestData> =
             parse_response_bytes_with_status(b"<html>bad gateway</html>", 200);
+
+        match result {
+            Err(CrabError::Serialization(_)) => {}
+            other => panic!("Expected Serialization error, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_parse_empty_body_with_success_status_yields_empty_response() {
+        let result: CrabResult<EmptyResponse> = parse_response_bytes_with_status(b"", 204);
+        assert_eq!(result.unwrap(), EmptyResponse(Vec::new()));
+    }
+
+    #[test]
+    fn test_parse_empty_body_with_success_status_and_typed_response_yields_serialization_error() {
+        let result: CrabResult<TestData> = parse_response_bytes_with_status(b"", 200);
 
         match result {
             Err(CrabError::Serialization(_)) => {}

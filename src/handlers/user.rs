@@ -567,13 +567,23 @@ pub struct JoinedCommunitiesResponse {
 /// User rate limit information
 ///
 /// Contains the current limits and remaining counts for various
-/// daily actions. All fields are optional as the API may not
-/// return all limit types.
+/// daily actions. Tumblr's docs list this key set as explicitly
+/// non-exhaustive (the example response ends in "..."), so every
+/// field is optional and new limit categories may appear without
+/// notice.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserLimits {
-    /// Daily post limit
+    /// Daily secondary blog creation limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blogs: Option<Limit>,
+
+    /// Daily post limit (not including posts in communities)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub posts: Option<Limit>,
+
+    /// Daily limit on posts created in communities
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub community_posts: Option<Limit>,
 
     /// Daily photo upload limit
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -590,6 +600,14 @@ pub struct UserLimits {
     /// Daily follow limit
     #[serde(skip_serializing_if = "Option::is_none")]
     pub follows: Option<Limit>,
+
+    /// Daily post like limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub likes: Option<Limit>,
+
+    /// Daily reply like limit
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_likes: Option<Limit>,
 }
 
 /// A single rate limit with description and remaining count
@@ -707,6 +725,9 @@ impl DashboardBuilder {
 pub struct DashboardResponse {
     /// List of posts from the user's dashboard
     pub posts: Vec<crate::handlers::blog::Post>,
+    /// Pagination cursors
+    #[serde(rename = "_links", default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<crate::models::Links>,
 }
 
 /// Request body for follow/unfollow operations

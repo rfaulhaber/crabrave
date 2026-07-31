@@ -24,6 +24,23 @@
 //! # Ok::<(), crabrave::CrabError>(())
 //! ```
 //!
+//! ### API-Key-Only (No OAuth)
+//!
+//! A consumer key alone is enough to call the handful of endpoints Tumblr
+//! serves without authentication: tagged search, and blog info/posts/likes/avatar.
+//! Everything else requires the full OAuth2 credentials above.
+//!
+//! ```
+//! use crabrave::Crabrave;
+//!
+//! let crab = Crabrave::builder()
+//!     .consumer_key("your_consumer_key")
+//!     .build()?;
+//!
+//! // let blog_info = crab.blogs("staff").info().await?;
+//! # Ok::<(), crabrave::CrabError>(())
+//! ```
+//!
 //! ### OAuth2 Flow (Getting Tokens)
 //!
 //! ```no_run
@@ -77,7 +94,7 @@ pub use models::{Blog, BlogIdentifier, Page, User};
 pub use reqwest::cookie::Jar as CookieJar;
 pub use response::{ApiResponse, EmptyResponse, Meta};
 
-use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 use serde::{Deserialize, Deserializer};
 use std::sync::Arc;
 
@@ -102,11 +119,10 @@ pub(crate) const DEFAULT_USER_AGENT: &str = concat!(
 /// Authentication credentials for the Tumblr API
 #[derive(Clone)]
 struct Auth {
-    #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
     consumer_key: String,
     #[allow(dead_code)] // Stored for potential token refresh, but not used in requests
-    consumer_secret: String,
-    access_token: String,
+    consumer_secret: Option<String>,
+    access_token: Option<String>,
 }
 
 /// The main client for interacting with the Tumblr API
@@ -282,6 +298,21 @@ impl Crabrave {
         format!("{}/{}", self.base_url, path)
     }
 
+    /// Applies this client's authentication to a request.
+    ///
+    /// With an access token, requests carry OAuth2 Bearer authentication.
+    /// Without one, the consumer key is sent as the `api_key` query
+    /// parameter instead, which Tumblr accepts on a subset of read-only
+    /// public endpoints. Appending a query pair after a builder that already
+    /// has one (e.g. `get_with_query`) merges rather than overwrites, so this
+    /// is safe to chain after any existing `.query(...)` call.
+    fn apply_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match &self.auth.access_token {
+            Some(access_token) => request.header(AUTHORIZATION, format!("Bearer {access_token}")),
+            None => request.query(&[("api_key", &self.auth.consumer_key)]),
+        }
+    }
+
     /// Checks if the response indicates rate limiting and returns an error if so.
     fn check_rate_limit(response: &reqwest::Response) -> CrabResult<()> {
         fn get_header_number_value(header_name: &str, headers: &HeaderMap) -> Option<u64> {
@@ -338,10 +369,7 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
     {
         let url = self.url(path);
-        let request = self.client.get(&url).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.get(&url));
         let response = request.send().await?;
 
         Self::handle_response(response).await
@@ -360,10 +388,7 @@ impl Crabrave {
     {
         let base_url = self.url(path);
 
-        let request = self.client.get(&base_url).query(query).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.get(&base_url).query(query));
 
         let response = request.send().await?;
 
@@ -377,10 +402,7 @@ impl Crabrave {
     {
         let base_url = self.url(path);
 
-        let request = self.client.delete(&base_url).query(query).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.delete(&base_url).query(query));
 
         let response = request.send().await?;
 
@@ -390,10 +412,7 @@ impl Crabrave {
     /// A special variant of the generic GET but for handling the /blog/avatar endpoint specifically
     pub(crate) async fn get_avatar(&self, path: &str) -> CrabResult<AvatarResponse> {
         let url = self.url(path);
-        let request = self.client.get(&url).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.get(&url));
         let response = request.send().await?;
 
         Self::check_rate_limit(&response)?;
@@ -443,10 +462,7 @@ impl Crabrave {
         B: serde::Serialize,
     {
         let url = self.url(path);
-        let request = self.client.post(&url).json(body).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.post(&url).json(body));
         let response = request.send().await?;
 
         Self::handle_response(response).await
@@ -462,10 +478,7 @@ impl Crabrave {
         B: serde::Serialize,
     {
         let url = self.url(path);
-        let request = self.client.put(&url).json(body).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.put(&url).json(body));
         let response = request.send().await?;
 
         Self::handle_response(response).await
@@ -516,14 +529,7 @@ impl Crabrave {
             form = form.part(identifier, part);
         }
 
-        let request = self
-            .client
-            .request(method.clone(), &url)
-            .multipart(form)
-            .header(
-                reqwest::header::AUTHORIZATION,
-                format!("Bearer {}", self.auth.access_token),
-            );
+        let request = self.apply_auth(self.client.request(method.clone(), &url).multipart(form));
         let response = request.send().await?;
 
         Self::handle_response(response).await
@@ -568,10 +574,7 @@ impl Crabrave {
         T: serde::de::DeserializeOwned,
     {
         let url = self.url(path);
-        let request = self.client.delete(&url).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.delete(&url));
         let response = request.send().await?;
 
         Self::handle_response(response).await
@@ -586,10 +589,7 @@ impl Crabrave {
         B: serde::Serialize,
     {
         let url = self.url(path);
-        let request = self.client.delete(&url).json(body).header(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", self.auth.access_token),
-        );
+        let request = self.apply_auth(self.client.delete(&url).json(body));
         let response = request.send().await?;
 
         Self::handle_response(response).await
@@ -668,6 +668,8 @@ impl CrabraveBuilder {
     /// Sets a pre-built cookie jar on the client.
     ///
     /// This allows you to provide browser cookies that will be sent with every request.
+    /// Since the client only ever requests `api.tumblr.com`, cookies must be scoped to
+    /// that host (or carry a `Domain=tumblr.com` attribute) to actually be sent.
     ///
     /// # Example
     ///
@@ -678,7 +680,7 @@ impl CrabraveBuilder {
     /// let jar = CookieJar::default();
     /// jar.add_cookie_str(
     ///     "session_id=abc123",
-    ///     &"https://www.tumblr.com".parse().unwrap(),
+    ///     &"https://api.tumblr.com".parse().unwrap(),
     /// );
     ///
     /// let crab = Crabrave::builder()
@@ -699,6 +701,9 @@ impl CrabraveBuilder {
     ///
     /// If no cookie jar has been set, one will be created automatically.
     /// The cookie will be associated with the given URL for domain matching.
+    /// Since the client only ever requests `api.tumblr.com`, `url` must be
+    /// scoped to that host (or the cookie must carry a `Domain=tumblr.com`
+    /// attribute) for it to actually be sent.
     ///
     /// # Arguments
     ///
@@ -715,8 +720,8 @@ impl CrabraveBuilder {
     ///     .consumer_key("key")
     ///     .consumer_secret("secret")
     ///     .access_token("token")
-    ///     .add_cookie("session_id=abc123", &"https://www.tumblr.com".parse().unwrap())
-    ///     .add_cookie("pfp=xyz789", &"https://www.tumblr.com".parse().unwrap())
+    ///     .add_cookie("session_id=abc123", &"https://api.tumblr.com".parse().unwrap())
+    ///     .add_cookie("pfp=xyz789", &"https://api.tumblr.com".parse().unwrap())
     ///     .build()?;
     /// # Ok::<(), crabrave::CrabError>(())
     /// ```
@@ -731,23 +736,31 @@ impl CrabraveBuilder {
 
     /// Builds the `Crabrave` client
     ///
+    /// Only a consumer key is required. Whether an access token is also set
+    /// determines which of two authentication modes the client uses:
+    ///
+    /// - **OAuth (consumer key + secret + access token):** full access,
+    ///   required for anything that reads or writes authenticated data
+    ///   (dashboard, likes, following, posting, communities, ...).
+    /// - **API-key-only (consumer key alone):** requests carry the consumer
+    ///   key as the `api_key` query parameter instead of a Bearer token. This
+    ///   only works against the small set of endpoints Tumblr serves without
+    ///   OAuth: tagged search, and blog info/posts/likes/avatar. Every other
+    ///   endpoint will return a 401 from the API.
+    ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Required credentials are missing
+    /// - The consumer key is missing
     /// - The HTTP client cannot be constructed
     pub fn build(self) -> CrabResult<Crabrave> {
         // Validate required credentials
         let consumer_key = self.consumer_key.ok_or(CrabError::MissingConsumerKey)?;
-        let consumer_secret = self
-            .consumer_secret
-            .ok_or(CrabError::MissingConsumerSecret)?;
-        let access_token = self.access_token.ok_or(CrabError::MissingAccessToken)?;
 
         let auth = Auth {
             consumer_key,
-            consumer_secret,
-            access_token,
+            consumer_secret: self.consumer_secret,
+            access_token: self.access_token,
         };
 
         let mut headers = HeaderMap::new();
